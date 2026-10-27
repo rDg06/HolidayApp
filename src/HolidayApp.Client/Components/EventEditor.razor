@@ -1,0 +1,181 @@
+@* Janela para criar, editar ou apagar uma marcação. *@
+
+<div class="modal-backdrop" @onclick="CloseAsync">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editor-title"
+         @onclick:stopPropagation="true" @onkeydown="OnKeyDownAsync">
+        <form @onsubmit="SubmitAsync">
+            <header class="modal-header">
+                <h2 id="editor-title">@(Existing is null ? "Nova marcação" : "Editar marcação")</h2>
+                <button type="button" class="btn icon" aria-label="Fechar" @onclick="CloseAsync">✕</button>
+            </header>
+
+            <div class="modal-body">
+                <label class="field">
+                    <span>Título</span>
+                    <input class="input" @ref="_titleInput" @bind="_title" @bind:event="oninput"
+                           maxlength="@CalendarEventValidator.TitleMaxLength" />
+                </label>
+
+                <div class="type-picker" role="radiogroup" aria-label="Tipo">
+                    @foreach (var type in Enum.GetValues<EventType>())
+                    {
+                        var t = type;
+                        <button type="button" role="radio" aria-checked="@(_type == t ? "true" : "false")"
+                                class="@ChipCss(t)"
+                                @onclick="() => SelectType(t)">
+                            <span class="swatch"></span>@Pt.Label(t)
+                        </button>
+                    }
+                </div>
+
+                <div class="field-row">
+                    <label class="field">
+                        <span>De</span>
+                        <input class="input" type="date" @bind="_start" @bind:format="yyyy-MM-dd" @bind:after="OnStartChanged" />
+                    </label>
+                    <label class="field">
+                        <span>Até</span>
+                        <input class="input" type="date" @bind="_end" @bind:format="yyyy-MM-dd" />
+                    </label>
+                </div>
+
+                @if (_type == EventType.Ferias)
+                {
+                    <p class="workdays">
+                        Conta como <strong>@Pt.Workdays(Workdays)</strong> de férias
+                        <span class="muted">(fins de semana e feriados não contam)</span>
+                    </p>
+                }
+
+                <label class="field">
+                    <span>Notas <span class="muted">(opcional)</span></span>
+                    <textarea class="input" rows="2" @bind="_notes" maxlength="@CalendarEventValidator.NotesMaxLength"></textarea>
+                </label>
+
+                @if (_errors.Count > 0 || !string.IsNullOrEmpty(Error))
+                {
+                    <ul class="form-errors" role="alert">
+                        @foreach (var message in _errors)
+                        {
+                            <li>@message</li>
+                        }
+                        @if (!string.IsNullOrEmpty(Error))
+                        {
+                            <li>@Error</li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                @if (Existing is not null)
+                {
+                    <button type="button" class="btn danger" disabled="@Busy" @onclick="DeleteClickedAsync">
+                        @(_confirmDelete ? "Confirmar: apagar" : "Apagar")
+                    </button>
+                }
+                <span class="spacer"></span>
+                <button type="button" class="btn ghost" @onclick="CloseAsync">Cancelar</button>
+                <button type="submit" class="btn primary" disabled="@Busy">@(Busy ? "A guardar…" : "Guardar")</button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+@code {
+    [Parameter] public CalendarEventDto? Existing { get; set; }
+    [Parameter] public DateOnly InitialStart { get; set; }
+    [Parameter] public DateOnly InitialEnd { get; set; }
+    [Parameter] public IReadOnlySet<DateOnly> HolidayDates { get; set; } = new HashSet<DateOnly>();
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public EventCallback<SaveCalendarEventRequest> OnSave { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private ElementReference _titleInput;
+    private string _title = "";
+    private EventType _type = EventType.Ferias;
+    private DateOnly _start;
+    private DateOnly _end;
+    private string? _notes;
+    private bool _confirmDelete;
+    private List<string> _errors = [];
+
+    private int Workdays => WorkdayCalculator.CountWorkdays(_start, _end, HolidayDates);
+
+    private string ChipCss(EventType type) => $"chip {Pt.Css(type)}{(_type == type ? " active" : "")}";
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            _title = Existing.Title;
+            _type = Existing.Type;
+            _start = Existing.StartDate;
+            _end = Existing.EndDate;
+            _notes = Existing.Notes;
+        }
+        else
+        {
+            _title = Pt.Label(EventType.Ferias);
+            _start = InitialStart;
+            _end = InitialEnd < InitialStart ? InitialStart : InitialEnd;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await _titleInput.FocusAsync();
+    }
+
+    private void SelectType(EventType type)
+    {
+        // Se o título ainda é o texto por omissão, acompanha o tipo escolhido
+        var isDefaultTitle = string.IsNullOrWhiteSpace(_title)
+                             || Enum.GetValues<EventType>().Any(t => Pt.Label(t) == _title);
+        _type = type;
+        if (isDefaultTitle)
+            _title = Pt.Label(type);
+    }
+
+    private void OnStartChanged()
+    {
+        if (_end < _start)
+            _end = _start;
+    }
+
+    private async Task SubmitAsync()
+    {
+        var request = new SaveCalendarEventRequest(
+            _title.Trim(),
+            _start,
+            _end,
+            _type,
+            string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim());
+
+        _errors = CalendarEventValidator.Validate(request).SelectMany(kv => kv.Value).ToList();
+        if (_errors.Count > 0)
+            return;
+
+        await OnSave.InvokeAsync(request);
+    }
+
+    private async Task DeleteClickedAsync()
+    {
+        if (!_confirmDelete)
+        {
+            _confirmDelete = true;
+            return;
+        }
+
+        await OnDelete.InvokeAsync();
+    }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private Task OnKeyDownAsync(KeyboardEventArgs e) =>
+        e.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
+}

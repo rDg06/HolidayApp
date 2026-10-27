@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="@Assets["css/app.css"]" />
+    <ImportMap />
+    <HeadOutlet @rendermode="ClientOnly" />
+</head>
+
+<body>
+    <Routes @rendermode="ClientOnly" />
+
+    <div id="blazor-error-ui">
+        Ocorreu um erro inesperado.
+        <a href="." class="reload">Recarregar</a>
+        <span class="dismiss">✕</span>
+    </div>
+
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>
+
+@code {
+    // Toda a interface corre no navegador (sem pré-renderização no servidor),
+    // por isso as páginas falam sempre com a API por HTTP.
+    private static readonly IComponentRenderMode ClientOnly = new InteractiveWebAssemblyRenderMode(prerender: false);
+}

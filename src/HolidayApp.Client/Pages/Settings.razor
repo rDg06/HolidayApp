@@ -1,0 +1,127 @@
+@page "/definicoes"
+@inject ICalendarApi Api
+
+<PageTitle>Definições · HolidayApp</PageTitle>
+
+<div class="settings-page">
+    <h1>Definições</h1>
+    <p class="muted">Estas opções alteram os feriados mostrados e o saldo de férias.</p>
+
+    @if (_model is null)
+    {
+        if (_loadError is not null)
+        {
+            <div class="alert" role="alert">@_loadError</div>
+        }
+        else
+        {
+            <p class="muted">A carregar…</p>
+        }
+    }
+    else
+    {
+        <form class="card settings-form" @onsubmit="SaveAsync">
+            <label class="field">
+                <span>Dias úteis de férias por ano</span>
+                <input class="input narrow" type="number" min="0" max="@SettingsValidator.MaxAnnualVacationDays"
+                       @bind="_model.AnnualVacationDays" />
+                <small class="muted">Em Portugal, o mínimo legal são 22 dias úteis.</small>
+            </label>
+
+            <label class="check">
+                <input type="checkbox" @bind="_model.IncludeCarnival" />
+                <span>Tenho dispensa no Carnaval (conta como dia não útil)</span>
+            </label>
+
+            <fieldset class="fieldset">
+                <legend>Feriado municipal</legend>
+                <label class="field">
+                    <span>Nome</span>
+                    <input class="input" placeholder="ex.: Santo António" maxlength="@SettingsValidator.MunicipalNameMaxLength"
+                           @bind="_model.MunicipalHolidayName" />
+                </label>
+                <div class="field-row">
+                    <label class="field">
+                        <span>Mês</span>
+                        <select class="input" @bind="_model.MunicipalHolidayMonth">
+                            <option value="">Nenhum</option>
+                            @for (var i = 1; i <= 12; i++)
+                            {
+                                var month = i;
+                                <option value="@month">@Pt.Months[month - 1]</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Dia</span>
+                        <input class="input" type="number" min="1" max="31" @bind="_model.MunicipalHolidayDay" />
+                    </label>
+                </div>
+            </fieldset>
+
+            @if (_errors.Count > 0)
+            {
+                <ul class="form-errors" role="alert">
+                    @foreach (var message in _errors)
+                    {
+                        <li>@message</li>
+                    }
+                </ul>
+            }
+
+            <div class="form-actions">
+                <button type="submit" class="btn primary" disabled="@_saving">@(_saving ? "A guardar…" : "Guardar")</button>
+                @if (_saved)
+                {
+                    <span class="saved" role="status">Guardado ✓</span>
+                }
+            </div>
+        </form>
+    }
+</div>
+
+@code {
+    private UserSettingsDto? _model;
+    private string? _loadError;
+    private List<string> _errors = [];
+    private bool _saving;
+    private bool _saved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _model = await Api.GetSettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Não foi possível carregar as definições. {ex.Message}";
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_model is null)
+            return;
+
+        _saved = false;
+        _errors = SettingsValidator.Validate(_model).SelectMany(kv => kv.Value).ToList();
+        if (_errors.Count > 0)
+            return;
+
+        _saving = true;
+        try
+        {
+            _model = await Api.SaveSettingsAsync(_model);
+            _saved = true;
+        }
+        catch (Exception ex)
+        {
+            _errors = [ex.Message];
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Contratos partilhados entre o servidor e o cliente Blazor (DTOs, enums, validação, regras de calendário puras) -->
+</Project>

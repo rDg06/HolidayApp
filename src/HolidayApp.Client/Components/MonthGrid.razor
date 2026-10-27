@@ -1,0 +1,125 @@
+@* Um mês da vista anual. Não guarda estado: recebe os dados e avisa o pai das interações. *@
+
+<article class="@(IsCurrentMonth ? "month current" : "month")">
+    <h2 class="month-title">@Pt.Months[Month - 1]</h2>
+
+    <div class="weekdays" aria-hidden="true">
+        @foreach (var label in WeekdayLabels)
+        {
+            <span>@label</span>
+        }
+    </div>
+
+    <div class="days">
+        @for (var i = 0; i < _leadingBlanks; i++)
+        {
+            <span class="day empty" aria-hidden="true"></span>
+        }
+
+        @foreach (var date in _dates)
+        {
+            var d = date;
+            var info = InfoFor(d);
+            <button type="button"
+                    class="@CssFor(d, info)"
+                    title="@Describe(d, info)"
+                    aria-label="@Describe(d, info)"
+                    @onmousedown="e => e.Button == 0 ? OnDayPointerDown.InvokeAsync(d) : Task.CompletedTask"
+                    @onmousedown:preventDefault="true"
+                    @onmouseover="e => OnDayPointerOver.InvokeAsync(new DayPointer(d, e.Buttons))"
+                    @onkeydown="e => HandleKeyAsync(e, d)">
+                <span class="num">@d.Day</span>
+                @if (info?.Holiday is not null && info.Events.Count > 0)
+                {
+                    <span class="holiday-dot" aria-hidden="true"></span>
+                }
+            </button>
+        }
+    </div>
+</article>
+
+@code {
+    // Semana começa à segunda-feira
+    private static readonly string[] WeekdayLabels = ["S", "T", "Q", "Q", "S", "S", "D"];
+
+    [Parameter, EditorRequired] public int Year { get; set; }
+    [Parameter, EditorRequired] public int Month { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyDictionary<DateOnly, DayInfo> Days { get; set; } = default!;
+    [Parameter] public DateOnly Today { get; set; }
+    [Parameter] public DateOnly? SelectionStart { get; set; }
+    [Parameter] public DateOnly? SelectionEnd { get; set; }
+
+    [Parameter] public EventCallback<DateOnly> OnDayPointerDown { get; set; }
+    [Parameter] public EventCallback<DayPointer> OnDayPointerOver { get; set; }
+    [Parameter] public EventCallback<DateOnly> OnDayActivated { get; set; }
+
+    private DateOnly[] _dates = [];
+    private int _leadingBlanks;
+    private int _builtYear;
+    private int _builtMonth;
+
+    private bool IsCurrentMonth => Today.Year == Year && Today.Month == Month;
+
+    protected override void OnParametersSet()
+    {
+        if (_builtYear == Year && _builtMonth == Month)
+            return;
+
+        _builtYear = Year;
+        _builtMonth = Month;
+
+        var first = new DateOnly(Year, Month, 1);
+        _leadingBlanks = ((int)first.DayOfWeek + 6) % 7; // segunda = 0 … domingo = 6
+        _dates = Enumerable.Range(0, DateTime.DaysInMonth(Year, Month)).Select(first.AddDays).ToArray();
+    }
+
+    private DayInfo? InfoFor(DateOnly date) => Days.TryGetValue(date, out var info) ? info : null;
+
+    private string CssFor(DateOnly date, DayInfo? info)
+    {
+        var css = new List<string>(8) { "day" };
+
+        if (WorkdayCalculator.IsWeekend(date))
+            css.Add("weekend");
+
+        if (info?.Holiday is { } holiday)
+            css.Add(holiday.Kind == HolidayKind.Nacional ? "holiday" : "holiday-alt");
+
+        if (info is { Events.Count: > 0 })
+        {
+            var ev = info.Events[0];
+            css.Add("has-event");
+            css.Add(Pt.Css(ev.Type));
+
+            // Arredonda as pontas para a marcação parecer uma barra contínua
+            if (ev.StartDate == date || date.DayOfWeek == DayOfWeek.Monday || date.Day == 1)
+                css.Add("range-start");
+            if (ev.EndDate == date || date.DayOfWeek == DayOfWeek.Sunday || date.Day == _dates.Length)
+                css.Add("range-end");
+        }
+
+        if (date == Today)
+            css.Add("today");
+
+        if (SelectionStart is { } s && SelectionEnd is { } e && date >= s && date <= e)
+            css.Add("selected");
+
+        return string.Join(' ', css);
+    }
+
+    private static string Describe(DateOnly date, DayInfo? info)
+    {
+        var parts = new List<string> { Pt.Long(date) };
+
+        if (info?.Holiday is { } holiday)
+            parts.Add(holiday.Name);
+
+        if (info is not null)
+            parts.AddRange(info.Events.Select(e => e.Title));
+
+        return string.Join(" · ", parts);
+    }
+
+    private Task HandleKeyAsync(KeyboardEventArgs e, DateOnly date) =>
+        e.Key is "Enter" or " " ? OnDayActivated.InvokeAsync(date) : Task.CompletedTask;
+}
