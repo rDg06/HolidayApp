@@ -1,5 +1,6 @@
 @page "/"
 @inject ICalendarApi Api
+@inject NavigationManager Navigation
 
 <PageTitle>HolidayApp · @_year</PageTitle>
 
@@ -145,6 +146,7 @@
                      Busy="_busy"
                      Error="@_editorError"
                      OnSave="SaveAsync"
+                     OnSaveAndOrganize="SaveAndOrganizeAsync"
                      OnDelete="DeleteAsync"
                      OnClose="CloseEditor" />
     }
@@ -386,6 +388,26 @@
         }
         finally
         {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Guarda a marcação (nova ou existente) e abre a página "Organizar férias".</summary>
+    private async Task SaveAndOrganizeAsync(SaveCalendarEventRequest request)
+    {
+        _busy = true;
+        _editorError = null;
+        try
+        {
+            var saved = _editing is null
+                ? await Api.CreateEventAsync(request)
+                : await Api.UpdateEventAsync(_editing.Id, request);
+
+            Navigation.NavigateTo($"ferias/{saved.Id}");
+        }
+        catch (Exception ex)
+        {
+            _editorError = ex.Message;
             _busy = false;
         }
     }
