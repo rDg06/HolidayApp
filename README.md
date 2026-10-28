@@ -37,6 +37,9 @@ dotnet test
 - Carnaval e feriado municipal opcionais (página **Definições**)
 - Contagem de dias úteis: fins de semana e feriados não contam
 - Saldo anual (22 dias por omissão) e sugestões de **pontes** com marcação num clique
+- **Organizar férias**: em cada marcação de férias, o botão "Organizar férias"
+  abre uma página com destino, reservas (códigos e ligações), plano dia a dia,
+  lista de tarefas e orçamento (previsto vs. gasto)
 - Modo claro/escuro automático e layout adaptado a telemóvel
 
 ## Arquitetura
@@ -65,7 +68,8 @@ acrescentar uma app móvel (MAUI, React Native…) que usa os mesmos endpoints.
 | GET | `/api/events/{id}` | Uma marcação |
 | POST | `/api/events` | Criar marcação |
 | PUT | `/api/events/{id}` | Atualizar marcação |
-| DELETE | `/api/events/{id}` | Apagar marcação |
+| DELETE | `/api/events/{id}` | Apagar marcação (e o seu planeamento) |
+| GET / PUT | `/api/events/{id}/plan` | Planeamento das férias |
 | GET | `/api/calendar/{ano}/holidays` | Feriados do ano |
 | GET | `/api/calendar/{ano}/summary` | Saldo de férias e pontes |
 | GET / PUT | `/api/settings` | Definições do utilizador |
@@ -88,18 +92,19 @@ utilizador é sempre `local` (`Identity/HttpCurrentUser.cs`). Para ativar login:
 (`Database:Provider`). Para PostgreSQL: instala
 `Npgsql.EntityFrameworkCore.PostgreSQL` no projeto Infrastructure, descomenta a
 linha `UseNpgsql` em `DependencyInjection.cs` e muda a connection string.
+As migrações atuais foram geradas para SQLite: ao mudar de fornecedor, gera-as
+de novo.
 
-**3. Migrações.** Por agora a base de dados é criada com `EnsureCreated()`, o
-que é ótimo para começar. Antes de teres dados que não queres perder e mudares
-o modelo, passa para migrações:
+**3. Migrações.** A base de dados é criada e atualizada com migrações do EF Core
+(`Infrastructure/Persistence/Migrations`), aplicadas automaticamente ao arrancar.
+Bases de dados antigas, criadas com `EnsureCreated`, são reconhecidas e mantêm
+os dados. Quando mudares o modelo (entidades ou configurações), cria uma nova
+migração:
 
 ```bash
-dotnet tool install --global dotnet-ef
-dotnet ef migrations add Inicial --project src/HolidayApp.Infrastructure --startup-project src/HolidayApp.Web
+dotnet tool restore
+dotnet dotnet-ef migrations add NomeDaAlteracao --project src/HolidayApp.Infrastructure --startup-project src/HolidayApp.Web --output-dir Persistence/Migrations
 ```
-
-e troca `EnsureCreatedAsync` por `MigrateAsync` em `DependencyInjection.cs`
-(apaga o `holidayapp.db` antigo uma vez).
 
 **4. Partilhar com equipa/família.** Próximo passo natural: entidade `Team`
 com membros e uma vista que mostra as férias de todos sobrepostas no mesmo

@@ -9,9 +9,13 @@ public interface ICalendarApi
     Task<IReadOnlyList<CalendarEventDto>> GetEventsAsync(int year, CancellationToken ct = default);
     Task<YearSummaryDto> GetSummaryAsync(int year, CancellationToken ct = default);
 
+    Task<CalendarEventDto> GetEventAsync(Guid id, CancellationToken ct = default);
     Task<CalendarEventDto> CreateEventAsync(SaveCalendarEventRequest request, CancellationToken ct = default);
     Task<CalendarEventDto> UpdateEventAsync(Guid id, SaveCalendarEventRequest request, CancellationToken ct = default);
     Task DeleteEventAsync(Guid id, CancellationToken ct = default);
+
+    Task<VacationPlanDto> GetPlanAsync(Guid eventId, CancellationToken ct = default);
+    Task<VacationPlanDto> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default);
 
     Task<UserSettingsDto> GetSettingsAsync(CancellationToken ct = default);
     Task<UserSettingsDto> SaveSettingsAsync(UserSettingsDto settings, CancellationToken ct = default);

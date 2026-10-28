@@ -34,6 +34,99 @@ public static class CalendarEventValidator
     }
 }
 
+public static class VacationPlanValidator
+{
+    public const int DestinationMaxLength = 120;
+    public const int ShortTextMaxLength = 120;
+    public const int ReferenceMaxLength = 60;
+    public const int UrlMaxLength = 500;
+    public const int NotesMaxLength = 500;
+    public const int ActivitiesMaxLength = 2000;
+    public const int TaskMaxLength = 200;
+    public const int MaxBookings = 50;
+    public const int MaxTasks = 200;
+    public const int MaxExpenses = 200;
+    public const decimal MaxAmount = 1_000_000m;
+
+    public static Dictionary<string, string[]> Validate(VacationPlanDto plan)
+    {
+        var errors = new Dictionary<string, List<string>>();
+
+        void Add(string key, string message)
+        {
+            if (!errors.TryGetValue(key, out var list))
+                errors[key] = list = [];
+            if (!list.Contains(message))
+                list.Add(message);
+        }
+
+        if (plan.Destination is { Length: > DestinationMaxLength })
+            Add(nameof(plan.Destination), $"O destino não pode ter mais de {DestinationMaxLength} caracteres.");
+
+        if (plan.Bookings.Count > MaxBookings)
+            Add(nameof(plan.Bookings), $"Não podes ter mais de {MaxBookings} reservas.");
+
+        foreach (var booking in plan.Bookings)
+        {
+            if (!Enum.IsDefined(booking.Type))
+                Add(nameof(plan.Bookings), "Tipo de reserva inválido.");
+            if (string.IsNullOrWhiteSpace(booking.Name))
+                Add(nameof(plan.Bookings), "Cada reserva precisa de um nome.");
+            else if (booking.Name.Trim().Length > ShortTextMaxLength)
+                Add(nameof(plan.Bookings), $"O nome da reserva não pode ter mais de {ShortTextMaxLength} caracteres.");
+            if (booking.Reference is { Length: > ReferenceMaxLength })
+                Add(nameof(plan.Bookings), $"O código de reserva não pode ter mais de {ReferenceMaxLength} caracteres.");
+            if (booking.Notes is { Length: > NotesMaxLength })
+                Add(nameof(plan.Bookings), $"As notas da reserva não podem ter mais de {NotesMaxLength} caracteres.");
+            if (!string.IsNullOrWhiteSpace(booking.Url) && !IsSafeUrl(booking.Url))
+                Add(nameof(plan.Bookings), "A ligação tem de começar por http:// ou https://.");
+        }
+
+        if (plan.Days.Count > CalendarEventValidator.MaxDurationDays)
+            Add(nameof(plan.Days), "O plano tem demasiados dias.");
+
+        foreach (var day in plan.Days)
+        {
+            if (day.Place is { Length: > ShortTextMaxLength })
+                Add(nameof(plan.Days), $"O local de cada dia não pode ter mais de {ShortTextMaxLength} caracteres.");
+            if (day.Activities is { Length: > ActivitiesMaxLength })
+                Add(nameof(plan.Days), $"As atividades de cada dia não podem ter mais de {ActivitiesMaxLength} caracteres.");
+        }
+
+        if (plan.Tasks.Count > MaxTasks)
+            Add(nameof(plan.Tasks), $"Não podes ter mais de {MaxTasks} tarefas.");
+
+        foreach (var task in plan.Tasks)
+        {
+            if (string.IsNullOrWhiteSpace(task.Text))
+                Add(nameof(plan.Tasks), "As tarefas não podem estar vazias.");
+            else if (task.Text.Trim().Length > TaskMaxLength)
+                Add(nameof(plan.Tasks), $"Cada tarefa não pode ter mais de {TaskMaxLength} caracteres.");
+        }
+
+        if (plan.Expenses.Count > MaxExpenses)
+            Add(nameof(plan.Expenses), $"Não podes ter mais de {MaxExpenses} despesas.");
+
+        foreach (var expense in plan.Expenses)
+        {
+            if (!Enum.IsDefined(expense.Category))
+                Add(nameof(plan.Expenses), "Categoria de despesa inválida.");
+            if (expense.Description is { Length: > ShortTextMaxLength })
+                Add(nameof(plan.Expenses), $"A descrição da despesa não pode ter mais de {ShortTextMaxLength} caracteres.");
+            if (expense.Planned is < 0 or > MaxAmount || expense.Actual is < 0 or > MaxAmount)
+                Add(nameof(plan.Expenses), $"Os valores das despesas têm de estar entre 0 e {MaxAmount:0} €.");
+        }
+
+        return errors.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray());
+    }
+
+    /// <summary>Só aceita ligações http(s), para não permitir "javascript:" e afins.</summary>
+    public static bool IsSafeUrl(string? url) =>
+        url is { Length: > 0 and <= UrlMaxLength }
+        && Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+}
+
 public static class SettingsValidator
 {
     public const int MaxAnnualVacationDays = 60;

@@ -12,6 +12,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
 
     public DbSet<CalendarEvent> Events => Set<CalendarEvent>();
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
+    public DbSet<VacationPlan> VacationPlans => Set<VacationPlan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,5 +21,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         // Isolamento por utilizador aplicado automaticamente a todas as consultas.
         modelBuilder.Entity<CalendarEvent>().HasQueryFilter(e => e.UserId == CurrentUserId);
         modelBuilder.Entity<UserSettings>().HasQueryFilter(s => s.UserId == CurrentUserId);
+        modelBuilder.Entity<VacationPlan>().HasQueryFilter(p => p.UserId == CurrentUserId);
     }
 }

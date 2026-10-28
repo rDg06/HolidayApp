@@ -24,3 +24,26 @@ public enum HolidayKind
     Facultativo = 1,
     Municipal = 2,
 }
+
+/// <summary>Tipo de reserva no planeamento de umas férias.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<BookingType>))]
+public enum BookingType
+{
+    Voo = 0,
+    Alojamento = 1,
+    Transporte = 2,
+    Atividade = 3,
+    Outro = 4,
+}
+
+/// <summary>Categoria de uma despesa no orçamento das férias.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ExpenseCategory>))]
+public enum ExpenseCategory
+{
+    Transporte = 0,
+    Alojamento = 1,
+    Alimentacao = 2,
+    Atividades = 3,
+    Compras = 4,
+    Outro = 5,
+}

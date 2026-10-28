@@ -14,6 +14,9 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
     public Task<YearSummaryDto> GetSummaryAsync(int year, CancellationToken ct = default) =>
         GetAsync<YearSummaryDto>($"api/calendar/{year}/summary", ct);
 
+    public Task<CalendarEventDto> GetEventAsync(Guid id, CancellationToken ct = default) =>
+        GetAsync<CalendarEventDto>($"api/events/{id}", ct);
+
     public Task<CalendarEventDto> CreateEventAsync(SaveCalendarEventRequest request, CancellationToken ct = default) =>
         SendAsync<SaveCalendarEventRequest, CalendarEventDto>(HttpMethod.Post, "api/events", request, ct);
 
@@ -25,6 +28,12 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         using var response = await http.DeleteAsync($"api/events/{id}", ct);
         await EnsureSuccessAsync(response, ct);
     }
+
+    public Task<VacationPlanDto> GetPlanAsync(Guid eventId, CancellationToken ct = default) =>
+        GetAsync<VacationPlanDto>($"api/events/{eventId}/plan", ct);
+
+    public Task<VacationPlanDto> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default) =>
+        SendAsync<VacationPlanDto, VacationPlanDto>(HttpMethod.Put, $"api/events/{eventId}/plan", plan, ct);
 
     public Task<UserSettingsDto> GetSettingsAsync(CancellationToken ct = default) =>
         GetAsync<UserSettingsDto>("api/settings", ct);
