@@ -18,15 +18,21 @@ public static class PlanEndpoints
         });
 
         // PUT /api/events/{id}/plan
-        group.MapPut("/", async (Guid id, VacationPlanDto plan, IVacationPlanService service, CancellationToken ct) =>
+        group.MapPut("/", async (Guid id, VacationPlanDto plan, IVacationPlanService service, ICalendarService calendar, CancellationToken ct) =>
         {
             // Listas enviadas como null passam a vazias
             plan.Bookings ??= [];
             plan.Days ??= [];
             plan.Tasks ??= [];
             plan.Expenses ??= [];
+            plan.Places ??= [];
 
-            var errors = VacationPlanValidator.Validate(plan);
+            // As datas da marcação limitam os dias das reservas
+            var ev = await calendar.GetEventAsync(id, ct);
+            if (ev is null)
+                return Results.NotFound();
+
+            var errors = VacationPlanValidator.Validate(plan, ev.StartDate, ev.EndDate);
             if (errors.Count > 0)
                 return Results.ValidationProblem(errors);
 

@@ -38,8 +38,15 @@ dotnet test
 - Contagem de dias úteis: fins de semana e feriados não contam
 - Saldo anual (22 dias por omissão) e sugestões de **pontes** com marcação num clique
 - **Organizar férias**: em cada marcação de férias, o botão "Organizar férias"
-  abre uma página com destino, reservas (códigos e ligações), plano dia a dia,
-  lista de tarefas e orçamento (previsto vs. gasto)
+  abre uma página com destino, reservas (códigos, ligações e valor), plano dia
+  a dia, lista de tarefas e orçamento (previsto vs. gasto, incluindo o valor
+  das reservas)
+- **Mapa dos locais a visitar**: marcar locais clicando no mapa ou procurando
+  pelo nome, arrastar marcadores, escolher o dia da visita (aparece no plano dia
+  a dia) e marcar como visitado. Usa [Leaflet](https://leafletjs.com) e os mapas
+  do [OpenStreetMap](https://www.openstreetmap.org), sem chave de API; a pesquisa
+  e o centro inicial (destino) usam o Nominatim do OpenStreetMap, por isso esses
+  textos são enviados a esse serviço
 - Modo claro/escuro automático e layout adaptado a telemóvel
 
 ## Arquitetura

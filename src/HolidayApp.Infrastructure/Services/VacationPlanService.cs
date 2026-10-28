@@ -75,6 +75,7 @@ internal sealed class VacationPlanService(AppDbContext db, ICurrentUser currentU
                 Reference = Clean(b.Reference),
                 Url = Clean(b.Url),
                 Notes = Clean(b.Notes),
+                Cost = b.Cost,
             })
             .ToList(),
         Days = plan.Days
@@ -94,6 +95,18 @@ internal sealed class VacationPlanService(AppDbContext db, ICurrentUser currentU
                 Description = Clean(e.Description),
                 Planned = e.Planned,
                 Actual = e.Actual,
+            })
+            .ToList(),
+        Places = plan.Places
+            .Select(p => new PlanPlaceDto
+            {
+                Name = p.Name.Trim(),
+                // 6 casas decimais ≈ 10 cm: chega e evita guardar ruído
+                Latitude = Math.Round(p.Latitude, 6),
+                Longitude = Math.Round(p.Longitude, 6),
+                Date = p.Date,
+                Notes = Clean(p.Notes),
+                Visited = p.Visited,
             })
             .ToList(),
     };

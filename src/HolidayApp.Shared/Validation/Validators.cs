@@ -46,7 +46,35 @@ public static class VacationPlanValidator
     public const int MaxBookings = 50;
     public const int MaxTasks = 200;
     public const int MaxExpenses = 200;
+    public const int MaxPlaces = 200;
     public const decimal MaxAmount = 1_000_000m;
+
+    /// <summary>Valida o planeamento e garante que as reservas ficam dentro das datas das férias.</summary>
+    public static Dictionary<string, string[]> Validate(VacationPlanDto plan, DateOnly tripStart, DateOnly tripEnd)
+    {
+        var errors = Validate(plan);
+
+        bool Outside(DateOnly? date) => date is { } d && (d < tripStart || d > tripEnd);
+        static string Label(string? name) => string.IsNullOrWhiteSpace(name) ? "sem nome" : $"\"{name.Trim()}\"";
+
+        var outsideBookings = plan.Bookings.Where(b => Outside(b.Date)).Select(b => Label(b.Name)).ToList();
+        if (outsideBookings.Count > 0)
+        {
+            var message = $"O dia das reservas tem de estar entre {Format(tripStart)} e {Format(tripEnd)} ({string.Join(", ", outsideBookings)}).";
+            errors[nameof(plan.Bookings)] = [.. errors.GetValueOrDefault(nameof(plan.Bookings)) ?? [], message];
+        }
+
+        var outsidePlaces = plan.Places.Where(p => Outside(p.Date)).Select(p => Label(p.Name)).ToList();
+        if (outsidePlaces.Count > 0)
+        {
+            var message = $"O dia dos locais tem de estar entre {Format(tripStart)} e {Format(tripEnd)} ({string.Join(", ", outsidePlaces)}).";
+            errors[nameof(plan.Places)] = [.. errors.GetValueOrDefault(nameof(plan.Places)) ?? [], message];
+        }
+
+        return errors;
+    }
+
+    private static string Format(DateOnly date) => date.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
     public static Dictionary<string, string[]> Validate(VacationPlanDto plan)
     {
@@ -80,6 +108,8 @@ public static class VacationPlanValidator
                 Add(nameof(plan.Bookings), $"As notas da reserva não podem ter mais de {NotesMaxLength} caracteres.");
             if (!string.IsNullOrWhiteSpace(booking.Url) && !IsSafeUrl(booking.Url))
                 Add(nameof(plan.Bookings), "A ligação tem de começar por http:// ou https://.");
+            if (booking.Cost is < 0 or > MaxAmount)
+                Add(nameof(plan.Bookings), $"O valor da reserva tem de estar entre 0 e {MaxAmount:0} €.");
         }
 
         if (plan.Days.Count > CalendarEventValidator.MaxDurationDays)
@@ -115,6 +145,22 @@ public static class VacationPlanValidator
                 Add(nameof(plan.Expenses), $"A descrição da despesa não pode ter mais de {ShortTextMaxLength} caracteres.");
             if (expense.Planned is < 0 or > MaxAmount || expense.Actual is < 0 or > MaxAmount)
                 Add(nameof(plan.Expenses), $"Os valores das despesas têm de estar entre 0 e {MaxAmount:0} €.");
+        }
+
+        if (plan.Places.Count > MaxPlaces)
+            Add(nameof(plan.Places), $"Não podes ter mais de {MaxPlaces} locais.");
+
+        foreach (var place in plan.Places)
+        {
+            if (string.IsNullOrWhiteSpace(place.Name))
+                Add(nameof(plan.Places), "Cada local precisa de um nome.");
+            else if (place.Name.Trim().Length > ShortTextMaxLength)
+                Add(nameof(plan.Places), $"O nome do local não pode ter mais de {ShortTextMaxLength} caracteres.");
+            if (place.Notes is { Length: > NotesMaxLength })
+                Add(nameof(plan.Places), $"As notas do local não podem ter mais de {NotesMaxLength} caracteres.");
+            if (!double.IsFinite(place.Latitude) || place.Latitude is < -90 or > 90
+                || !double.IsFinite(place.Longitude) || place.Longitude is < -180 or > 180)
+                Add(nameof(plan.Places), "Coordenadas do local inválidas.");
         }
 
         return errors.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray());
