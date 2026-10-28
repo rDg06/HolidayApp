@@ -53,6 +53,31 @@ public static class Pt
         _ => "Feriado municipal",
     };
 
+    public static string Label(BookingType type) => type switch
+    {
+        BookingType.Voo => "Voo",
+        BookingType.Alojamento => "Alojamento",
+        BookingType.Transporte => "Transporte",
+        BookingType.Atividade => "Atividade",
+        _ => "Outro",
+    };
+
+    public static string Label(ExpenseCategory category) => category switch
+    {
+        ExpenseCategory.Transporte => "Transporte",
+        ExpenseCategory.Alojamento => "Alojamento",
+        ExpenseCategory.Alimentacao => "Alimentação",
+        ExpenseCategory.Atividades => "Atividades",
+        ExpenseCategory.Compras => "Compras",
+        _ => "Outro",
+    };
+
+    /// <summary>Valor em euros no formato português (1234.5 → "1 234,50 €").</summary>
+    public static string Money(decimal value) =>
+        value.ToString("#,0.00", System.Globalization.CultureInfo.InvariantCulture)
+            .Replace(',', ' ')
+            .Replace('.', ',') + " €";
+
     /// <summary>Sufixo CSS para cada tipo (ev-ferias, ev-pessoal, ev-outro).</summary>
     public static string Css(EventType type) => "ev-" + type.ToString().ToLowerInvariant();
 }

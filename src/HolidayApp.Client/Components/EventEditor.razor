@@ -74,6 +74,10 @@
                         @(_confirmDelete ? "Confirmar: apagar" : "Apagar")
                     </button>
                 }
+                @if (Existing is { Type: EventType.Ferias })
+                {
+                    <a class="btn" href="@($"ferias/{Existing.Id}")">Organizar férias</a>
+                }
                 <span class="spacer"></span>
                 <button type="button" class="btn ghost" @onclick="CloseAsync">Cancelar</button>
                 <button type="submit" class="btn primary" disabled="@Busy">@(Busy ? "A guardar…" : "Guardar")</button>

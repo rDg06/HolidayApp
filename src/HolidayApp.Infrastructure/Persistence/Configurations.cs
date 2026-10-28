@@ -22,6 +22,24 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
     }
 }
 
+internal sealed class VacationPlanConfiguration : IEntityTypeConfiguration<VacationPlan>
+{
+    public void Configure(EntityTypeBuilder<VacationPlan> builder)
+    {
+        builder.ToTable("VacationPlans");
+        builder.HasKey(p => p.EventId);
+
+        builder.Property(p => p.UserId).IsRequired().HasMaxLength(128);
+        builder.Property(p => p.Content).IsRequired();
+
+        // Apagar a marcação apaga também o planeamento.
+        builder.HasOne<CalendarEvent>()
+            .WithOne()
+            .HasForeignKey<VacationPlan>(p => p.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 internal sealed class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
 {
     public void Configure(EntityTypeBuilder<UserSettings> builder)

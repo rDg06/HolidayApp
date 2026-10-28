@@ -42,6 +42,7 @@ app.MapStaticAssets();
 // API REST em /api/...
 var api = app.MapGroup("/api");
 api.MapEventEndpoints();
+api.MapPlanEndpoints();
 api.MapCalendarEndpoints();
 api.MapSettingsEndpoints();
 

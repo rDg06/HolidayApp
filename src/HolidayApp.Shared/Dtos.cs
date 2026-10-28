@@ -36,6 +36,50 @@ public sealed record YearSummaryDto(
     int RemainingVacationDays,
     IReadOnlyList<BridgeSuggestionDto> Bridges);
 
+/// <summary>
+/// Planeamento de umas férias: destino, reservas, plano dia a dia, tarefas e orçamento.
+/// Classes mutáveis para a página poder editar os campos diretamente.
+/// </summary>
+public sealed class VacationPlanDto
+{
+    public string? Destination { get; set; }
+    public List<PlanBookingDto> Bookings { get; set; } = [];
+    public List<PlanDayDto> Days { get; set; } = [];
+    public List<PlanTaskDto> Tasks { get; set; } = [];
+    public List<PlanExpenseDto> Expenses { get; set; } = [];
+}
+
+public sealed class PlanBookingDto
+{
+    public BookingType Type { get; set; } = BookingType.Alojamento;
+    public string Name { get; set; } = "";
+    public DateOnly? Date { get; set; }
+    public string? Reference { get; set; }
+    public string? Url { get; set; }
+    public string? Notes { get; set; }
+}
+
+public sealed class PlanDayDto
+{
+    public DateOnly Date { get; set; }
+    public string? Place { get; set; }
+    public string? Activities { get; set; }
+}
+
+public sealed class PlanTaskDto
+{
+    public string Text { get; set; } = "";
+    public bool Done { get; set; }
+}
+
+public sealed class PlanExpenseDto
+{
+    public ExpenseCategory Category { get; set; } = ExpenseCategory.Outro;
+    public string? Description { get; set; }
+    public decimal? Planned { get; set; }
+    public decimal? Actual { get; set; }
+}
+
 /// <summary>Preferências do utilizador (editáveis na página de definições).</summary>
 public sealed class UserSettingsDto
 {
