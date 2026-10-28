@@ -1,0 +1,278 @@
+@* Mapa com os locais a visitar: clicar no mapa ou procurar pelo nome para marcar. *@
+@using System.Text.Json
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="place-map">
+    <div class="map-area">
+        <div class="map-canvas" @ref="_mapElement" aria-label="Mapa dos locais a visitar"></div>
+        @if (_mapError is not null)
+        {
+            <div class="map-error" role="alert">@_mapError</div>
+        }
+    </div>
+
+    <div class="place-side">
+        <div class="place-search">
+            <input class="input" placeholder="Procurar local (ex.: Coliseu, Roma)" aria-label="Procurar local"
+                   @bind="_query" @bind:event="oninput" @onkeydown="OnSearchKeyDown" />
+            <button type="button" class="btn small" disabled="@_searching" @onclick="SearchAsync">
+                @(_searching ? "…" : "Procurar")
+            </button>
+        </div>
+
+        @if (_searchError is not null)
+        {
+            <p class="small map-search-error" role="alert">@_searchError</p>
+        }
+
+        @if (_results.Count > 0)
+        {
+            <ul class="plain-list search-results" aria-label="Resultados da pesquisa">
+                @foreach (var result in _results)
+                {
+                    var r = result;
+                    <li>
+                        <button type="button" class="search-result" @onclick="() => AddFromSearchAsync(r)">
+                            <strong>@r.Name</strong>
+                            <span class="muted small">@r.Description</span>
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (Places.Count == 0)
+        {
+            <p class="muted small">Clica no mapa ou procura um local para o marcar. Podes arrastar os marcadores para os acertar.</p>
+        }
+        else
+        {
+            <ol class="plain-list place-list">
+                @for (var i = 0; i < Places.Count; i++)
+                {
+                    var index = i;
+                    var p = Places[i];
+                    <li class="@(p.Visited ? "place-item visited" : "place-item")">
+                        <button type="button" class="place-number" title="Ver no mapa" aria-label="Ver @p.Name no mapa"
+                                @onclick="() => FocusAsync(index)">@(index + 1)</button>
+                        <div class="place-fields">
+                            <input class="input" aria-label="Nome do local" maxlength="@VacationPlanValidator.ShortTextMaxLength"
+                                   @bind="p.Name" @bind:after="ChangedAsync" />
+                            <div class="place-row">
+                                @* Só os dias das férias podem ser escolhidos *@
+                                <select class="input" aria-label="Dia da visita" @bind="p.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
+                                    <option value="">Sem dia</option>
+                                    @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
+                                    {
+                                        <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                                    }
+                                </select>
+                                <label class="check small" title="Já visitei">
+                                    <input type="checkbox" @bind="p.Visited" @bind:after="ChangedAsync" />
+                                    <span>Visitado</span>
+                                </label>
+                                <button type="button" class="btn icon ghost small" aria-label="Remover @p.Name" @onclick="() => RemoveAsync(index)">✕</button>
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ol>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<PlanPlaceDto> Places { get; set; } = [];
+    [Parameter] public DateOnly TripStart { get; set; }
+    [Parameter] public DateOnly TripEnd { get; set; }
+
+    /// <summary>Destino das férias: centra o mapa quando ainda não há locais.</summary>
+    [Parameter] public string? Destination { get; set; }
+
+    /// <summary>Avisa a página de que os locais mudaram (para o aviso de "por guardar").</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private ElementReference _mapElement;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _map;
+    private DotNetObjectReference<PlaceMap>? _self;
+    private string? _drawnSignature;
+    private string? _mapError;
+
+    private string _query = "";
+    private bool _searching;
+    private string? _searchError;
+    private List<SearchResult> _results = [];
+
+    /// <summary>Resultado da pesquisa de locais (vem do JavaScript).</summary>
+    public sealed class SearchResult
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CreateMapAsync();
+            return;
+        }
+
+        await RedrawIfChangedAsync(fit: false);
+    }
+
+    private async Task CreateMapAsync()
+    {
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/plan-map.js");
+            _self = DotNetObjectReference.Create(this);
+            _drawnSignature = Signature();
+            _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, _self, MarkerData());
+
+            // Sem locais: centra no destino, se houver
+            if (Places.Count == 0 && !string.IsNullOrWhiteSpace(Destination))
+            {
+                var found = await _module.InvokeAsync<List<SearchResult>>("search", Destination.Trim());
+                if (found.Count > 0)
+                    await _map.InvokeVoidAsync("centerOn", found[0].Lat, found[0].Lng, 12);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // A página foi fechada entretanto
+        }
+        catch (Exception ex)
+        {
+            _mapError = ex is JSException ? ex.Message : $"Não foi possível mostrar o mapa. {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Só redesenha os marcadores quando os nomes, posições ou estado mudaram.</summary>
+    private async Task RedrawIfChangedAsync(bool fit)
+    {
+        if (_map is null)
+            return;
+
+        var signature = Signature();
+        if (signature == _drawnSignature)
+            return;
+
+        _drawnSignature = signature;
+        await _map.InvokeVoidAsync("setPlaces", MarkerData(), fit);
+    }
+
+    private object[] MarkerData() =>
+        Places.Select(p => (object)new { name = p.Name, lat = p.Latitude, lng = p.Longitude, visited = p.Visited }).ToArray();
+
+    private string Signature() => JsonSerializer.Serialize(MarkerData());
+
+    // ---------- Chamadas vindas do mapa ----------
+
+    [JSInvokable]
+    public async Task OnMapClick(double lat, double lng)
+    {
+        Places.Add(new PlanPlaceDto { Name = $"Local {Places.Count + 1}", Latitude = lat, Longitude = lng });
+        await ChangedAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnPlaceMoved(int index, double lat, double lng)
+    {
+        if (index < 0 || index >= Places.Count)
+            return;
+
+        Places[index].Latitude = lat;
+        Places[index].Longitude = lng;
+        _drawnSignature = Signature(); // o marcador já está no sítio certo
+        await ChangedAsync();
+    }
+
+    // ---------- Pesquisa ----------
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        if (_module is null || string.IsNullOrWhiteSpace(_query) || _searching)
+            return;
+
+        _searching = true;
+        _searchError = null;
+        try
+        {
+            _results = await _module.InvokeAsync<List<SearchResult>>("search", _query.Trim());
+            if (_results.Count == 0)
+                _searchError = "Nenhum local encontrado.";
+        }
+        catch (Exception ex)
+        {
+            _results = [];
+            _searchError = $"Não foi possível procurar. {ex.Message}";
+        }
+        finally
+        {
+            _searching = false;
+        }
+    }
+
+    private async Task AddFromSearchAsync(SearchResult result)
+    {
+        var name = result.Name.Length > VacationPlanValidator.ShortTextMaxLength
+            ? result.Name[..VacationPlanValidator.ShortTextMaxLength]
+            : result.Name;
+
+        Places.Add(new PlanPlaceDto { Name = name, Latitude = result.Lat, Longitude = result.Lng });
+        _results = [];
+        _query = "";
+        await ChangedAsync();
+        await RedrawIfChangedAsync(fit: false);
+        await FocusAsync(Places.Count - 1);
+    }
+
+    // ---------- Lista ----------
+
+    private async Task FocusAsync(int index)
+    {
+        if (_map is not null)
+            await _map.InvokeVoidAsync("focus", index);
+    }
+
+    private async Task RemoveAsync(int index)
+    {
+        Places.RemoveAt(index);
+        await ChangedAsync();
+    }
+
+    private Task ChangedAsync() => OnChanged.InvokeAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_map is not null)
+            {
+                await _map.InvokeVoidAsync("dispose");
+                await _map.DisposeAsync();
+            }
+
+            if (_module is not null)
+                await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // Nada a limpar: o navegador já fechou a página
+        }
+
+        _self?.Dispose();
+    }
+}

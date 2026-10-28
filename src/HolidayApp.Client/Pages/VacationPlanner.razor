@@ -1,10 +1,11 @@
 @page "/ferias/{Id:guid}"
 @inject ICalendarApi Api
 @inject IJSRuntime JS
+@using System.Text.Json
 
 <PageTitle>@(_event?.Title ?? "Férias") · HolidayApp</PageTitle>
 
-<NavigationLock ConfirmExternalNavigation="_dirty" OnBeforeInternalNavigation="ConfirmLeaveAsync" />
+<NavigationLock ConfirmExternalNavigation="IsDirty" OnBeforeInternalNavigation="ConfirmLeaveAsync" />
 
 <div class="plan-page">
     <a class="back-link" href="">← Calendário</a>
@@ -28,11 +29,12 @@
                 <p class="muted">@Pt.Range(_event.StartDate, _event.EndDate) · @Pt.Days(_days.Count)</p>
             </div>
             <div class="plan-save">
-                @if (_saved && !_dirty)
+                @{ var dirty = IsDirty; }
+                @if (_saved && !dirty)
                 {
                     <span class="saved" role="status">Guardado ✓</span>
                 }
-                else if (_dirty)
+                else if (dirty)
                 {
                     <span class="muted small" role="status">Alterações por guardar</span>
                 }
@@ -52,8 +54,7 @@
             </ul>
         }
 
-        @* Qualquer alteração dentro da página marca o planeamento como "por guardar" *@
-        <div class="plan-grid" @oninput="MarkDirty" @onchange="MarkDirty">
+        <div class="plan-grid">
 
             <section class="card plan-section plan-wide">
                 <label class="field">
@@ -61,6 +62,22 @@
                     <input class="input" placeholder="ex.: Algarve, Roma, Açores…" maxlength="@VacationPlanValidator.DestinationMaxLength"
                            @bind="_plan.Destination" />
                 </label>
+            </section>
+
+            @* ---------- Mapa ---------- *@
+            <section class="card plan-section plan-wide" aria-labelledby="map-title">
+                <div class="section-head">
+                    <h2 id="map-title">Locais a visitar</h2>
+                    @if (_plan.Places.Count > 0)
+                    {
+                        <span class="muted small">@_plan.Places.Count(p => p.Visited) de @_plan.Places.Count visitados</span>
+                    }
+                </div>
+                <PlaceMap Places="_plan.Places"
+                          TripStart="_event.StartDate"
+                          TripEnd="_event.EndDate"
+                          Destination="@_plan.Destination"
+                          OnChanged="StateHasChanged" />
             </section>
 
             @* ---------- Reservas ---------- *@
@@ -89,9 +106,17 @@
                                 </select>
                                 <input class="input" placeholder="Nome (ex.: Hotel Mar Azul)" aria-label="Nome"
                                        maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="b.Name" />
-                                <input class="input" type="date" aria-label="Data" @bind="b.Date" @bind:format="yyyy-MM-dd" />
+                                @* Só os dias das férias podem ser escolhidos *@
+                                <input class="@(IsOutsideTrip(b.Date) ? "input out-of-range" : "input")" type="date" aria-label="Dia"
+                                       min="@_event.StartDate.ToString("yyyy-MM-dd")" max="@_event.EndDate.ToString("yyyy-MM-dd")"
+                                       title="@(IsOutsideTrip(b.Date) ? "Escolhe um dia das férias" : "Dia da reserva: aparece no plano dia a dia")"
+                                       @bind="b.Date" @bind:format="yyyy-MM-dd" />
                                 <input class="input" placeholder="Código" aria-label="Código de reserva"
                                        maxlength="@VacationPlanValidator.ReferenceMaxLength" @bind="b.Reference" />
+                                <span class="money-field">
+                                    <input class="input amount" type="number" min="0" step="0.01" placeholder="Valor" aria-label="Valor (€)"
+                                           title="Valor (€) — entra no orçamento" @bind="b.Cost" />
+                                </span>
                                 <div class="link-field">
                                     <input class="input" type="url" placeholder="https://…" aria-label="Ligação"
                                            maxlength="@VacationPlanValidator.UrlMaxLength" @bind="b.Url" />
@@ -149,13 +174,24 @@
                     <button type="button" class="btn small" @onclick="AddExpense">+ Despesa</button>
                 </div>
 
-                @if (_plan.Expenses.Count == 0)
+                @if (_plan.Expenses.Count == 0 && PricedBookings.Count == 0)
                 {
-                    <p class="muted small">Junta as despesas previstas e, depois, o que gastaste mesmo.</p>
+                    <p class="muted small">Junta as despesas previstas e, depois, o que gastaste mesmo. O valor das reservas entra aqui sozinho.</p>
                 }
                 else
                 {
                     <div class="expense-list">
+                        @* Reservas com valor: contam como previsto e gasto; editam-se nas Reservas *@
+                        @foreach (var booking in PricedBookings)
+                        {
+                            <div class="expense-row booking-expense" title="Valor da reserva: altera-o em Reservas">
+                                <span class="tag">Reserva · @Pt.Label(PlanBookingDto.BudgetCategory(booking.Type))</span>
+                                <span class="booking-expense-name">@booking.Name</span>
+                                <span class="amount">@Pt.Money(booking.Cost!.Value)</span>
+                                <span class="amount">@Pt.Money(booking.Cost!.Value)</span>
+                                <span></span>
+                            </div>
+                        }
                         @foreach (var expense in _plan.Expenses)
                         {
                             var e = expense;
@@ -168,10 +204,14 @@
                                 </select>
                                 <input class="input" placeholder="Descrição (ex.: hotel, jantar…)" aria-label="Descrição"
                                        maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="e.Description" />
-                                <input class="input amount" type="number" min="0" step="0.01" placeholder="Previsto €" aria-label="Previsto (€)"
-                                       title="Previsto (€)" @bind="e.Planned" />
-                                <input class="input amount" type="number" min="0" step="0.01" placeholder="Real €" aria-label="Real (€)"
-                                       title="Real (€)" @bind="e.Actual" />
+                                <span class="money-field">
+                                    <input class="input amount" type="number" min="0" step="0.01" placeholder="Previsto" aria-label="Previsto (€)"
+                                           title="Previsto (€)" @bind="e.Planned" />
+                                </span>
+                                <span class="money-field">
+                                    <input class="input amount" type="number" min="0" step="0.01" placeholder="Real" aria-label="Real (€)"
+                                           title="Real (€)" @bind="e.Actual" />
+                                </span>
                                 <button type="button" class="btn icon ghost small" aria-label="Remover despesa" @onclick="() => Remove(_plan.Expenses, e)">✕</button>
                             </div>
                         }
@@ -203,6 +243,36 @@
                                 <strong>@Pt.Long(d.Date)</strong>
                                 <span class="muted small">Dia @(d.Date.DayNumber - _event.StartDate.DayNumber + 1)</span>
                             </div>
+                            @{ var dayBookings = BookingsOn(d.Date); }
+                            @if (dayBookings.Count > 0)
+                            {
+                                <ul class="plain-list day-bookings" aria-label="Reservas neste dia">
+                                    @foreach (var booking in dayBookings)
+                                    {
+                                        <li>
+                                            <span class="tag">@Pt.Label(booking.Type)</span>
+                                            <span class="day-booking-name">@booking.Name</span>
+                                            @if (!string.IsNullOrWhiteSpace(booking.Reference))
+                                            {
+                                                <span class="muted small">@booking.Reference</span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            @{ var dayPlaces = PlacesOn(d.Date); }
+                            @if (dayPlaces.Count > 0)
+                            {
+                                <ul class="plain-list day-bookings" aria-label="Locais a visitar neste dia">
+                                    @foreach (var (place, number) in dayPlaces)
+                                    {
+                                        <li class="@(place.Visited ? "day-place visited" : "day-place")">
+                                            <span class="place-number small-pin">@number</span>
+                                            <span class="day-booking-name">@place.Name</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
                             <input class="input" placeholder="Onde? (ex.: Lagos)" aria-label="Local"
                                    maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="d.Place" />
                             <textarea class="input" rows="2" placeholder="Atividades, restaurantes, horários…" aria-label="Atividades"
@@ -230,19 +300,34 @@
     private string? _loadError;
     private List<string> _errors = [];
     private string _newTask = "";
-    private bool _dirty;
+    private string? _savedState;
     private bool _saving;
     private bool _saved;
 
-    private decimal TotalPlanned => _plan?.Expenses.Sum(e => e.Planned ?? 0) ?? 0;
-    private decimal TotalActual => _plan?.Expenses.Sum(e => e.Actual ?? 0) ?? 0;
+    /// <summary>
+    /// Há alterações por guardar quando o conteúdo atual difere do último que
+    /// foi carregado ou guardado. Comparar o estado apanha qualquer campo, sem
+    /// depender de eventos (o "change" não sobe aos elementos pai no Blazor).
+    /// </summary>
+    private bool IsDirty => _plan is not null && CurrentState() != _savedState;
+
+    private string CurrentState() =>
+        JsonSerializer.Serialize(new { _plan!.Destination, _plan.Bookings, _plan.Tasks, _plan.Expenses, _plan.Places, Days = _days });
+
+    private List<PlanBookingDto> PricedBookings =>
+        _plan?.Bookings.Where(b => b.Cost > 0).ToList() ?? [];
+
+    private decimal BookingsTotal => PricedBookings.Sum(b => b.Cost ?? 0);
+
+    // As reservas já estão pagas/comprometidas: contam no previsto e no gasto
+    private decimal TotalPlanned => (_plan?.Expenses.Sum(e => e.Planned ?? 0) ?? 0) + BookingsTotal;
+    private decimal TotalActual => (_plan?.Expenses.Sum(e => e.Actual ?? 0) ?? 0) + BookingsTotal;
 
     protected override async Task OnParametersSetAsync()
     {
         _event = null;
         _plan = null;
         _loadError = null;
-        _dirty = false;
         _saved = false;
 
         try
@@ -252,6 +337,7 @@
             _event = await eventTask;
             _plan = await planTask;
             BuildDays();
+            _savedState = CurrentState();
         }
         catch (Exception ex)
         {
@@ -268,23 +354,9 @@
             _days.Add(saved.GetValueOrDefault(date) ?? new PlanDayDto { Date = date });
     }
 
-    private void MarkDirty()
-    {
-        _dirty = true;
-        _saved = false;
-    }
+    private void AddBooking() => _plan!.Bookings.Add(new PlanBookingDto { Date = _event!.StartDate });
 
-    private void AddBooking()
-    {
-        _plan!.Bookings.Add(new PlanBookingDto { Date = _event!.StartDate });
-        MarkDirty();
-    }
-
-    private void AddExpense()
-    {
-        _plan!.Expenses.Add(new PlanExpenseDto());
-        MarkDirty();
-    }
+    private void AddExpense() => _plan!.Expenses.Add(new PlanExpenseDto());
 
     private void AddTask()
     {
@@ -293,7 +365,6 @@
 
         _plan!.Tasks.Add(new PlanTaskDto { Text = _newTask.Trim() });
         _newTask = "";
-        MarkDirty();
     }
 
     private void OnTaskKeyDown(KeyboardEventArgs e)
@@ -302,11 +373,7 @@
             AddTask();
     }
 
-    private void Remove<T>(List<T> list, T item)
-    {
-        list.Remove(item);
-        MarkDirty();
-    }
+    private static void Remove<T>(List<T> list, T item) => list.Remove(item);
 
     private async Task SaveAsync()
     {
@@ -316,11 +383,12 @@
         // Linhas deixadas em branco não contam como erro: são simplesmente ignoradas
         _plan.Tasks.RemoveAll(t => string.IsNullOrWhiteSpace(t.Text));
         _plan.Bookings.RemoveAll(b => string.IsNullOrWhiteSpace(b.Name) && string.IsNullOrWhiteSpace(b.Reference)
-                                      && string.IsNullOrWhiteSpace(b.Url) && string.IsNullOrWhiteSpace(b.Notes));
+                                      && string.IsNullOrWhiteSpace(b.Url) && string.IsNullOrWhiteSpace(b.Notes)
+                                      && b.Cost is null);
         _plan.Expenses.RemoveAll(e => string.IsNullOrWhiteSpace(e.Description) && e.Planned is null && e.Actual is null);
         _plan.Days = _days.Where(d => !string.IsNullOrWhiteSpace(d.Place) || !string.IsNullOrWhiteSpace(d.Activities)).ToList();
 
-        _errors = VacationPlanValidator.Validate(_plan).SelectMany(kv => kv.Value).ToList();
+        _errors = VacationPlanValidator.Validate(_plan, _event!.StartDate, _event.EndDate).SelectMany(kv => kv.Value).ToList();
         if (_errors.Count > 0)
             return;
 
@@ -329,7 +397,7 @@
         {
             _plan = await Api.SavePlanAsync(Id, _plan);
             BuildDays();
-            _dirty = false;
+            _savedState = CurrentState();
             _saved = true;
         }
         catch (Exception ex)
@@ -344,9 +412,20 @@
 
     private async Task ConfirmLeaveAsync(LocationChangingContext context)
     {
-        if (_dirty && !await JS.InvokeAsync<bool>("confirm", "Tens alterações por guardar. Sair sem guardar?"))
+        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Tens alterações por guardar. Sair sem guardar?"))
             context.PreventNavigation();
     }
+
+    /// <summary>Reservas marcadas para este dia (as que ainda não têm nome ficam de fora).</summary>
+    private List<PlanBookingDto> BookingsOn(DateOnly date) =>
+        _plan?.Bookings.Where(b => b.Date == date && !string.IsNullOrWhiteSpace(b.Name)).ToList() ?? [];
+
+    /// <summary>Locais marcados para este dia, com o número que têm no mapa.</summary>
+    private List<(PlanPlaceDto Place, int Number)> PlacesOn(DateOnly date) =>
+        _plan?.Places.Select((p, i) => (p, i + 1)).Where(x => x.p.Date == date).ToList() ?? [];
+
+    private bool IsOutsideTrip(DateOnly? date) =>
+        date is { } d && _event is not null && (d < _event.StartDate || d > _event.EndDate);
 
     private static bool IsWeekend(DateOnly date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 }

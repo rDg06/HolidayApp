@@ -47,6 +47,21 @@ public sealed class VacationPlanDto
     public List<PlanDayDto> Days { get; set; } = [];
     public List<PlanTaskDto> Tasks { get; set; } = [];
     public List<PlanExpenseDto> Expenses { get; set; } = [];
+    public List<PlanPlaceDto> Places { get; set; } = [];
+}
+
+/// <summary>Local a visitar, marcado no mapa.</summary>
+public sealed class PlanPlaceDto
+{
+    public string Name { get; set; } = "";
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+
+    /// <summary>Dia em que se vai visitar (aparece no plano dia a dia).</summary>
+    public DateOnly? Date { get; set; }
+
+    public string? Notes { get; set; }
+    public bool Visited { get; set; }
 }
 
 public sealed class PlanBookingDto
@@ -57,6 +72,18 @@ public sealed class PlanBookingDto
     public string? Reference { get; set; }
     public string? Url { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>Valor da reserva (€). Entra automaticamente no orçamento.</summary>
+    public decimal? Cost { get; set; }
+
+    /// <summary>Categoria do orçamento onde o valor desta reserva é contado.</summary>
+    public static ExpenseCategory BudgetCategory(BookingType type) => type switch
+    {
+        BookingType.Voo or BookingType.Transporte => ExpenseCategory.Transporte,
+        BookingType.Alojamento => ExpenseCategory.Alojamento,
+        BookingType.Atividade => ExpenseCategory.Atividades,
+        _ => ExpenseCategory.Outro,
+    };
 }
 
 public sealed class PlanDayDto
