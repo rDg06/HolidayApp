@@ -47,6 +47,18 @@
                     </p>
                 }
 
+                @* Guarda a marcação (nova ou alterada) e abre a página de planeamento *@
+                @if (_type == EventType.Ferias)
+                {
+                    <button type="button" class="organize-link" disabled="@Busy" @onclick="OrganizeAsync">
+                        <span>
+                            <strong>@(Existing is null ? "Guardar e organizar férias" : "Organizar férias")</strong>
+                            <span class="muted small">Reservas, mapa, plano dia a dia, tarefas e orçamento</span>
+                        </span>
+                        <span aria-hidden="true">→</span>
+                    </button>
+                }
+
                 <label class="field">
                     <span>Notas <span class="muted">(opcional)</span></span>
                     <textarea class="input" rows="2" @bind="_notes" maxlength="@CalendarEventValidator.NotesMaxLength"></textarea>
@@ -74,10 +86,6 @@
                         @(_confirmDelete ? "Confirmar: apagar" : "Apagar")
                     </button>
                 }
-                @if (Existing is { Type: EventType.Ferias })
-                {
-                    <a class="btn" href="@($"ferias/{Existing.Id}")">Organizar férias</a>
-                }
                 <span class="spacer"></span>
                 <button type="button" class="btn ghost" @onclick="CloseAsync">Cancelar</button>
                 <button type="submit" class="btn primary" disabled="@Busy">@(Busy ? "A guardar…" : "Guardar")</button>
@@ -95,6 +103,9 @@
     [Parameter] public string? Error { get; set; }
 
     [Parameter] public EventCallback<SaveCalendarEventRequest> OnSave { get; set; }
+
+    /// <summary>Guardar e depois abrir a página "Organizar férias".</summary>
+    [Parameter] public EventCallback<SaveCalendarEventRequest> OnSaveAndOrganize { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
@@ -153,6 +164,19 @@
 
     private async Task SubmitAsync()
     {
+        if (BuildValidRequest() is { } request)
+            await OnSave.InvokeAsync(request);
+    }
+
+    private async Task OrganizeAsync()
+    {
+        if (BuildValidRequest() is { } request)
+            await OnSaveAndOrganize.InvokeAsync(request);
+    }
+
+    /// <summary>Monta o pedido a partir do formulário; null (e erros visíveis) se for inválido.</summary>
+    private SaveCalendarEventRequest? BuildValidRequest()
+    {
         var request = new SaveCalendarEventRequest(
             _title.Trim(),
             _start,
@@ -161,10 +185,7 @@
             string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim());
 
         _errors = CalendarEventValidator.Validate(request).SelectMany(kv => kv.Value).ToList();
-        if (_errors.Count > 0)
-            return;
-
-        await OnSave.InvokeAsync(request);
+        return _errors.Count > 0 ? null : request;
     }
 
     private async Task DeleteClickedAsync()
