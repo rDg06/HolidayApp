@@ -37,7 +37,7 @@
                         var s = slice;
                         <path class="@SliceCss(s)" d="@s.Path"
                               @onmouseenter="() => _hover = s.Category" @onmouseleave="() => _hover = null">
-                            <title>@Pt.Label(s.Category): @Pt.Money(s.Amount) (@Percent(s.Amount))</title>
+                            <title>@Pt.Label(s.Category): @Pt.Money(s.Amount) (@Percent(s.Category))</title>
                         </path>
                     }
                 }
@@ -50,7 +50,7 @@
                 <span class="donut-value">@Pt.Money(hovered?.Amount ?? Total)</span>
                 @if (hovered is not null)
                 {
-                    <span class="donut-label">@Percent(hovered.Amount)</span>
+                    <span class="donut-label">@Percent(hovered.Category)</span>
                 }
             </div>
             </div>
@@ -66,7 +66,7 @@
                             @onmouseenter="() => _hover = s.Category" @onmouseleave="() => _hover = null">
                             <th scope="row"><span class="swatch @CategoryCss(s.Category)"></span>@Pt.Label(s.Category)</th>
                             <td>@Pt.Money(s.Amount)</td>
-                            <td class="muted">@Percent(s.Amount)</td>
+                            <td class="muted">@Percent(s.Category)</td>
                         </tr>
                     }
                 </tbody>
@@ -127,8 +127,32 @@
         return (Cx + radius * Math.Cos(rad), Cy + radius * Math.Sin(rad));
     }
 
-    private string Percent(decimal amount) =>
-        Total <= 0 ? "0%" : (amount / Total).ToString("0%", CultureInfo.InvariantCulture);
+    private string Percent(ExpenseCategory category) =>
+        $"{RoundedPercents.GetValueOrDefault(category).ToString(CultureInfo.InvariantCulture)}%";
+
+    /// <summary>
+    /// Percentagens inteiras que somam sempre 100 (método do maior resto): arredonda
+    /// tudo para baixo e dá os pontos que faltam às categorias com maior parte decimal.
+    /// </summary>
+    private Dictionary<ExpenseCategory, int> RoundedPercents
+    {
+        get
+        {
+            var totals = Totals;
+            var total = totals.Sum(c => c.Amount);
+            if (total <= 0)
+                return [];
+
+            var exact = totals.Select(c => (c.Category, Value: c.Amount * 100 / total)).ToList();
+            var result = exact.ToDictionary(x => x.Category, x => (int)Math.Floor(x.Value));
+            var missing = 100 - result.Values.Sum();
+
+            foreach (var (category, _) in exact.OrderByDescending(x => x.Value - Math.Floor(x.Value)).Take(missing))
+                result[category]++;
+
+            return result;
+        }
+    }
 
     private static string CategoryCss(ExpenseCategory category) => "cat-" + category.ToString().ToLowerInvariant();
 

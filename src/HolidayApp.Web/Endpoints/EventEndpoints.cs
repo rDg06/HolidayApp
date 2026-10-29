@@ -14,7 +14,7 @@ public static class EventEndpoints
         group.MapGet("/", async (int year, ICalendarService service, CancellationToken ct) =>
         {
             if (!YearRange.IsValid(year))
-                return YearRange.Invalid();
+                return YearRangeResults.Invalid();
 
             return Results.Ok(await service.GetEventsAsync(year, ct));
         });

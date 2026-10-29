@@ -1,4 +1,5 @@
 using HolidayApp.Infrastructure.Services;
+using HolidayApp.Shared.Validation;
 
 namespace HolidayApp.Web.Endpoints;
 
@@ -12,27 +13,22 @@ public static class CalendarEndpoints
         group.MapGet("/holidays", async (int year, ICalendarService service, CancellationToken ct) =>
             YearRange.IsValid(year)
                 ? Results.Ok(await service.GetHolidaysAsync(year, ct))
-                : YearRange.Invalid());
+                : YearRangeResults.Invalid());
 
         // GET /api/calendar/2026/summary
         group.MapGet("/summary", async (int year, ICalendarService service, CancellationToken ct) =>
             YearRange.IsValid(year)
                 ? Results.Ok(await service.GetSummaryAsync(year, ct))
-                : YearRange.Invalid());
+                : YearRangeResults.Invalid());
 
         return api;
     }
 }
 
-internal static class YearRange
+internal static class YearRangeResults
 {
-    public const int Min = 1900;
-    public const int Max = 2200;
-
-    public static bool IsValid(int year) => year is >= Min and <= Max;
-
     public static IResult Invalid() => Results.ValidationProblem(new Dictionary<string, string[]>
     {
-        ["year"] = [$"O ano tem de estar entre {Min} e {Max}."],
+        ["year"] = [YearRange.Message],
     });
 }

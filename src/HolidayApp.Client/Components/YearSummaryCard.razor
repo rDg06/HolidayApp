@@ -1,0 +1,34 @@
+@* Saldo de férias do ano e legenda das cores do calendário. *@
+
+<div class="card summary">
+    <span class="label">Férias por gozar</span>
+    <div class="summary-figure">
+        <span class="@(Remaining < 0 ? "big negative" : "big")">@Remaining</span>
+        <span class="muted">de @AnnualDays dias úteis</span>
+    </div>
+    <div class="progress" role="progressbar" aria-label="Dias de férias usados"
+         aria-valuemin="0" aria-valuemax="@AnnualDays" aria-valuenow="@UsedDays">
+        <div class="progress-bar" style="width: @(ProgressPercent)%"></div>
+    </div>
+    <p class="muted small">@Pt.Workdays(UsedDays) marcados em @Year</p>
+</div>
+
+<div class="card legend">
+    <span class="legend-item"><span class="swatch ev-ferias"></span>Férias</span>
+    <span class="legend-item"><span class="swatch ev-pessoal"></span>Pessoal</span>
+    <span class="legend-item"><span class="swatch ev-outro"></span>Outro</span>
+    <span class="legend-item"><span class="swatch holiday"></span>Feriado</span>
+    <span class="legend-item"><span class="swatch today"></span>Hoje</span>
+</div>
+
+@code {
+    [Parameter] public int Year { get; set; }
+    [Parameter] public YearSummaryDto? Summary { get; set; }
+
+    private int AnnualDays => Summary?.AnnualVacationDays ?? 0;
+    private int UsedDays => Summary?.UsedVacationDays ?? 0;
+    private int Remaining => Summary?.RemainingVacationDays ?? 0;
+
+    private int ProgressPercent =>
+        AnnualDays <= 0 ? 0 : Math.Clamp((int)Math.Round(UsedDays * 100.0 / AnnualDays), 0, 100);
+}

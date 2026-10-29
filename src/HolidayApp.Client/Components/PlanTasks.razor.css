@@ -1,0 +1,7 @@
+.task-add { display: flex; gap: 8px; }
+.task-list { gap: 2px; }
+.task { display: flex; align-items: center; gap: 8px; }
+.task input[type="checkbox"] { width: 18px; height: 18px; flex: none; accent-color: var(--c-primary); }
+.task-text { height: 34px; border-color: transparent; background: transparent; }
+.task-text:hover { border-color: var(--border); }
+.task.done .task-text { color: var(--muted); text-decoration: line-through; }

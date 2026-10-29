@@ -73,7 +73,7 @@ internal sealed class CalendarService(
 
     public async Task<IReadOnlyList<HolidayDto>> GetHolidaysAsync(int year, CancellationToken ct = default)
     {
-        var settings = await GetSettingsOrDefaultAsync(ct);
+        var settings = await db.GetSettingsOrDefaultAsync(ct);
         return holidayProvider
             .GetHolidays(year, settings.ToHolidayOptions())
             .Select(h => new HolidayDto(h.Date, h.Name, h.Kind))
@@ -82,7 +82,7 @@ internal sealed class CalendarService(
 
     public async Task<YearSummaryDto> GetSummaryAsync(int year, CancellationToken ct = default)
     {
-        var settings = await GetSettingsOrDefaultAsync(ct);
+        var settings = await db.GetSettingsOrDefaultAsync(ct);
         var holidays = holidayProvider.GetHolidays(year, settings.ToHolidayOptions());
         var holidayDates = holidays.Select(h => h.Date).ToHashSet();
 
@@ -123,25 +123,31 @@ internal sealed class CalendarService(
     // ---------- Definições ----------
 
     public async Task<UserSettingsDto> GetSettingsAsync(CancellationToken ct = default) =>
-        (await GetSettingsOrDefaultAsync(ct)).ToDto();
+        (await db.GetSettingsOrDefaultAsync(ct)).ToDto();
 
     public async Task<UserSettingsDto> UpdateSettingsAsync(UserSettingsDto dto, CancellationToken ct = default)
     {
-        var settings = await db.UserSettings.FirstOrDefaultAsync(ct);
-        if (settings is null)
+        void Apply(UserSettings settings)
         {
-            settings = new UserSettings { UserId = currentUser.UserId };
-            db.UserSettings.Add(settings);
+            settings.AnnualVacationDays = dto.AnnualVacationDays;
+            settings.IncludeCarnival = dto.IncludeCarnival;
+            settings.MunicipalHolidayName = string.IsNullOrWhiteSpace(dto.MunicipalHolidayName) ? null : dto.MunicipalHolidayName.Trim();
+            settings.MunicipalHolidayMonth = dto.MunicipalHolidayMonth;
+            settings.MunicipalHolidayDay = dto.MunicipalHolidayDay;
         }
 
-        settings.AnnualVacationDays = dto.AnnualVacationDays;
-        settings.IncludeCarnival = dto.IncludeCarnival;
-        settings.MunicipalHolidayName = string.IsNullOrWhiteSpace(dto.MunicipalHolidayName) ? null : dto.MunicipalHolidayName.Trim();
-        settings.MunicipalHolidayMonth = dto.MunicipalHolidayMonth;
-        settings.MunicipalHolidayDay = dto.MunicipalHolidayDay;
+        var existing = await db.UserSettings.FirstOrDefaultAsync(ct);
+        if (existing is not null)
+        {
+            Apply(existing);
+            await db.SaveChangesAsync(ct);
+            return existing.ToDto();
+        }
 
-        await db.SaveChangesAsync(ct);
-        return settings.ToDto();
+        var created = new UserSettings { UserId = currentUser.UserId };
+        Apply(created);
+        await db.InsertOrUpdateAsync(created, token => db.UserSettings.FirstOrDefaultAsync(token), Apply, ct);
+        return (await db.GetSettingsOrDefaultAsync(ct)).ToDto();
     }
 
     // ---------- Auxiliares ----------
@@ -152,14 +158,6 @@ internal sealed class CalendarService(
         var yearEnd = new DateOnly(year, 12, 31);
         return db.Events.Where(e => e.StartDate <= yearEnd && e.EndDate >= yearStart);
     }
-
-    /// <summary>
-    /// Devolve as definições guardadas ou valores por omissão (sem gravar,
-    /// para evitar conflitos quando vários pedidos chegam em paralelo).
-    /// </summary>
-    private async Task<UserSettings> GetSettingsOrDefaultAsync(CancellationToken ct) =>
-        await db.UserSettings.AsNoTracking().FirstOrDefaultAsync(ct)
-        ?? new UserSettings { UserId = currentUser.UserId };
 
     private static void Apply(CalendarEvent entity, SaveCalendarEventRequest request)
     {

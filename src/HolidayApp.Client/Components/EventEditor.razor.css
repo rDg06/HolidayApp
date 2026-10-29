@@ -1,0 +1,98 @@
+/* Janela para criar/editar marcações. */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgb(0 0 0 / 0.35);
+    animation: fade-in 0.12s ease;
+}
+
+.modal {
+    width: min(460px, 100%);
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 24px 64px rgb(0 0 0 / 0.25);
+    animation: pop-in 0.15s ease;
+}
+
+.modal-header, .modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px;
+}
+
+.modal-header { justify-content: space-between; border-bottom: 1px solid var(--border); }
+.modal-header h2 { font-size: 1.05rem; }
+.modal-body { display: grid; gap: 14px; padding: 18px 20px; }
+.modal-footer { flex-wrap: wrap; border-top: 1px solid var(--border); }
+
+/* Ligação do editor para a página "Organizar férias" */
+.organize-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.organize-link:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.organize-link > span:first-child { display: grid; gap: 2px; }
+.organize-link > span:last-child { color: var(--c-primary); font-size: 1.2rem; }
+.organize-link:hover { background: var(--surface-2); border-color: color-mix(in srgb, var(--c-primary) 50%, var(--border)); }
+.spacer { flex: 1; }
+
+.type-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.chip:hover { background: var(--surface-2); }
+
+.chip.active {
+    border-color: var(--ev);
+    background: color-mix(in srgb, var(--ev) 14%, var(--surface));
+    font-weight: 600;
+}
+
+.chip .swatch { width: 10px; height: 10px; border-radius: 50%; }
+
+.workdays {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--c-ferias) 10%, var(--surface));
+    font-size: 0.9rem;
+}
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }

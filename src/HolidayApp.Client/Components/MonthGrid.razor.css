@@ -1,0 +1,101 @@
+/* Um mês: dias, feriados, marcações (barra contínua), hoje e seleção. */
+.month {
+    padding: 14px 12px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.month.current { border-color: color-mix(in srgb, var(--c-primary) 45%, var(--border)); }
+
+.month-title {
+    margin: 0 4px 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.weekdays, .days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.weekdays span {
+    padding-bottom: 4px;
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.days { row-gap: 3px; }
+
+/* ---------- Dia ---------- */
+
+.day {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    min-height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.day.empty { cursor: default; }
+.day:not(.empty):hover { background: var(--surface-2); }
+.day.weekend { color: var(--muted); }
+
+.day .num {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+/* Feriados */
+.day.holiday { color: var(--c-holiday); font-weight: 700; }
+.day.holiday-alt { color: var(--c-holiday); font-weight: 600; text-decoration: underline dotted; text-underline-offset: 3px; }
+
+.day.has-event {
+    border-radius: 0;
+    background: color-mix(in srgb, var(--ev) 22%, transparent);
+    color: color-mix(in srgb, var(--ev) 70%, var(--text));
+    font-weight: 600;
+}
+
+.day.has-event:hover { background: color-mix(in srgb, var(--ev) 32%, transparent); }
+.day.has-event.range-start { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.day.has-event.range-end { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+.day.has-event.weekend { background: color-mix(in srgb, var(--ev) 10%, transparent); }
+
+.holiday-dot {
+    position: absolute;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--c-holiday);
+}
+
+/* Hoje */
+.day.today .num { background: var(--text); color: var(--bg); font-weight: 700; }
+
+/* Seleção a arrastar */
+.day.selected {
+    border-radius: 0;
+    background: color-mix(in srgb, var(--c-primary) 30%, transparent);
+    color: var(--text);
+}
+
+@media (max-width: 640px) {
+    .day { font-size: 0.9rem; }
+}

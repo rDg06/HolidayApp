@@ -2,13 +2,14 @@
 // Usa Leaflet com os mapas do OpenStreetMap (gratuitos, sem chave de API) e o
 // Nominatim (OpenStreetMap) para procurar locais pelo nome.
 
+// Leaflet 1.9.4 servido pela própria app (wwwroot/lib/leaflet), com as hashes oficiais
 const LEAFLET_CSS = {
-    href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+    href: "lib/leaflet/leaflet.css",
     integrity: "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=",
 };
 
 const LEAFLET_JS = {
-    src: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+    src: "lib/leaflet/leaflet.js",
     integrity: "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=",
 };
 

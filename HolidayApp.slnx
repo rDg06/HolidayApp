@@ -7,6 +7,7 @@
     <Project Path="src/HolidayApp.Web/HolidayApp.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/HolidayApp.Api.Tests/HolidayApp.Api.Tests.csproj" />
     <Project Path="tests/HolidayApp.Domain.Tests/HolidayApp.Domain.Tests.csproj" />
   </Folder>
 </Solution>

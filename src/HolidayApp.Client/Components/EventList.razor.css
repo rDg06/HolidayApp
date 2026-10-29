@@ -1,0 +1,19 @@
+.event-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 8px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.event-item:hover { background: var(--surface-2); }
+.event-item .swatch { margin-top: 4px; }
+.event-text { display: grid; gap: 2px; min-width: 0; }
+.event-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }

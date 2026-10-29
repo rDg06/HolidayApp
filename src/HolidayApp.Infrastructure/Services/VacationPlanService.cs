@@ -5,6 +5,7 @@ using HolidayApp.Domain.Holidays;
 using HolidayApp.Infrastructure.Persistence;
 using HolidayApp.Shared;
 using HolidayApp.Shared.Calendar;
+using HolidayApp.Shared.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace HolidayApp.Infrastructure.Services;
@@ -32,9 +33,7 @@ internal sealed class VacationPlanService(
             .ToDictionaryAsync(p => p.EventId, p => Deserialize(p.Content), ct);
 
         // Feriados de todos os anos abrangidos, para contar os dias úteis
-        var settings = await db.UserSettings.AsNoTracking().FirstOrDefaultAsync(ct)
-                       ?? new UserSettings { UserId = currentUser.UserId };
-        var options = settings.ToHolidayOptions();
+        var options = (await db.GetSettingsOrDefaultAsync(ct)).ToHolidayOptions();
         var holidayDates = Enumerable.Range(vacations.Min(e => e.StartDate.Year),
                                             vacations.Max(e => e.EndDate.Year) - vacations.Min(e => e.StartDate.Year) + 1)
             .SelectMany(year => holidayProvider.GetHolidays(year, options))
@@ -77,28 +76,42 @@ internal sealed class VacationPlanService(
         return plan;
     }
 
-    public async Task<VacationPlanDto?> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default)
+    public async Task<SavePlanResult> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default)
     {
         var ev = await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct);
         if (ev is null)
-            return null;
+            return SavePlanResult.NotFound;
+
+        // As datas da marcação limitam os dias das reservas e dos locais
+        var errors = VacationPlanValidator.Validate(plan, ev.StartDate, ev.EndDate);
+        if (errors.Count > 0)
+            return SavePlanResult.Invalid(errors);
 
         var clean = Normalise(plan, ev);
         var content = JsonSerializer.Serialize(clean, Json);
 
-        var entity = await db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, ct);
-        if (entity is null)
-        {
-            db.VacationPlans.Add(new VacationPlan { EventId = eventId, UserId = currentUser.UserId, Content = content });
-        }
-        else
+        void Apply(VacationPlan entity)
         {
             entity.Content = content;
             entity.UpdatedAtUtc = DateTime.UtcNow;
         }
 
-        await db.SaveChangesAsync(ct);
-        return clean;
+        var existing = await db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, ct);
+        if (existing is not null)
+        {
+            Apply(existing);
+            await db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            await db.InsertOrUpdateAsync(
+                new VacationPlan { EventId = eventId, UserId = currentUser.UserId, Content = content },
+                token => db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, token),
+                Apply,
+                ct);
+        }
+
+        return SavePlanResult.Saved(clean);
     }
 
     private static VacationPlanDto Deserialize(string content)

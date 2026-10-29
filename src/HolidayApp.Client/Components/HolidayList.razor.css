@@ -1,0 +1,11 @@
+details.card summary { cursor: pointer; list-style: none; }
+details.card summary::-webkit-details-marker { display: none; }
+details.card summary h3 { display: inline; margin: 0; }
+details.card summary::after { content: "▾"; float: right; color: var(--muted); }
+details[open].card summary::after { content: "▴"; }
+details[open].card summary { margin-bottom: 10px; }
+
+.holidays li { display: grid; grid-template-columns: 96px 1fr; gap: 8px; font-size: 0.85rem; padding: 3px 0; }
+.holidays li.past { color: var(--muted); }
+.holiday-date { color: var(--c-holiday); font-weight: 600; font-variant-numeric: tabular-nums; }
+.holidays li.past .holiday-date { color: var(--muted); }

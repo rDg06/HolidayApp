@@ -69,6 +69,14 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         if (response.IsSuccessStatusCode)
             return;
 
+        switch (response.StatusCode)
+        {
+            case System.Net.HttpStatusCode.Unauthorized:
+                throw new ApiException("Precisas de iniciar sessão para usar a aplicação.");
+            case System.Net.HttpStatusCode.Forbidden:
+                throw new ApiException("A tua conta não tem acesso a esta aplicação.");
+        }
+
         var message = $"Erro {(int)response.StatusCode} ao comunicar com o servidor.";
         try
         {

@@ -1,0 +1,30 @@
+.day-plan {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+}
+
+.day-card {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-2);
+}
+
+.day-card.weekend { background: color-mix(in srgb, var(--c-ferias) 7%, var(--surface-2)); }
+.day-date { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+/* Reservas e locais marcados para o dia */
+.day-items { gap: 4px; }
+.day-items li { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.85rem; }
+.day-items .tag { flex: none; }
+.day-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.day-place.visited .place-number { background: var(--muted); }
+.day-place.visited .day-item-name { color: var(--muted); text-decoration: line-through; }
+.place-number.small-pin { width: 20px; height: 20px; margin: 0; border-width: 1px; font-size: 0.7rem; cursor: default; }
