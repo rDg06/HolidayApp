@@ -48,6 +48,19 @@ public sealed class VacationPlanDto
     public List<PlanTaskDto> Tasks { get; set; } = [];
     public List<PlanExpenseDto> Expenses { get; set; } = [];
     public List<PlanPlaceDto> Places { get; set; } = [];
+
+    /// <summary>
+    /// Gasto por categoria: valor real das despesas + valor das reservas (na categoria
+    /// do tipo de reserva). Pela ordem fixa das categorias; só as que têm valor.
+    /// </summary>
+    public List<CategoryAmountDto> SpentByCategory() =>
+        Expenses.Select(e => (e.Category, Amount: e.Actual ?? 0))
+            .Concat(Bookings.Select(b => (Category: PlanBookingDto.BudgetCategory(b.Type), Amount: b.Cost ?? 0)))
+            .Where(x => x.Amount > 0)
+            .GroupBy(x => x.Category)
+            .Select(g => new CategoryAmountDto(g.Key, g.Sum(x => x.Amount)))
+            .OrderBy(x => x.Category)
+            .ToList();
 }
 
 /// <summary>Local a visitar, marcado no mapa.</summary>
@@ -122,6 +135,9 @@ public sealed record VacationSummaryDto(
     int TasksDone,
     decimal Planned,
     decimal Spent);
+
+/// <summary>Valor gasto numa categoria do orçamento (inclui o valor das reservas).</summary>
+public sealed record CategoryAmountDto(ExpenseCategory Category, decimal Amount);
 
 /// <summary>Preferências do utilizador (editáveis na página de definições).</summary>
 public sealed class UserSettingsDto

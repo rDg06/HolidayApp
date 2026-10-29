@@ -1,0 +1,137 @@
+@* Gráfico circular (donut) com o gasto por categoria de uma viagem. *@
+@using System.Globalization
+
+<section class="card plan-section spending-card plan-wide" aria-labelledby="spending-title">
+    <div class="section-head">
+        <h2 id="spending-title">Onde gastei mais</h2>
+    </div>
+
+    @if (Total <= 0)
+    {
+        <p class="muted small">
+            Ainda não há gastos. Junta o valor real das despesas no orçamento, ou o valor das
+            reservas, para veres aqui onde gastaste mais.
+        </p>
+    }
+    else
+    {
+        var slices = Slices;
+        var hovered = slices.FirstOrDefault(s => s.Category == _hover);
+
+        <div class="spending-body">
+            <div class="donut-wrap">
+            <svg class="donut" viewBox="0 0 200 200" role="img"
+                 aria-label="@($"Gasto por categoria: {string.Join(", ", Ranked.Select(s => $"{Pt.Label(s.Category)} {Pt.Money(s.Amount)}"))}")">
+                @if (slices.Count == 1)
+                {
+                    var only = slices[0];
+                    <circle class="@SliceCss(only)" cx="100" cy="100" r="76" fill="none" stroke-width="32"
+                            @onmouseenter="() => _hover = only.Category" @onmouseleave="() => _hover = null">
+                        <title>@Pt.Label(only.Category): @Pt.Money(only.Amount) (100%)</title>
+                    </circle>
+                }
+                else
+                {
+                    @foreach (var slice in slices)
+                    {
+                        var s = slice;
+                        <path class="@SliceCss(s)" d="@s.Path"
+                              @onmouseenter="() => _hover = s.Category" @onmouseleave="() => _hover = null">
+                            <title>@Pt.Label(s.Category): @Pt.Money(s.Amount) (@Percent(s.Amount))</title>
+                        </path>
+                    }
+                }
+
+            </svg>
+
+            @* Centro: total, ou a categoria por baixo do rato *@
+            <div class="donut-center" aria-hidden="true">
+                <span class="donut-label">@(hovered is null ? "Total gasto" : Pt.Label(hovered.Category))</span>
+                <span class="donut-value">@Pt.Money(hovered?.Amount ?? Total)</span>
+                @if (hovered is not null)
+                {
+                    <span class="donut-label">@Percent(hovered.Amount)</span>
+                }
+            </div>
+            </div>
+
+            @* Legenda = tabela: categoria, valor e percentagem, do maior para o menor *@
+            <table class="spending-legend">
+                <caption class="visually-hidden">Gasto por categoria</caption>
+                <tbody>
+                    @foreach (var slice in Ranked)
+                    {
+                        var s = slice;
+                        <tr class="@(_hover is not null && _hover != s.Category ? "dim" : null)"
+                            @onmouseenter="() => _hover = s.Category" @onmouseleave="() => _hover = null">
+                            <th scope="row"><span class="swatch @CategoryCss(s.Category)"></span>@Pt.Label(s.Category)</th>
+                            <td>@Pt.Money(s.Amount)</td>
+                            <td class="muted">@Percent(s.Amount)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    /// <summary>Gasto por categoria, pela ordem fixa das categorias (a cor segue a categoria, não o valor).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<CategoryAmountDto> Amounts { get; set; } = [];
+
+    private ExpenseCategory? _hover;
+
+    private sealed record Slice(ExpenseCategory Category, decimal Amount, string Path);
+
+    private List<CategoryAmountDto> Totals => Amounts.Where(c => c.Amount > 0).OrderBy(c => c.Category).ToList();
+
+    private decimal Total => Totals.Sum(c => c.Amount);
+
+    private List<CategoryAmountDto> Ranked => Totals.OrderByDescending(c => c.Amount).ToList();
+
+    private List<Slice> Slices
+    {
+        get
+        {
+            var totals = Totals;
+            var total = (double)totals.Sum(c => c.Amount);
+            var slices = new List<Slice>();
+            var angle = 0.0;
+            foreach (var c in totals)
+            {
+                var sweep = (double)c.Amount / total * 360;
+                slices.Add(new Slice(c.Category, c.Amount, ArcPath(angle, angle + sweep)));
+                angle += sweep;
+            }
+            return slices;
+        }
+    }
+
+    private const double Outer = 92, Inner = 60, Cx = 100, Cy = 100;
+
+    /// <summary>Fatia do anel entre dois ângulos (graus, 0 = topo, sentido dos ponteiros do relógio).</summary>
+    private static string ArcPath(double from, double to)
+    {
+        var large = to - from > 180 ? 1 : 0;
+        var (x1, y1) = Point(Outer, from);
+        var (x2, y2) = Point(Outer, to);
+        var (x3, y3) = Point(Inner, to);
+        var (x4, y4) = Point(Inner, from);
+        return FormattableString.Invariant(
+            $"M{x1:0.###},{y1:0.###} A{Outer},{Outer} 0 {large} 1 {x2:0.###},{y2:0.###} L{x3:0.###},{y3:0.###} A{Inner},{Inner} 0 {large} 0 {x4:0.###},{y4:0.###} Z");
+    }
+
+    private static (double X, double Y) Point(double radius, double degrees)
+    {
+        var rad = (degrees - 90) * Math.PI / 180;
+        return (Cx + radius * Math.Cos(rad), Cy + radius * Math.Sin(rad));
+    }
+
+    private string Percent(decimal amount) =>
+        Total <= 0 ? "0%" : (amount / Total).ToString("0%", CultureInfo.InvariantCulture);
+
+    private static string CategoryCss(ExpenseCategory category) => "cat-" + category.ToString().ToLowerInvariant();
+
+    private string SliceCss(Slice s) =>
+        $"donut-slice {CategoryCss(s.Category)}{(_hover is not null && _hover != s.Category ? " dim" : "")}";
+}
