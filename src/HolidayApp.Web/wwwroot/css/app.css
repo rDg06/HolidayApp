@@ -20,6 +20,14 @@
     --c-primary-text: #ffffff;
     --c-danger: #c8323a;
 
+    /* Categorias do orçamento (paleta categórica validada para daltonismo, ordem fixa) */
+    --cat-1: #2a78d6;
+    --cat-2: #eb6834;
+    --cat-3: #1baf7a;
+    --cat-4: #eda100;
+    --cat-5: #e87ba4;
+    --cat-6: #008300;
+
     --radius: 14px;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
     --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -44,6 +52,13 @@
         --c-primary: #2cc4ad;
         --c-primary-text: #0b1f1c;
         --c-danger: #ff6b6f;
+
+        --cat-1: #3987e5;
+        --cat-2: #d95926;
+        --cat-3: #199e70;
+        --cat-4: #c98500;
+        --cat-5: #d55181;
+        --cat-6: #008300;
 
         --shadow: none;
         color-scheme: dark;
@@ -870,6 +885,67 @@ details[open].card summary { margin-bottom: 10px; }
 .vacation-open { justify-self: end; color: var(--c-primary); font-weight: 600; font-size: 0.9rem; }
 
 .empty-state { display: grid; justify-items: start; gap: 12px; padding: 24px; }
+
+/* Gráfico "Onde gastei mais" */
+.cat-transporte { --cat: var(--cat-1); }
+.cat-alojamento { --cat: var(--cat-2); }
+.cat-alimentacao { --cat: var(--cat-3); }
+.cat-atividades { --cat: var(--cat-4); }
+.cat-compras { --cat: var(--cat-5); }
+.cat-outro { --cat: var(--cat-6); }
+
+
+.spending-body {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 28px;
+    align-items: center;
+}
+
+.donut-wrap { position: relative; width: 100%; max-width: 220px; }
+.donut { display: block; width: 100%; height: auto; overflow: visible; }
+
+.donut-center {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 2px;
+    pointer-events: none;
+    text-align: center;
+}
+
+/* 2px da cor da superfície entre fatias */
+path.donut-slice { fill: var(--cat); stroke: var(--surface); stroke-width: 2; stroke-linejoin: round; }
+circle.donut-slice { stroke: var(--cat); }
+.donut-slice { cursor: pointer; transition: opacity 0.15s; }
+.donut-slice.dim { opacity: 0.3; }
+
+.donut-label { color: var(--muted); font-size: 0.78rem; }
+.donut-value { color: var(--text); font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.spending-legend { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.spending-legend tr { transition: opacity 0.15s; }
+.spending-legend tr.dim { opacity: 0.45; }
+.spending-legend th, .spending-legend td { padding: 7px 4px; border-bottom: 1px solid var(--border); }
+.spending-legend tr:last-child th, .spending-legend tr:last-child td { border-bottom: 0; }
+.spending-legend th { display: flex; align-items: center; gap: 10px; font-weight: 600; text-align: left; }
+.spending-legend th .swatch { background: var(--cat); }
+.spending-legend td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .spending-body { grid-template-columns: 1fr; justify-items: center; }
+}
 .empty-state p { margin: 0; }
 
 /* ---------- Erro do Blazor ---------- */

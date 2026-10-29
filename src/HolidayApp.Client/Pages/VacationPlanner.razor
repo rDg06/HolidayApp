@@ -228,6 +228,9 @@
                 }
             </section>
 
+            @* ---------- Onde gastei mais (atualiza enquanto editas o orçamento e as reservas) ---------- *@
+            <SpendingChart Amounts="_plan.SpentByCategory()" />
+
             @* ---------- Plano dia a dia ---------- *@
             <section class="card plan-section plan-wide" aria-labelledby="days-title">
                 <div class="section-head">
