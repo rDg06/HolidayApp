@@ -29,6 +29,9 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         await EnsureSuccessAsync(response, ct);
     }
 
+    public async Task<IReadOnlyList<VacationSummaryDto>> GetVacationsAsync(CancellationToken ct = default) =>
+        await GetAsync<List<VacationSummaryDto>>("api/vacations", ct);
+
     public Task<VacationPlanDto> GetPlanAsync(Guid eventId, CancellationToken ct = default) =>
         GetAsync<VacationPlanDto>($"api/events/{eventId}/plan", ct);
 

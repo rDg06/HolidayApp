@@ -1,15 +1,67 @@
 using System.Text.Json;
 using HolidayApp.Domain.Abstractions;
 using HolidayApp.Domain.Entities;
+using HolidayApp.Domain.Holidays;
 using HolidayApp.Infrastructure.Persistence;
 using HolidayApp.Shared;
+using HolidayApp.Shared.Calendar;
 using Microsoft.EntityFrameworkCore;
 
 namespace HolidayApp.Infrastructure.Services;
 
-internal sealed class VacationPlanService(AppDbContext db, ICurrentUser currentUser) : IVacationPlanService
+internal sealed class VacationPlanService(
+    AppDbContext db,
+    ICurrentUser currentUser,
+    IHolidayProvider holidayProvider) : IVacationPlanService
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    public async Task<IReadOnlyList<VacationSummaryDto>> GetVacationsAsync(CancellationToken ct = default)
+    {
+        var vacations = await db.Events.AsNoTracking()
+            .Where(e => e.Type == EventType.Ferias)
+            .OrderBy(e => e.StartDate)
+            .ToListAsync(ct);
+
+        if (vacations.Count == 0)
+            return [];
+
+        var ids = vacations.Select(e => e.Id).ToList();
+        var plans = await db.VacationPlans.AsNoTracking()
+            .Where(p => ids.Contains(p.EventId))
+            .ToDictionaryAsync(p => p.EventId, p => Deserialize(p.Content), ct);
+
+        // Feriados de todos os anos abrangidos, para contar os dias úteis
+        var settings = await db.UserSettings.AsNoTracking().FirstOrDefaultAsync(ct)
+                       ?? new UserSettings { UserId = currentUser.UserId };
+        var options = settings.ToHolidayOptions();
+        var holidayDates = Enumerable.Range(vacations.Min(e => e.StartDate.Year),
+                                            vacations.Max(e => e.EndDate.Year) - vacations.Min(e => e.StartDate.Year) + 1)
+            .SelectMany(year => holidayProvider.GetHolidays(year, options))
+            .Select(h => h.Date)
+            .ToHashSet();
+
+        return vacations.Select(e =>
+        {
+            var plan = plans.GetValueOrDefault(e.Id) ?? new VacationPlanDto();
+            var bookingsTotal = plan.Bookings.Sum(b => b.Cost ?? 0);
+
+            return new VacationSummaryDto(
+                e.Id,
+                e.Title,
+                e.StartDate,
+                e.EndDate,
+                WorkdayCalculator.CountWorkdays(e.StartDate, e.EndDate, holidayDates),
+                plan.Destination,
+                plan.Bookings.Count,
+                plan.Places.Count,
+                plan.Places.Count(p => p.Visited),
+                plan.Tasks.Count,
+                plan.Tasks.Count(t => t.Done),
+                plan.Expenses.Sum(x => x.Planned ?? 0) + bookingsTotal,
+                plan.Expenses.Sum(x => x.Actual ?? 0) + bookingsTotal);
+        }).ToList();
+    }
 
     public async Task<VacationPlanDto?> GetPlanAsync(Guid eventId, CancellationToken ct = default)
     {

@@ -14,6 +14,7 @@ public interface ICalendarApi
     Task<CalendarEventDto> UpdateEventAsync(Guid id, SaveCalendarEventRequest request, CancellationToken ct = default);
     Task DeleteEventAsync(Guid id, CancellationToken ct = default);
 
+    Task<IReadOnlyList<VacationSummaryDto>> GetVacationsAsync(CancellationToken ct = default);
     Task<VacationPlanDto> GetPlanAsync(Guid eventId, CancellationToken ct = default);
     Task<VacationPlanDto> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default);
 
