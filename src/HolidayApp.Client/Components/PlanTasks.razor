@@ -1,0 +1,61 @@
+@* Lista de tarefas da viagem. *@
+
+<section class="card plan-section" aria-labelledby="tasks-title">
+    <div class="section-head">
+        <h2 id="tasks-title">Tarefas</h2>
+        @if (Tasks.Count > 0)
+        {
+            <span class="muted small">@Tasks.Count(t => t.Done) de @Tasks.Count feitas</span>
+        }
+    </div>
+
+    <div class="task-add">
+        <input class="input" placeholder="Nova tarefa (ex.: renovar cartão de cidadão)" aria-label="Nova tarefa"
+               maxlength="@VacationPlanValidator.TaskMaxLength"
+               @bind="_newTask" @bind:event="oninput" @onkeydown="OnKeyDownAsync" />
+        <button type="button" class="btn small" @onclick="AddAsync">Adicionar</button>
+    </div>
+
+    @if (Tasks.Count > 0)
+    {
+        <ul class="plain-list task-list">
+            @foreach (var task in Tasks)
+            {
+                var t = task;
+                <li class="@(t.Done ? "task done" : "task")">
+                    <input type="checkbox" aria-label="Feita" @bind="t.Done" @bind:after="ChangedAsync" />
+                    <input class="input task-text" aria-label="Tarefa" maxlength="@VacationPlanValidator.TaskMaxLength"
+                           @bind="t.Text" @bind:after="ChangedAsync" />
+                    <button type="button" class="btn icon ghost small" aria-label="Remover tarefa" @onclick="() => RemoveAsync(t)">✕</button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public List<PlanTaskDto> Tasks { get; set; } = [];
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _newTask = "";
+
+    private Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newTask))
+            return Task.CompletedTask;
+
+        Tasks.Add(new PlanTaskDto { Text = _newTask.Trim() });
+        _newTask = "";
+        return ChangedAsync();
+    }
+
+    private Task OnKeyDownAsync(KeyboardEventArgs e) => e.Key == "Enter" ? AddAsync() : Task.CompletedTask;
+
+    private Task RemoveAsync(PlanTaskDto task)
+    {
+        Tasks.Remove(task);
+        return ChangedAsync();
+    }
+
+    private Task ChangedAsync() => OnChanged.InvokeAsync();
+}

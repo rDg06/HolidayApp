@@ -1,0 +1,2 @@
+# Bibliotecas de terceiros: guardar e extrair byte a byte (as hashes SRI dependem disso)
+src/HolidayApp.Web/wwwroot/lib/** -text

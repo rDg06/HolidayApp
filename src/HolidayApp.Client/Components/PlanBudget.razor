@@ -1,0 +1,92 @@
+@* Orçamento: despesas previstas e reais, mais o valor das reservas. *@
+
+<section class="card plan-section" aria-labelledby="budget-title">
+    <div class="section-head">
+        <h2 id="budget-title">Orçamento</h2>
+        <button type="button" class="btn small" @onclick="AddAsync">+ Despesa</button>
+    </div>
+
+    @if (Expenses.Count == 0 && PricedBookings.Count == 0)
+    {
+        <p class="muted small">Junta as despesas previstas e, depois, o que gastaste mesmo. O valor das reservas entra aqui sozinho.</p>
+    }
+    else
+    {
+        <div class="expense-list">
+            @* Reservas com valor: contam como previsto e gasto; editam-se nas Reservas *@
+            @foreach (var booking in PricedBookings)
+            {
+                <div class="expense-row booking-expense" title="Valor da reserva: altera-o em Reservas">
+                    <span class="tag">Reserva · @Pt.Label(PlanBookingDto.BudgetCategory(booking.Type))</span>
+                    <span class="booking-expense-name">@booking.Name</span>
+                    <span class="amount">@Pt.Money(booking.Cost!.Value)</span>
+                    <span class="amount">@Pt.Money(booking.Cost!.Value)</span>
+                    <span></span>
+                </div>
+            }
+            @foreach (var expense in Expenses)
+            {
+                var e = expense;
+                <div class="expense-row">
+                    <select class="input" aria-label="Categoria" @bind="e.Category" @bind:after="ChangedAsync">
+                        @foreach (var category in Enum.GetValues<ExpenseCategory>())
+                        {
+                            <option value="@category">@Pt.Label(category)</option>
+                        }
+                    </select>
+                    <input class="input" placeholder="Descrição (ex.: hotel, jantar…)" aria-label="Descrição"
+                           maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="e.Description" @bind:after="ChangedAsync" />
+                    <span class="money-field">
+                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Previsto" aria-label="Previsto (€)"
+                               title="Previsto (€)" @bind="e.Planned" @bind:after="ChangedAsync" />
+                    </span>
+                    <span class="money-field">
+                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Real" aria-label="Real (€)"
+                               title="Real (€)" @bind="e.Actual" @bind:after="ChangedAsync" />
+                    </span>
+                    <button type="button" class="btn icon ghost small" aria-label="Remover despesa" @onclick="() => RemoveAsync(e)">✕</button>
+                </div>
+            }
+        </div>
+
+        <dl class="budget-totals">
+            <div><dt>Previsto</dt><dd>@Pt.Money(TotalPlanned)</dd></div>
+            <div><dt>Gasto</dt><dd>@Pt.Money(TotalActual)</dd></div>
+            <div>
+                <dt>@(TotalActual > TotalPlanned ? "Acima do previsto" : "Disponível")</dt>
+                <dd class="@(TotalActual > TotalPlanned ? "over" : "under")">@Pt.Money(Math.Abs(TotalPlanned - TotalActual))</dd>
+            </div>
+        </dl>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public List<PlanExpenseDto> Expenses { get; set; } = [];
+
+    /// <summary>As reservas com valor entram no orçamento (só leitura aqui).</summary>
+    [Parameter, EditorRequired] public List<PlanBookingDto> Bookings { get; set; } = [];
+
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private List<PlanBookingDto> PricedBookings => Bookings.Where(b => b.Cost > 0).ToList();
+
+    private decimal BookingsTotal => PricedBookings.Sum(b => b.Cost ?? 0);
+
+    // As reservas já estão pagas/comprometidas: contam no previsto e no gasto
+    private decimal TotalPlanned => Expenses.Sum(e => e.Planned ?? 0) + BookingsTotal;
+    private decimal TotalActual => Expenses.Sum(e => e.Actual ?? 0) + BookingsTotal;
+
+    private Task AddAsync()
+    {
+        Expenses.Add(new PlanExpenseDto());
+        return ChangedAsync();
+    }
+
+    private Task RemoveAsync(PlanExpenseDto expense)
+    {
+        Expenses.Remove(expense);
+        return ChangedAsync();
+    }
+
+    private Task ChangedAsync() => OnChanged.InvokeAsync();
+}

@@ -1,0 +1,20 @@
+@* Feriados do ano (os que já passaram ficam esbatidos). *@
+
+<details class="card">
+    <summary><h3>Feriados de @Year</h3></summary>
+    <ul class="plain-list holidays">
+        @foreach (var holiday in Holidays)
+        {
+            <li class="@(holiday.Date < Today ? "past" : null)">
+                <span class="holiday-date">@Pt.Long(holiday.Date)</span>
+                <span>@holiday.Name</span>
+            </li>
+        }
+    </ul>
+</details>
+
+@code {
+    [Parameter] public int Year { get; set; }
+    [Parameter] public IReadOnlyList<HolidayDto> Holidays { get; set; } = [];
+    [Parameter] public DateOnly Today { get; set; }
+}

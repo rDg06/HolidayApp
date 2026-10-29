@@ -1,0 +1,4 @@
+.settings-page { max-width: 560px; display: grid; gap: 12px; }
+.settings-page h1 { font-size: 1.8rem; }
+.settings-form { display: grid; gap: 18px; padding: 20px; }
+.form-actions { display: flex; align-items: center; gap: 12px; }

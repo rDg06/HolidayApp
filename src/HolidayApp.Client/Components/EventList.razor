@@ -1,0 +1,39 @@
+@* Marcações do ano; clicar abre o editor. *@
+
+<div class="card">
+    <h3>Marcações</h3>
+    @if (Events.Count == 0)
+    {
+        <p class="muted small">Ainda não tens nada marcado em @Year.</p>
+    }
+    else
+    {
+        <ul class="plain-list">
+            @foreach (var ev in Events)
+            {
+                var item = ev;
+                <li>
+                    <button type="button" class="event-item" @onclick="() => OnSelect.InvokeAsync(item)">
+                        <span class="@($"swatch {Pt.Css(item.Type)}")"></span>
+                        <span class="event-text">
+                            <strong>@item.Title</strong>
+                            <span class="muted small">@Pt.Range(item.StartDate, item.EndDate)@WorkdaysSuffix(item)</span>
+                        </span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter] public int Year { get; set; }
+    [Parameter] public IReadOnlyList<CalendarEventDto> Events { get; set; } = [];
+    [Parameter] public IReadOnlySet<DateOnly> HolidayDates { get; set; } = new HashSet<DateOnly>();
+    [Parameter] public EventCallback<CalendarEventDto> OnSelect { get; set; }
+
+    private string WorkdaysSuffix(CalendarEventDto ev) =>
+        ev.Type == EventType.Ferias
+            ? $" · {Pt.Workdays(WorkdayCalculator.CountWorkdays(ev.StartDate, ev.EndDate, HolidayDates))}"
+            : "";
+}

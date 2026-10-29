@@ -1,0 +1,43 @@
+.expense-list { display: grid; gap: 10px; }
+
+/* Duas linhas por despesa: descrição em cima, categoria e valores em baixo */
+.expense-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 30px;
+    grid-template-areas: "desc desc desc del" "cat plan act .";
+    gap: 6px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.expense-row > :nth-child(1) { grid-area: cat; }
+.expense-row > :nth-child(2) { grid-area: desc; }
+.expense-row > :nth-child(3) { grid-area: plan; }
+.expense-row > :nth-child(4) { grid-area: act; }
+.expense-row > :nth-child(5) { grid-area: del; }
+.booking-expense .amount { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Linhas que vêm das reservas: só leitura */
+.booking-expense { color: var(--muted); }
+.booking-expense .tag { justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.booking-expense-name { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.booking-expense .amount { padding-right: 12px; color: var(--text); }
+
+.budget-totals {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 4px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.budget-totals dt { font-size: 0.8rem; color: var(--muted); }
+.budget-totals dd { margin: 2px 0 0; font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.budget-totals dd.under { color: var(--c-ferias); }
+.budget-totals dd.over { color: var(--c-danger); }
+
+@media (max-width: 640px) {
+    .budget-totals { grid-template-columns: 1fr; }
+}

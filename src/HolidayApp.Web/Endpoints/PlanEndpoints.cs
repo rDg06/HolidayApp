@@ -1,6 +1,5 @@
 using HolidayApp.Infrastructure.Services;
 using HolidayApp.Shared;
-using HolidayApp.Shared.Validation;
 
 namespace HolidayApp.Web.Endpoints;
 
@@ -23,7 +22,7 @@ public static class PlanEndpoints
         });
 
         // PUT /api/events/{id}/plan
-        group.MapPut("/", async (Guid id, VacationPlanDto plan, IVacationPlanService service, ICalendarService calendar, CancellationToken ct) =>
+        group.MapPut("/", async (Guid id, VacationPlanDto plan, IVacationPlanService service, CancellationToken ct) =>
         {
             // Listas enviadas como null passam a vazias
             plan.Bookings ??= [];
@@ -32,17 +31,13 @@ public static class PlanEndpoints
             plan.Expenses ??= [];
             plan.Places ??= [];
 
-            // As datas da marcação limitam os dias das reservas
-            var ev = await calendar.GetEventAsync(id, ct);
-            if (ev is null)
-                return Results.NotFound();
-
-            var errors = VacationPlanValidator.Validate(plan, ev.StartDate, ev.EndDate);
-            if (errors.Count > 0)
-                return Results.ValidationProblem(errors);
-
-            var saved = await service.SavePlanAsync(id, plan, ct);
-            return saved is null ? Results.NotFound() : Results.Ok(saved);
+            var result = await service.SavePlanAsync(id, plan, ct);
+            return result switch
+            {
+                { Errors: { } errors } => Results.ValidationProblem(errors),
+                { Plan: { } saved } => Results.Ok(saved),
+                _ => Results.NotFound(),
+            };
         });
 
         return api;

@@ -1,5 +1,16 @@
 namespace HolidayApp.Shared.Validation;
 
+/// <summary>Anos suportados pela aplicação (calendário, feriados e marcações).</summary>
+public static class YearRange
+{
+    public const int Min = 1900;
+    public const int Max = 2200;
+
+    public static bool IsValid(int year) => year is >= Min and <= Max;
+
+    public static string Message => $"O ano tem de estar entre {Min} e {Max}.";
+}
+
 /// <summary>
 /// Validação partilhada: o cliente usa-a para dar feedback imediato e o servidor
 /// volta a aplicá-la (nunca confiar apenas no cliente).
@@ -19,7 +30,10 @@ public static class CalendarEventValidator
         else if (request.Title.Trim().Length > TitleMaxLength)
             errors[nameof(request.Title)] = [$"O título não pode ter mais de {TitleMaxLength} caracteres."];
 
-        if (request.EndDate < request.StartDate)
+        // Fora destes anos os cálculos de dias (feriados, Páscoa, dias úteis) deixam de fazer sentido
+        if (!YearRange.IsValid(request.StartDate.Year) || !YearRange.IsValid(request.EndDate.Year))
+            errors[nameof(request.StartDate)] = [YearRange.Message];
+        else if (request.EndDate < request.StartDate)
             errors[nameof(request.EndDate)] = ["A data de fim não pode ser anterior à data de início."];
         else if (request.EndDate.DayNumber - request.StartDate.DayNumber + 1 > MaxDurationDays)
             errors[nameof(request.EndDate)] = [$"Uma marcação não pode ter mais de {MaxDurationDays} dias."];
@@ -53,6 +67,8 @@ public static class VacationPlanValidator
     public static Dictionary<string, string[]> Validate(VacationPlanDto plan, DateOnly tripStart, DateOnly tripEnd)
     {
         var errors = Validate(plan);
+        if (errors.ContainsKey(MalformedKey))
+            return errors;
 
         bool Outside(DateOnly? date) => date is { } d && (d < tripStart || d > tripEnd);
         static string Label(string? name) => string.IsNullOrWhiteSpace(name) ? "sem nome" : $"\"{name.Trim()}\"";
@@ -76,8 +92,19 @@ public static class VacationPlanValidator
 
     private static string Format(DateOnly date) => date.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
+    /// <summary>Chave do erro para pedidos mal formados (listas em falta ou com elementos vazios).</summary>
+    public const string MalformedKey = "Plan";
+
     public static Dictionary<string, string[]> Validate(VacationPlanDto plan)
     {
+        // Pedidos à API podem trazer listas null ou elementos null: é um erro do pedido, não do servidor
+        if (plan.Bookings is null || plan.Days is null || plan.Tasks is null || plan.Expenses is null || plan.Places is null
+            || plan.Bookings.Contains(null!) || plan.Days.Contains(null!) || plan.Tasks.Contains(null!)
+            || plan.Expenses.Contains(null!) || plan.Places.Contains(null!))
+        {
+            return new Dictionary<string, string[]> { [MalformedKey] = ["O planeamento enviado tem listas ou elementos vazios."] };
+        }
+
         var errors = new Dictionary<string, List<string>>();
 
         void Add(string key, string message)

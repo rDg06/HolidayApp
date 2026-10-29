@@ -48,92 +48,10 @@
         </section>
 
         <aside class="sidebar">
-            <div class="card summary">
-                <span class="label">Férias por gozar</span>
-                <div class="summary-figure">
-                    <span class="@(Remaining < 0 ? "big negative" : "big")">@Remaining</span>
-                    <span class="muted">de @AnnualDays dias úteis</span>
-                </div>
-                <div class="progress" role="progressbar" aria-label="Dias de férias usados"
-                     aria-valuemin="0" aria-valuemax="@AnnualDays" aria-valuenow="@UsedDays">
-                    <div class="progress-bar" style="width: @(ProgressPercent)%"></div>
-                </div>
-                <p class="muted small">@Pt.Workdays(UsedDays) marcados em @_year</p>
-            </div>
-
-            <div class="card legend">
-                <span class="legend-item"><span class="swatch ev-ferias"></span>Férias</span>
-                <span class="legend-item"><span class="swatch ev-pessoal"></span>Pessoal</span>
-                <span class="legend-item"><span class="swatch ev-outro"></span>Outro</span>
-                <span class="legend-item"><span class="swatch holiday"></span>Feriado</span>
-                <span class="legend-item"><span class="swatch today"></span>Hoje</span>
-            </div>
-
-            @if (UpcomingBridges.Count > 0)
-            {
-                <div class="card">
-                    <h3>Pontes possíveis</h3>
-                    <ul class="plain-list">
-                        @foreach (var bridge in UpcomingBridges)
-                        {
-                            var b = bridge;
-                            <li class="bridge">
-                                <div>
-                                    <strong>@Pt.Long(b.SuggestedDayOff)</strong>
-                                    <span class="muted small">@b.HolidayName · @b.ConsecutiveDaysOff dias seguidos</span>
-                                </div>
-                                @if (b.AlreadyBooked)
-                                {
-                                    <span class="tag">Marcada</span>
-                                }
-                                else
-                                {
-                                    <button type="button" class="btn small" disabled="@_busy" @onclick="() => BookBridgeAsync(b)">Marcar</button>
-                                }
-                            </li>
-                        }
-                    </ul>
-                </div>
-            }
-
-            <div class="card">
-                <h3>Marcações</h3>
-                @if (_events.Count == 0)
-                {
-                    <p class="muted small">Ainda não tens nada marcado em @_year.</p>
-                }
-                else
-                {
-                    <ul class="plain-list">
-                        @foreach (var ev in _events)
-                        {
-                            var item = ev;
-                            <li>
-                                <button type="button" class="event-item" @onclick="() => OpenEditor(item)">
-                                    <span class="@($"swatch {Pt.Css(item.Type)}")"></span>
-                                    <span class="event-text">
-                                        <strong>@item.Title</strong>
-                                        <span class="muted small">@Pt.Range(item.StartDate, item.EndDate)@WorkdaysSuffix(item)</span>
-                                    </span>
-                                </button>
-                            </li>
-                        }
-                    </ul>
-                }
-            </div>
-
-            <details class="card">
-                <summary><h3>Feriados de @_year</h3></summary>
-                <ul class="plain-list holidays">
-                    @foreach (var holiday in _holidays)
-                    {
-                        <li class="@(holiday.Date < _today ? "past" : null)">
-                            <span class="holiday-date">@Pt.Long(holiday.Date)</span>
-                            <span>@holiday.Name</span>
-                        </li>
-                    }
-                </ul>
-            </details>
+            <YearSummaryCard Year="_year" Summary="_summary" />
+            <BridgeList Bridges="UpcomingBridges" Busy="_busy" OnBook="BookBridgeAsync" />
+            <EventList Year="_year" Events="_events" HolidayDates="_holidayDates" OnSelect="OpenEditor" />
+            <HolidayList Year="_year" Holidays="_holidays" Today="_today" />
         </aside>
     </div>
 
@@ -178,13 +96,6 @@
     private DateOnly _newStart;
     private DateOnly _newEnd;
     private string? _editorError;
-
-    private int AnnualDays => _summary?.AnnualVacationDays ?? 0;
-    private int UsedDays => _summary?.UsedVacationDays ?? 0;
-    private int Remaining => _summary?.RemainingVacationDays ?? 0;
-
-    private int ProgressPercent =>
-        AnnualDays <= 0 ? 0 : Math.Clamp((int)Math.Round(UsedDays * 100.0 / AnnualDays), 0, 100);
 
     private List<BridgeSuggestionDto> UpcomingBridges =>
         _summary?.Bridges.Where(b => b.SuggestedDayOff >= _today).ToList() ?? [];
@@ -459,9 +370,4 @@
             _busy = false;
         }
     }
-
-    private string WorkdaysSuffix(CalendarEventDto ev) =>
-        ev.Type == EventType.Ferias
-            ? $" · {Pt.Workdays(WorkdayCalculator.CountWorkdays(ev.StartDate, ev.EndDate, _holidayDates))}"
-            : "";
 }

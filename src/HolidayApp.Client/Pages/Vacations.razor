@@ -107,7 +107,7 @@
     private RenderFragment VacationCard(VacationSummaryDto v) => __builder =>
     {
         var status = Status(v);
-        <a class="card vacation-card @(status == "A decorrer" ? "current" : null)" href="@($"ferias/{v.Id}")">
+        <a class="card vacation-card @(status == "A decorrer" ? "current" : null)" href="@($"ferias/{v.Id}?de=ferias")">
             <div class="vacation-top">
                 <div class="vacation-title">
                     <strong>@v.Title</strong>

@@ -1,0 +1,23 @@
+.booking-list { display: grid; gap: 10px; }
+
+.booking-row {
+    display: grid;
+    grid-template-columns: 140px minmax(150px, 1.4fr) 150px 110px 110px minmax(150px, 1.2fr) 36px;
+    gap: 8px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.booking-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.booking-row .booking-notes { grid-column: 1 / -2; }
+.link-field { display: flex; gap: 6px; }
+
+/* Dia da reserva fora das datas das férias (escrito à mão ou de dados antigos) */
+.input.out-of-range { border-color: var(--c-danger); color: var(--c-danger); }
+
+@media (max-width: 900px) {
+    .booking-row { grid-template-columns: 1fr 1fr; }
+    .booking-row .booking-notes, .booking-row .link-field { grid-column: 1 / -1; }
+    .booking-row > button:last-child { grid-column: 1 / -1; justify-self: end; }
+}

@@ -1,0 +1,26 @@
+.summary { display: grid; gap: 8px; }
+.summary .label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.summary-figure { display: flex; align-items: baseline; gap: 8px; }
+.summary .big { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--c-ferias); }
+.summary .big.negative { color: var(--c-danger); }
+.summary p { margin: 0; }
+
+.progress {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--surface-2);
+}
+
+.progress-bar {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--c-ferias);
+    transition: width 0.3s ease;
+}
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 0.8rem; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+
+.swatch.holiday { background: var(--c-holiday); }
+.swatch.today { border-radius: 50%; background: var(--text); }

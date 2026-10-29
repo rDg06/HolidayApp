@@ -10,9 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
-// Utilizador atual: hoje é sempre "local"; amanhã vem do login (ver README)
+// Utilizador atual: "local" em desenvolvimento; publicado, vem do login do App Service (ver README)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddAppServiceAuthentication(builder.Configuration);
 
 // Base de dados + serviços da aplicação
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -36,11 +37,13 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets();
 
-// API REST em /api/...
-var api = app.MapGroup("/api");
+// API REST em /api/... (só para utilizadores autorizados, fora de desenvolvimento)
+var api = app.MapGroup("/api").RequireAllowedUser(app.Environment, app.Configuration);
 api.MapEventEndpoints();
 api.MapPlanEndpoints();
 api.MapCalendarEndpoints();
@@ -51,3 +54,6 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(HolidayApp.Client._Imports).Assembly);
 
 app.Run();
+
+// Para os testes de integração (WebApplicationFactory<Program>)
+public partial class Program;

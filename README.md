@@ -20,11 +20,31 @@ automaticamente na primeira execução.
 No Visual Studio: abre `HolidayApp.slnx`, define **HolidayApp.Web** como projeto
 de arranque e carrega em F5.
 
-Testes:
+Testes (regras de calendário e validação, mais testes de integração à API com
+uma base de dados SQLite temporária):
 
 ```bash
 dotnet test
 ```
+
+## Publicar (Azure App Service)
+
+Fora de desenvolvimento a API **só aceita utilizadores autorizados**. O login é
+feito pela *Authentication* do App Service (Easy Auth), que fica à frente da app:
+
+1. Publica a app (Visual Studio → botão direito em **HolidayApp.Web** → **Publish**
+   → **Azure App Service (Linux)**).
+2. No portal do Azure, em **Authentication**, adiciona um fornecedor (Microsoft ou
+   Google) e escolhe *Require authentication*.
+3. Em **Configuration → Application settings** acrescenta os emails autorizados:
+   `Auth__AllowedEmails__0` = `o.teu@email.com` (e `__1`, `__2`… para mais pessoas).
+4. Aponta a base de dados para a pasta persistente:
+   `ConnectionStrings__Default` = `Data Source=/home/data/holidayapp.db`.
+
+Sem a *Authentication* ligada a API recusa todos os pedidos (401), e com outra
+conta que não esteja na lista responde 403. Cada pessoa autorizada vê só os seus
+dados. O Leaflet e a fonte Inter são servidos pela própria app (`wwwroot/lib`),
+sem pedidos a CDNs nem ao Google Fonts.
 
 ## O que já faz
 
@@ -61,8 +81,13 @@ src/
   HolidayApp.Web/             Servidor ASP.NET Core: API REST em /api + aloja o Blazor
   HolidayApp.Client/          Interface Blazor WebAssembly (corre no navegador)
 tests/
-  HolidayApp.Domain.Tests/    Testes xUnit das regras de calendário
+  HolidayApp.Domain.Tests/    Testes xUnit das regras de calendário e da validação
+  HolidayApp.Api.Tests/       Testes de integração à API (WebApplicationFactory + SQLite)
 ```
+
+Os estilos globais (cores, botões, campos, cartões) estão em
+`HolidayApp.Web/wwwroot/css/app.css`; os de cada página e componente estão ao
+lado do ficheiro, em `.razor.css` (CSS isolado do Blazor).
 
 A interface fala com o servidor **só pela API**, por isso no futuro podes
 acrescentar uma app móvel (MAUI, React Native…) que usa os mesmos endpoints.
@@ -77,6 +102,7 @@ acrescentar uma app móvel (MAUI, React Native…) que usa os mesmos endpoints.
 | PUT | `/api/events/{id}` | Atualizar marcação |
 | DELETE | `/api/events/{id}` | Apagar marcação (e o seu planeamento) |
 | GET / PUT | `/api/events/{id}/plan` | Planeamento das férias |
+| GET | `/api/vacations` | Todas as férias com o resumo do planeamento |
 | GET | `/api/calendar/{ano}/holidays` | Feriados do ano |
 | GET | `/api/calendar/{ano}/summary` | Saldo de férias e pontes |
 | GET / PUT | `/api/settings` | Definições do utilizador |
@@ -88,12 +114,12 @@ Em desenvolvimento, a especificação OpenAPI está em `/openapi/v1.json`.
 O projeto já tem as peças no sítio para crescer sem reescrever:
 
 **1. Vários utilizadores.** Todas as tabelas têm `UserId` e o `AppDbContext`
-aplica um filtro global para cada utilizador ver só os seus dados. Hoje o
-utilizador é sempre `local` (`Identity/HttpCurrentUser.cs`). Para ativar login:
-- acrescenta autenticação (ASP.NET Core Identity, Microsoft Entra ID, Google…)
-  em `Program.cs` com `AddAuthentication()` / `AddAuthorization()`
-- protege o grupo da API com `.RequireAuthorization()`
-- o `HttpCurrentUser` já lê o `NameIdentifier` das claims, não precisa de mudar
+aplica um filtro global para cada utilizador ver só os seus dados. Em
+desenvolvimento o utilizador é sempre `local`; publicada, vem do login do App
+Service (`Identity/AppServiceAuthentication.cs`), e a lista `Auth:AllowedEmails`
+diz quem pode entrar. Para outro tipo de login (ASP.NET Core Identity, Entra ID
+direto…) basta trocar o esquema de autenticação: o `HttpCurrentUser` lê o
+`NameIdentifier` das claims e não precisa de mudar.
 
 **2. Outra base de dados.** O fornecedor vem do `appsettings.json`
 (`Database:Provider`). Para PostgreSQL: instala

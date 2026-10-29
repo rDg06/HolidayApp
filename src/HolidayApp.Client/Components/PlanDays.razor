@@ -1,0 +1,76 @@
+@* Plano dia a dia: um cartão por dia, com as reservas e os locais desse dia. *@
+
+<section class="card plan-section plan-wide" aria-labelledby="days-title">
+    <div class="section-head">
+        <h2 id="days-title">Plano dia a dia</h2>
+    </div>
+
+    <ol class="day-plan">
+        @foreach (var day in Days)
+        {
+            var d = day;
+            <li class="@(WorkdayCalculator.IsWeekend(d.Date) ? "day-card weekend" : "day-card")">
+                <div class="day-date">
+                    <strong>@Pt.Long(d.Date)</strong>
+                    <span class="muted small">Dia @(d.Date.DayNumber - TripStart.DayNumber + 1)</span>
+                </div>
+
+                @{ var dayBookings = BookingsOn(d.Date); }
+                @if (dayBookings.Count > 0)
+                {
+                    <ul class="plain-list day-items" aria-label="Reservas neste dia">
+                        @foreach (var booking in dayBookings)
+                        {
+                            <li>
+                                <span class="tag">@Pt.Label(booking.Type)</span>
+                                <span class="day-item-name">@booking.Name</span>
+                                @if (!string.IsNullOrWhiteSpace(booking.Reference))
+                                {
+                                    <span class="muted small">@booking.Reference</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @{ var dayPlaces = PlacesOn(d.Date); }
+                @if (dayPlaces.Count > 0)
+                {
+                    <ul class="plain-list day-items" aria-label="Locais a visitar neste dia">
+                        @foreach (var (place, number) in dayPlaces)
+                        {
+                            <li class="@(place.Visited ? "day-place visited" : "day-place")">
+                                <span class="place-number small-pin">@number</span>
+                                <span class="day-item-name">@place.Name</span>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <input class="input" placeholder="Onde? (ex.: Lagos)" aria-label="Local"
+                       maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="d.Place" @bind:after="ChangedAsync" />
+                <textarea class="input" rows="2" placeholder="Atividades, restaurantes, horários…" aria-label="Atividades"
+                          maxlength="@VacationPlanValidator.ActivitiesMaxLength" @bind="d.Activities" @bind:after="ChangedAsync"></textarea>
+            </li>
+        }
+    </ol>
+</section>
+
+@code {
+    /// <summary>Um elemento por dia das férias (já preenchido pela página).</summary>
+    [Parameter, EditorRequired] public List<PlanDayDto> Days { get; set; } = [];
+    [Parameter, EditorRequired] public List<PlanBookingDto> Bookings { get; set; } = [];
+    [Parameter, EditorRequired] public List<PlanPlaceDto> Places { get; set; } = [];
+    [Parameter] public DateOnly TripStart { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Reservas marcadas para este dia (as que ainda não têm nome ficam de fora).</summary>
+    private List<PlanBookingDto> BookingsOn(DateOnly date) =>
+        Bookings.Where(b => b.Date == date && !string.IsNullOrWhiteSpace(b.Name)).ToList();
+
+    /// <summary>Locais marcados para este dia, com o número que têm no mapa.</summary>
+    private List<(PlanPlaceDto Place, int Number)> PlacesOn(DateOnly date) =>
+        Places.Select((p, i) => (p, i + 1)).Where(x => x.p.Date == date).ToList();
+
+    private Task ChangedAsync() => OnChanged.InvokeAsync();
+}

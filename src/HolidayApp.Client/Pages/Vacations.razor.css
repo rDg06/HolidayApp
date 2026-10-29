@@ -1,0 +1,50 @@
+.vacations-page { max-width: 1100px; margin: 0 auto; display: grid; gap: 22px; }
+.vacations-header h1 { font-size: 1.8rem; letter-spacing: -0.02em; }
+.vacations-header p { margin: 4px 0 0; }
+.vacations-section { display: grid; gap: 12px; }
+.vacations-section h2 { font-size: 1.05rem; color: var(--muted); }
+
+.vacation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+.vacation-card {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    text-decoration: none;
+    transition: border-color 0.15s, transform 0.1s;
+}
+
+.vacation-card:hover { border-color: color-mix(in srgb, var(--c-primary) 50%, var(--border)); }
+.vacation-card:active { transform: translateY(1px); }
+.vacation-card.current { border-color: color-mix(in srgb, var(--c-ferias) 60%, var(--border)); }
+
+.vacation-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.vacation-title { display: grid; gap: 2px; min-width: 0; }
+.vacation-title strong { font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vacation-top .tag { flex: none; white-space: nowrap; }
+.tag.muted-tag { background: var(--surface-2); color: var(--muted); }
+
+.vacation-destination { margin: 0; font-weight: 600; color: var(--c-ferias); }
+
+.vacation-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 0;
+    padding: 10px 0 0;
+    border-top: 1px solid var(--border);
+}
+
+.vacation-stats dt { font-size: 0.75rem; color: var(--muted); }
+.vacation-stats dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vacation-stats .wide { grid-column: 1 / -1; }
+.vacation-stats .over { color: var(--c-danger); }
+
+.vacation-open { justify-self: end; color: var(--c-primary); font-weight: 600; font-size: 0.9rem; }
+
+.empty-state { display: grid; justify-items: start; gap: 12px; padding: 24px; }
+.empty-state p { margin: 0; }

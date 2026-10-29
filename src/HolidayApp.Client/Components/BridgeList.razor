@@ -1,0 +1,34 @@
+@* Sugestões de pontes ainda por vir, com marcação num clique. *@
+
+@if (Bridges.Count > 0)
+{
+    <div class="card">
+        <h3>Pontes possíveis</h3>
+        <ul class="plain-list">
+            @foreach (var bridge in Bridges)
+            {
+                var b = bridge;
+                <li class="bridge">
+                    <div>
+                        <strong>@Pt.Long(b.SuggestedDayOff)</strong>
+                        <span class="muted small">@b.HolidayName · @b.ConsecutiveDaysOff dias seguidos</span>
+                    </div>
+                    @if (b.AlreadyBooked)
+                    {
+                        <span class="tag">Marcada</span>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn small" disabled="@Busy" @onclick="() => OnBook.InvokeAsync(b)">Marcar</button>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<BridgeSuggestionDto> Bridges { get; set; } = [];
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback<BridgeSuggestionDto> OnBook { get; set; }
+}

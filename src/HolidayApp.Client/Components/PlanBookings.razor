@@ -1,0 +1,79 @@
+@* Reservas da viagem: tipo, nome, dia, código, valor, ligação e notas. *@
+
+<section class="card plan-section plan-wide" aria-labelledby="bookings-title">
+    <div class="section-head">
+        <h2 id="bookings-title">Reservas</h2>
+        <button type="button" class="btn small" @onclick="AddAsync">+ Reserva</button>
+    </div>
+
+    @if (Bookings.Count == 0)
+    {
+        <p class="muted small">Voos, alojamento, aluguer de carro, bilhetes… Guarda aqui os códigos e as ligações.</p>
+    }
+    else
+    {
+        <div class="booking-list">
+            @foreach (var booking in Bookings)
+            {
+                var b = booking;
+                <div class="booking-row">
+                    <select class="input" aria-label="Tipo" @bind="b.Type" @bind:after="ChangedAsync">
+                        @foreach (var type in Enum.GetValues<BookingType>())
+                        {
+                            <option value="@type">@Pt.Label(type)</option>
+                        }
+                    </select>
+                    <input class="input" placeholder="Nome (ex.: Hotel Mar Azul)" aria-label="Nome"
+                           maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="b.Name" @bind:after="ChangedAsync" />
+                    @* Só os dias das férias podem ser escolhidos *@
+                    <input class="@(IsOutsideTrip(b.Date) ? "input out-of-range" : "input")" type="date" aria-label="Dia"
+                           min="@TripStart.ToString("yyyy-MM-dd")" max="@TripEnd.ToString("yyyy-MM-dd")"
+                           title="@(IsOutsideTrip(b.Date) ? "Escolhe um dia das férias" : "Dia da reserva: aparece no plano dia a dia")"
+                           @bind="b.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync" />
+                    <input class="input" placeholder="Código" aria-label="Código de reserva"
+                           maxlength="@VacationPlanValidator.ReferenceMaxLength" @bind="b.Reference" @bind:after="ChangedAsync" />
+                    <span class="money-field">
+                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Valor" aria-label="Valor (€)"
+                               title="Valor (€) — entra no orçamento" @bind="b.Cost" @bind:after="ChangedAsync" />
+                    </span>
+                    <div class="link-field">
+                        <input class="input" type="url" placeholder="https://…" aria-label="Ligação"
+                               maxlength="@VacationPlanValidator.UrlMaxLength" @bind="b.Url" @bind:after="ChangedAsync" />
+                        @if (VacationPlanValidator.IsSafeUrl(b.Url))
+                        {
+                            <a class="btn small" href="@b.Url!.Trim()" target="_blank" rel="noopener noreferrer">Abrir</a>
+                        }
+                    </div>
+                    <input class="input booking-notes" placeholder="Notas" aria-label="Notas"
+                           maxlength="@VacationPlanValidator.NotesMaxLength" @bind="b.Notes" @bind:after="ChangedAsync" />
+                    <button type="button" class="btn icon ghost" aria-label="Remover reserva" @onclick="() => RemoveAsync(b)">✕</button>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public List<PlanBookingDto> Bookings { get; set; } = [];
+    [Parameter] public DateOnly TripStart { get; set; }
+    [Parameter] public DateOnly TripEnd { get; set; }
+
+    /// <summary>Avisa a página de que algo mudou (aviso de "por guardar", orçamento e plano).</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private bool IsOutsideTrip(DateOnly? date) => date is { } d && (d < TripStart || d > TripEnd);
+
+    private Task AddAsync()
+    {
+        Bookings.Add(new PlanBookingDto { Date = TripStart });
+        return ChangedAsync();
+    }
+
+    private Task RemoveAsync(PlanBookingDto booking)
+    {
+        Bookings.Remove(booking);
+        return ChangedAsync();
+    }
+
+    private Task ChangedAsync() => OnChanged.InvokeAsync();
+}
