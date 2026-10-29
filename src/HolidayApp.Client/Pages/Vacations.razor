@@ -1,0 +1,144 @@
+@page "/ferias"
+@inject ICalendarApi Api
+
+<PageTitle>Férias · HolidayApp</PageTitle>
+
+<div class="vacations-page">
+    <header class="vacations-header">
+        <h1>As minhas férias</h1>
+        @if (_vacations is { Count: > 0 })
+        {
+            <p class="muted">@Pt.Workdays(_vacations.Sum(v => v.Workdays)) em @(_vacations.Count == 1 ? "1 período" : $"{_vacations.Count} períodos")</p>
+        }
+    </header>
+
+    @if (_vacations is null)
+    {
+        if (_loadError is not null)
+        {
+            <div class="alert" role="alert">
+                <span>@_loadError</span>
+                <button type="button" class="btn ghost small" @onclick="LoadAsync">Tentar de novo</button>
+            </div>
+        }
+        else
+        {
+            <p class="muted">A carregar…</p>
+        }
+    }
+    else if (_vacations.Count == 0)
+    {
+        <div class="card empty-state">
+            <p>Ainda não tens férias marcadas.</p>
+            <a class="btn primary" href="">Ir ao calendário</a>
+        </div>
+    }
+    else
+    {
+        @if (Upcoming.Count > 0)
+        {
+            <section aria-labelledby="upcoming-title" class="vacations-section">
+                <h2 id="upcoming-title">Próximas e a decorrer</h2>
+                <div class="vacation-grid">
+                    @foreach (var v in Upcoming)
+                    {
+                        @VacationCard(v)
+                    }
+                </div>
+            </section>
+        }
+
+        @if (Past.Count > 0)
+        {
+            <section aria-labelledby="past-title" class="vacations-section">
+                <h2 id="past-title">Anteriores</h2>
+                <div class="vacation-grid">
+                    @foreach (var v in Past)
+                    {
+                        @VacationCard(v)
+                    }
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
+    private List<VacationSummaryDto>? _vacations;
+    private string? _loadError;
+
+    // Próximas: da mais próxima para a mais distante. Anteriores: da mais recente para a mais antiga.
+    private List<VacationSummaryDto> Upcoming =>
+        _vacations?.Where(v => v.EndDate >= _today).OrderBy(v => v.StartDate).ToList() ?? [];
+
+    private List<VacationSummaryDto> Past =>
+        _vacations?.Where(v => v.EndDate < _today).OrderByDescending(v => v.StartDate).ToList() ?? [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loadError = null;
+        try
+        {
+            _vacations = (await Api.GetVacationsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Não foi possível carregar as férias. {ex.Message}";
+        }
+    }
+
+    private string Status(VacationSummaryDto v)
+    {
+        if (v.EndDate < _today)
+            return "Terminadas";
+        if (v.StartDate <= _today)
+            return "A decorrer";
+
+        var days = v.StartDate.DayNumber - _today.DayNumber;
+        return days == 1 ? "Amanhã" : $"Daqui a {days} dias";
+    }
+
+    private static string Years(VacationSummaryDto v) =>
+        v.StartDate.Year == v.EndDate.Year ? $"{v.StartDate.Year}" : $"{v.StartDate.Year}–{v.EndDate.Year}";
+
+    private RenderFragment VacationCard(VacationSummaryDto v) => __builder =>
+    {
+        var status = Status(v);
+        <a class="card vacation-card @(status == "A decorrer" ? "current" : null)" href="@($"ferias/{v.Id}")">
+            <div class="vacation-top">
+                <div class="vacation-title">
+                    <strong>@v.Title</strong>
+                    <span class="muted small">@Pt.Range(v.StartDate, v.EndDate) @Years(v)</span>
+                </div>
+                <span class="@(status == "Terminadas" ? "tag muted-tag" : "tag")">@status</span>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(v.Destination))
+            {
+                <p class="vacation-destination">@v.Destination</p>
+            }
+
+            <dl class="vacation-stats">
+                <div><dt>Dias úteis</dt><dd>@v.Workdays</dd></div>
+                <div><dt>Reservas</dt><dd>@v.Bookings</dd></div>
+                <div><dt>Locais</dt><dd>@(v.Places == 0 ? "0" : $"{v.PlacesVisited}/{v.Places}")</dd></div>
+                <div><dt>Tarefas</dt><dd>@(v.Tasks == 0 ? "0" : $"{v.TasksDone}/{v.Tasks}")</dd></div>
+                <div class="wide">
+                    <dt>Orçamento</dt>
+                    <dd>
+                        @Pt.Money(v.Planned)
+                        @if (v.Spent > 0)
+                        {
+                            <span class="@(v.Spent > v.Planned ? "muted small over" : "muted small")"> · gasto @Pt.Money(v.Spent)</span>
+                        }
+                    </dd>
+                </div>
+            </dl>
+
+            <span class="vacation-open">Organizar →</span>
+        </a>
+    };
+}

@@ -107,6 +107,22 @@ public sealed class PlanExpenseDto
     public decimal? Actual { get; set; }
 }
 
+/// <summary>Resumo de umas férias para a página "Férias" (todas as férias, de todos os anos).</summary>
+public sealed record VacationSummaryDto(
+    Guid Id,
+    string Title,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    int Workdays,
+    string? Destination,
+    int Bookings,
+    int Places,
+    int PlacesVisited,
+    int Tasks,
+    int TasksDone,
+    decimal Planned,
+    decimal Spent);
+
 /// <summary>Preferências do utilizador (editáveis na página de definições).</summary>
 public sealed class UserSettingsDto
 {

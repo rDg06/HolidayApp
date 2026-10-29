@@ -8,6 +8,11 @@ public static class PlanEndpoints
 {
     public static RouteGroupBuilder MapPlanEndpoints(this RouteGroupBuilder api)
     {
+        // GET /api/vacations — todas as férias com o resumo do planeamento
+        api.MapGet("/vacations", async (IVacationPlanService service, CancellationToken ct) =>
+            Results.Ok(await service.GetVacationsAsync(ct)))
+            .WithTags("Planeamento");
+
         var group = api.MapGroup("/events/{id:guid}/plan").WithTags("Planeamento");
 
         // GET /api/events/{id}/plan
