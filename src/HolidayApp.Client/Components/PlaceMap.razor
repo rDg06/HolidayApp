@@ -3,6 +3,32 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
+@if (Places.Count > 0)
+{
+    @* Filtro por dia: mostra só os locais desse dia e o alojamento dessa noite, no mapa e na lista *@
+    <div class="day-filter" role="group" aria-label="Filtrar locais por dia">
+        <button type="button" class="chip" aria-pressed="@(_filter.All ? "true" : "false")" @onclick="() => SetFilterAsync(DayFilter.Everything)">
+            Todos <span class="chip-count">@ToVisit.Count()</span>
+        </button>
+        @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
+        {
+            var d = day;
+            var count = ToVisit.Count(p => p.Date == d);
+            <button type="button" class="@(count == 0 ? "chip empty" : "chip")" aria-pressed="@(_filter == DayFilter.On(d) ? "true" : "false")"
+                    @onclick="() => SetFilterAsync(DayFilter.On(d))">
+                @Pt.Long(d) <span class="chip-count">@count</span>
+            </button>
+        }
+        @{ var noDay = ToVisit.Count(p => p.Date is null); }
+        @if (Places.Any(p => p.Date is null) || _filter == DayFilter.NoDay)
+        {
+            <button type="button" class="chip" aria-pressed="@(_filter == DayFilter.NoDay ? "true" : "false")" @onclick="() => SetFilterAsync(DayFilter.NoDay)">
+                Sem dia <span class="chip-count">@noDay</span>
+            </button>
+        }
+    </div>
+}
+
 <div class="place-map">
     <div class="map-area">
         <div class="map-canvas" @ref="_mapElement" aria-label="Mapa dos locais a visitar"></div>
@@ -44,34 +70,77 @@
 
         @if (Places.Count == 0)
         {
-            <p class="muted small">Clica no mapa ou procura um local para o marcar. Podes arrastar os marcadores para os acertar.</p>
+            <p class="muted small">
+                Clica no mapa ou procura um local para o marcar. Podes arrastar os marcadores para os acertar.
+                Usa o botão <span class="inline-house">@HouseIcon</span> para marcar onde vais ficar.
+            </p>
         }
         else
         {
+            var numbers = PlanPlaceDto.Numbers(Places);
+            @if (!_filter.All && !Places.Any(p => !p.IsLodging && Visible(p)))
+            {
+                <p class="muted small">Nenhum local @(_filter.Day is { } fd ? $"para {Pt.Long(fd)}" : "sem dia"). Clica no mapa para juntar um.</p>
+            }
+
             <ol class="plain-list place-list">
                 @for (var i = 0; i < Places.Count; i++)
                 {
                     var index = i;
                     var p = Places[i];
-                    <li class="@(p.Visited ? "place-item visited" : "place-item")">
-                        <button type="button" class="place-number" title="Ver no mapa" aria-label="Ver @p.Name no mapa"
-                                @onclick="() => FocusAsync(index)">@(index + 1)</button>
+                    if (!Visible(p))
+                        continue;
+
+                    <li class="@ItemCss(p)">
+                        <button type="button" class="@(p.IsLodging ? "place-number lodging" : "place-number")" title="Ver no mapa"
+                                aria-label="Ver @p.Name no mapa" @onclick="() => FocusAsync(index)">
+                            @if (p.IsLodging) { @HouseIcon } else { @numbers[index] }
+                        </button>
                         <div class="place-fields">
                             <input class="input" aria-label="Nome do local" maxlength="@VacationPlanValidator.ShortTextMaxLength"
                                    @bind="p.Name" @bind:after="ChangedAsync" />
                             <div class="place-row">
-                                @* Só os dias das férias podem ser escolhidos *@
-                                <select class="input" aria-label="Dia da visita" @bind="p.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
-                                    <option value="">Sem dia</option>
-                                    @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
+                                @if (p.IsLodging)
+                                {
+                                    @* Estadia: do primeiro ao último dia (podem ser vários alojamentos, um por cidade ou país) *@
+                                    <select class="input" aria-label="Primeiro dia no alojamento" title="Primeiro dia"
+                                            @bind="p.Date" @bind:format="yyyy-MM-dd" @bind:after="() => StayStartChangedAsync(p)">
+                                        <option value="">Sem datas</option>
+                                        @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
+                                        {
+                                            <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                                        }
+                                    </select>
+                                    @if (p.Date is { } stayStart)
                                     {
-                                        <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                                        <span class="small muted">até</span>
+                                        <select class="input" aria-label="Último dia no alojamento" title="Último dia"
+                                                @bind="p.EndDate" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
+                                            @for (var day = stayStart; day <= TripEnd; day = day.AddDays(1))
+                                            {
+                                                <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                                            }
+                                        </select>
                                     }
-                                </select>
-                                <label class="check small" title="Já visitei">
-                                    <input type="checkbox" @bind="p.Visited" @bind:after="ChangedAsync" />
-                                    <span>Visitado</span>
-                                </label>
+                                }
+                                else
+                                {
+                                    @* Só os dias das férias podem ser escolhidos *@
+                                    <select class="input" aria-label="Dia da visita" @bind="p.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
+                                        <option value="">Sem dia</option>
+                                        @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
+                                        {
+                                            <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                                        }
+                                    </select>
+                                    <label class="check small" title="Já visitei">
+                                        <input type="checkbox" @bind="p.Visited" @bind:after="ChangedAsync" />
+                                        <span>Visitado</span>
+                                    </label>
+                                }
+                                <button type="button" class="btn icon ghost small lodging-toggle" aria-pressed="@(p.IsLodging ? "true" : "false")"
+                                        title="@(p.IsLodging ? "Deixar de ser o alojamento" : "Marcar como alojamento (onde vamos ficar)")"
+                                        aria-label="Alojamento: @p.Name" @onclick="() => ToggleLodgingAsync(p)">@HouseIcon</button>
                                 <button type="button" class="btn icon ghost small" aria-label="Remover @p.Name" @onclick="() => RemoveAsync(index)">✕</button>
                             </div>
                         </div>
@@ -92,6 +161,35 @@
 
     /// <summary>Avisa a página de que os locais mudaram (para o aviso de "por guardar").</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Ícone de casa do alojamento (o mesmo desenho é usado no mapa, em plan-map.js).</summary>
+    private static readonly RenderFragment HouseIcon = @<svg class="house-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.2 2.5 11h2.7v9.3h5.3v-6h3v6h5.3V11h2.7z" fill="currentColor" /></svg>;
+
+    /// <summary>Filtro da lista e do mapa: todos, um dia das férias, ou os locais sem dia.</summary>
+    private readonly record struct DayFilter(bool All, DateOnly? Day)
+    {
+        public static DayFilter Everything => new(true, null);
+        public static DayFilter NoDay => new(false, null);
+        public static DayFilter On(DateOnly day) => new(false, day);
+    }
+
+    private DayFilter _filter = DayFilter.Everything;
+
+    private IEnumerable<PlanPlaceDto> ToVisit => Places.Where(p => !p.IsLodging);
+
+    /// <summary>
+    /// Se o local aparece com o filtro atual: num dia, os locais desse dia e o alojamento
+    /// dessa noite; em "Sem dia", os locais e alojamentos sem data.
+    /// </summary>
+    private bool Visible(PlanPlaceDto p) => _filter switch
+    {
+        { All: true } => true,
+        { Day: { } day } => p.IsLodging ? p.StaysOn(day) : p.Date == day,
+        _ => p.Date is null,
+    };
+
+    private static string ItemCss(PlanPlaceDto p) =>
+        p.IsLodging ? "place-item lodging" : p.Visited ? "place-item visited" : "place-item";
 
     private ElementReference _mapElement;
     private IJSObjectReference? _module;
@@ -167,8 +265,25 @@
         await _map.InvokeVoidAsync("setPlaces", MarkerData(), fit);
     }
 
-    private object[] MarkerData() =>
-        Places.Select(p => (object)new { name = p.Name, lat = p.Latitude, lng = p.Longitude, visited = p.Visited }).ToArray();
+    /// <summary>Marcadores dos locais visíveis com o filtro atual (o índice é a posição na lista completa).</summary>
+    private object[] MarkerData()
+    {
+        var numbers = PlanPlaceDto.Numbers(Places);
+        return Places
+            .Select((p, i) => (p, i))
+            .Where(x => Visible(x.p))
+            .Select(x => (object)new
+            {
+                index = x.i,
+                number = numbers[x.i],
+                name = x.p.Name,
+                lat = x.p.Latitude,
+                lng = x.p.Longitude,
+                visited = x.p.Visited,
+                lodging = x.p.IsLodging,
+            })
+            .ToArray();
+    }
 
     private string Signature() => JsonSerializer.Serialize(MarkerData());
 
@@ -177,7 +292,8 @@
     [JSInvokable]
     public async Task OnMapClick(double lat, double lng)
     {
-        Places.Add(new PlanPlaceDto { Name = $"Local {Places.Count + 1}", Latitude = lat, Longitude = lng });
+        var number = Places.Count(p => !p.IsLodging) + 1;
+        Places.Add(new PlanPlaceDto { Name = $"Local {number}", Latitude = lat, Longitude = lng, Date = FilterDate });
         await ChangedAsync();
     }
 
@@ -231,12 +347,54 @@
             ? result.Name[..VacationPlanValidator.ShortTextMaxLength]
             : result.Name;
 
-        Places.Add(new PlanPlaceDto { Name = name, Latitude = result.Lat, Longitude = result.Lng });
+        Places.Add(new PlanPlaceDto { Name = name, Latitude = result.Lat, Longitude = result.Lng, Date = FilterDate });
         _results = [];
         _query = "";
         await ChangedAsync();
         await RedrawIfChangedAsync(fit: false);
         await FocusAsync(Places.Count - 1);
+    }
+
+    // ---------- Filtro e alojamento ----------
+
+    /// <summary>Com um dia escolhido no filtro, os locais novos ficam nesse dia.</summary>
+    private DateOnly? FilterDate => _filter.All ? null : _filter.Day;
+
+    private async Task SetFilterAsync(DayFilter filter)
+    {
+        _filter = filter;
+        StateHasChanged();
+        await RedrawIfChangedAsync(fit: true);
+    }
+
+    private async Task ToggleLodgingAsync(PlanPlaceDto place)
+    {
+        place.IsLodging = !place.IsLodging;
+        place.Visited = false;
+        if (place.IsLodging)
+        {
+            // Estadia por omissão: do dia do local (ou do dia filtrado) até ao fim da viagem
+            place.Date ??= FilterDate ?? TripStart;
+            place.EndDate = TripEnd;
+        }
+        else
+        {
+            // Volta a ser um local a visitar: fica com o primeiro dia da estadia
+            place.EndDate = null;
+        }
+
+        await ChangedAsync();
+    }
+
+    /// <summary>Mudou o primeiro dia: o último nunca fica antes dele (e sem datas fica sem nenhuma).</summary>
+    private async Task StayStartChangedAsync(PlanPlaceDto place)
+    {
+        if (place.Date is not { } start)
+            place.EndDate = null;
+        else if (place.EndDate is not { } end || end < start)
+            place.EndDate = start;
+
+        await ChangedAsync();
     }
 
     // ---------- Lista ----------

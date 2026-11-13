@@ -80,10 +80,20 @@ public static class VacationPlanValidator
             errors[nameof(plan.Bookings)] = [.. errors.GetValueOrDefault(nameof(plan.Bookings)) ?? [], message];
         }
 
-        var outsidePlaces = plan.Places.Where(p => Outside(p.Date)).Select(p => Label(p.Name)).ToList();
+        var outsidePlaces = plan.Places.Where(p => Outside(p.Date) || Outside(p.EndDate)).Select(p => Label(p.Name)).ToList();
         if (outsidePlaces.Count > 0)
         {
             var message = $"O dia dos locais tem de estar entre {Format(tripStart)} e {Format(tripEnd)} ({string.Join(", ", outsidePlaces)}).";
+            errors[nameof(plan.Places)] = [.. errors.GetValueOrDefault(nameof(plan.Places)) ?? [], message];
+        }
+
+        var backwards = plan.Places
+            .Where(p => p.Date is { } from && p.EndDate is { } to && to < from)
+            .Select(p => Label(p.Name))
+            .ToList();
+        if (backwards.Count > 0)
+        {
+            var message = $"A saída do alojamento não pode ser antes da entrada ({string.Join(", ", backwards)}).";
             errors[nameof(plan.Places)] = [.. errors.GetValueOrDefault(nameof(plan.Places)) ?? [], message];
         }
 

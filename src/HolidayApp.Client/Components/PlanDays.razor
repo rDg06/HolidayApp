@@ -1,4 +1,4 @@
-@* Plano dia a dia: um cartão por dia, com as reservas e os locais desse dia. *@
+@* Plano dia a dia: um cartão por dia, com o alojamento, as reservas e os locais desse dia. *@
 
 <section class="card plan-section plan-wide" aria-labelledby="days-title">
     <div class="section-head">
@@ -14,6 +14,22 @@
                     <strong>@Pt.Long(d.Date)</strong>
                     <span class="muted small">Dia @(d.Date.DayNumber - TripStart.DayNumber + 1)</span>
                 </div>
+
+                @{ var stays = Places.Where(p => p.StaysOn(d.Date) && !string.IsNullOrWhiteSpace(p.Name)).ToList(); }
+                @if (stays.Count > 0)
+                {
+                    <ul class="plain-list day-items" aria-label="Alojamento neste dia">
+                        @foreach (var stay in stays)
+                        {
+                            <li class="day-stay" title="Alojamento">
+                                <span class="place-number small-pin lodging">
+                                    <svg class="house-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.2 2.5 11h2.7v9.3h5.3v-6h3v6h5.3V11h2.7z" fill="currentColor" /></svg>
+                                </span>
+                                <span class="day-item-name">@stay.Name</span>
+                            </li>
+                        }
+                    </ul>
+                }
 
                 @{ var dayBookings = BookingsOn(d.Date); }
                 @if (dayBookings.Count > 0)
@@ -70,7 +86,10 @@
 
     /// <summary>Locais marcados para este dia, com o número que têm no mapa.</summary>
     private List<(PlanPlaceDto Place, int Number)> PlacesOn(DateOnly date) =>
-        Places.Select((p, i) => (p, i + 1)).Where(x => x.p.Date == date).ToList();
+        Places.Zip(PlanPlaceDto.Numbers(Places))
+            .Where(x => !x.First.IsLodging && x.First.Date == date)
+            .Select(x => (x.First, x.Second ?? 0))
+            .ToList();
 
     private Task ChangedAsync() => OnChanged.InvokeAsync();
 }

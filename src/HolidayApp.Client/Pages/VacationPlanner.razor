@@ -59,9 +59,10 @@
             <section class="card plan-section plan-wide" aria-labelledby="map-title">
                 <div class="section-head">
                     <h2 id="map-title">Locais a visitar</h2>
-                    @if (_plan.Places.Count > 0)
+                    @{ var toVisit = _plan.Places.Where(p => !p.IsLodging).ToList(); }
+                    @if (toVisit.Count > 0)
                     {
-                        <span class="muted small">@_plan.Places.Count(p => p.Visited) de @_plan.Places.Count visitados</span>
+                        <span class="muted small">@toVisit.Count(p => p.Visited) de @toVisit.Count visitados</span>
                     }
                 </div>
                 <PlaceMap Places="_plan.Places"

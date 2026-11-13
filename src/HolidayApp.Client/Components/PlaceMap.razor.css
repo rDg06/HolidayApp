@@ -50,6 +50,45 @@
 .search-result:hover { background: var(--surface-2); }
 .search-result .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Filtro por dia */
+.day-filter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.chip:hover { background: var(--surface-2); }
+.chip.empty { color: var(--muted); }
+.chip-count { font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+.chip[aria-pressed="true"] {
+    background: var(--c-primary);
+    border-color: var(--c-primary);
+    color: var(--c-primary-text);
+}
+
+.chip[aria-pressed="true"] .chip-count { color: inherit; opacity: 0.8; }
+
 .place-list { gap: 8px; }
 .place-item { display: flex; gap: 8px; align-items: flex-start; }
 .place-fields { display: grid; gap: 6px; flex: 1; min-width: 0; }
@@ -58,6 +97,11 @@
 .place-row .check { gap: 6px; white-space: nowrap; }
 .place-item.visited .place-fields > .input { color: var(--muted); text-decoration: line-through; }
 .place-item.visited .place-number { background: var(--muted); }
+
+/* Alojamento */
+.lodging-toggle { color: var(--muted); }
+.lodging-toggle[aria-pressed="true"] { color: var(--c-lodging); }
+.inline-house { display: inline-block; vertical-align: -2px; color: var(--c-lodging); }
 
 @media (max-width: 900px) {
     .place-map { grid-template-columns: 1fr; }
