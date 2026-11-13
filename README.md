@@ -63,7 +63,9 @@ sem pedidos a CDNs nem ao Google Fonts.
   das reservas)
 - **Mapa dos locais a visitar**: marcar locais clicando no mapa ou procurando
   pelo nome, arrastar marcadores, escolher o dia da visita (aparece no plano dia
-  a dia) e marcar como visitado. Usa [Leaflet](https://leafletjs.com) e os mapas
+  a dia) e marcar como visitado. Filtro por dia no mapa e na lista, e
+  **alojamentos** (ícone de casa) com primeiro e último dia, para viagens por
+  várias cidades ou países: em cada dia aparece onde se dorme. Usa [Leaflet](https://leafletjs.com) e os mapas
   do [OpenStreetMap](https://www.openstreetmap.org), sem chave de API; a pesquisa
   e o centro inicial (destino) usam o Nominatim do OpenStreetMap, por isso esses
   textos são enviados a esse serviço

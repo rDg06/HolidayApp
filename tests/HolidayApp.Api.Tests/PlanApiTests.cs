@@ -137,6 +137,51 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Alojamentos_guardam_a_estadia_e_nao_contam_como_locais_a_visitar()
+    {
+        var ev = await CreateVacationAsync();
+        await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto
+        {
+            Places =
+            [
+                new PlanPlaceDto { Name = "Hotel Faro", IsLodging = true, Date = new DateOnly(2026, 8, 3), EndDate = new DateOnly(2026, 8, 8), Visited = true },
+                new PlanPlaceDto { Name = "Casa Lagos", IsLodging = true, Date = new DateOnly(2026, 8, 8) }, // sem fim: um só dia
+                new PlanPlaceDto { Name = "Praia", Date = new DateOnly(2026, 8, 4), EndDate = new DateOnly(2026, 8, 6), Visited = true },
+                new PlanPlaceDto { Name = "Farol" },
+            ],
+        });
+
+        var plan = await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan");
+        var summary = Assert.Single((await _client.GetFromJsonAsync<List<VacationSummaryDto>>("api/vacations"))!);
+
+        var (faro, lagos, praia) = (plan!.Places[0], plan.Places[1], plan.Places[2]);
+        Assert.Equal((new DateOnly(2026, 8, 3), new DateOnly(2026, 8, 8)), (faro.Date, faro.EndDate));
+        Assert.False(faro.Visited);
+        Assert.Equal(new DateOnly(2026, 8, 8), lagos.EndDate);
+        Assert.Null(praia.EndDate); // só o alojamento tem fim
+        Assert.True(faro.StaysOn(new DateOnly(2026, 8, 8)) && lagos.StaysOn(new DateOnly(2026, 8, 8))); // dia da mudança
+        Assert.Equal((2, 1), (summary.Places, summary.PlacesVisited));
+    }
+
+    [Fact]
+    public async Task Alojamento_com_saida_antes_da_entrada_ou_fora_das_ferias_e_recusado()
+    {
+        var ev = await CreateVacationAsync();
+
+        var backwards = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto
+        {
+            Places = [new PlanPlaceDto { Name = "Hotel", IsLodging = true, Date = new DateOnly(2026, 8, 6), EndDate = new DateOnly(2026, 8, 4) }],
+        });
+        var outside = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto
+        {
+            Places = [new PlanPlaceDto { Name = "Hotel", IsLodging = true, Date = new DateOnly(2026, 8, 6), EndDate = new DateOnly(2026, 8, 20) }],
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, backwards.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, outside.StatusCode);
+    }
+
+    [Fact]
     public async Task Feriado_nao_conta_como_dia_util()
     {
         // 11 a 15 de agosto de 2025: segunda a sexta, mas 15/08 (Assunção) é feriado → 4 dias úteis

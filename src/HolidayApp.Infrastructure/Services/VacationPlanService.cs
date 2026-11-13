@@ -53,8 +53,8 @@ internal sealed class VacationPlanService(
                 WorkdayCalculator.CountWorkdays(e.StartDate, e.EndDate, holidayDates),
                 plan.Destination,
                 plan.Bookings.Count,
-                plan.Places.Count,
-                plan.Places.Count(p => p.Visited),
+                plan.Places.Count(p => !p.IsLodging),
+                plan.Places.Count(p => !p.IsLodging && p.Visited),
                 plan.Tasks.Count,
                 plan.Tasks.Count(t => t.Done),
                 plan.Expenses.Sum(x => x.Planned ?? 0) + bookingsTotal,
@@ -169,9 +169,12 @@ internal sealed class VacationPlanService(
                 // 6 casas decimais ≈ 10 cm: chega e evita guardar ruído
                 Latitude = Math.Round(p.Latitude, 6),
                 Longitude = Math.Round(p.Longitude, 6),
+                // O alojamento tem entrada e saída (sem saída = um só dia) e não tem "visitado"
                 Date = p.Date,
+                EndDate = p.IsLodging && p.Date is not null ? p.EndDate ?? p.Date : null,
                 Notes = Clean(p.Notes),
-                Visited = p.Visited,
+                Visited = !p.IsLodging && p.Visited,
+                IsLodging = p.IsLodging,
             })
             .ToList(),
     };

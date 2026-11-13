@@ -113,4 +113,17 @@ public class VacationPlanValidatorTests
     {
         Assert.Equal(expected, PlanBookingDto.BudgetCategory(type));
     }
+
+    [Fact]
+    public void Alojamento_nao_tem_numero_e_os_outros_locais_seguem_a_ordem()
+    {
+        PlanPlaceDto[] places =
+        [
+            new() { Name = "Coliseu" },
+            new() { Name = "Hotel", IsLodging = true },
+            new() { Name = "Panteão" },
+        ];
+
+        Assert.Equal([1, null, 2], PlanPlaceDto.Numbers(places));
+    }
 }

@@ -70,11 +70,40 @@ public sealed class PlanPlaceDto
     public double Latitude { get; set; }
     public double Longitude { get; set; }
 
-    /// <summary>Dia em que se vai visitar (aparece no plano dia a dia).</summary>
+    /// <summary>
+    /// Dia em que se vai visitar (aparece no plano dia a dia). No alojamento é o
+    /// primeiro dia da estadia.
+    /// </summary>
     public DateOnly? Date { get; set; }
+
+    /// <summary>Só no alojamento: último dia da estadia (inclusive). Sem valor = só um dia.</summary>
+    public DateOnly? EndDate { get; set; }
 
     public string? Notes { get; set; }
     public bool Visited { get; set; }
+
+    /// <summary>Onde vamos ficar (hotel, casa…): ícone de casa, sem número nem "visitado".</summary>
+    public bool IsLodging { get; set; }
+
+    /// <summary>
+    /// Se é o alojamento nesse dia. No dia em que se muda de alojamento (ex.: Roma 1–3,
+    /// Paris 3–6) os dois contam.
+    /// </summary>
+    public bool StaysOn(DateOnly day) =>
+        IsLodging && Date is { } from && from <= day && day <= (EndDate ?? from);
+
+    /// <summary>
+    /// Número de cada local, igual na lista, no mapa e no plano dia a dia. Só os locais a
+    /// visitar são numerados (1, 2, 3…); o alojamento fica com <c>null</c>.
+    /// </summary>
+    public static int?[] Numbers(IReadOnlyList<PlanPlaceDto> places)
+    {
+        var numbers = new int?[places.Count];
+        var next = 1;
+        for (var i = 0; i < places.Count; i++)
+            numbers[i] = places[i].IsLodging ? null : next++;
+        return numbers;
+    }
 }
 
 public sealed class PlanBookingDto

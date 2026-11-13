@@ -28,3 +28,4 @@
 .day-place.visited .place-number { background: var(--muted); }
 .day-place.visited .day-item-name { color: var(--muted); text-decoration: line-through; }
 .place-number.small-pin { width: 20px; height: 20px; margin: 0; border-width: 1px; font-size: 0.7rem; cursor: default; }
+.small-pin .house-icon { width: 11px; height: 11px; }

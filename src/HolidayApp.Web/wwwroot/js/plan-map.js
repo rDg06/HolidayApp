@@ -44,6 +44,9 @@ function loadLeaflet() {
     return leafletLoading;
 }
 
+// Ícone de casa do alojamento (o mesmo desenho do PlaceMap.razor)
+const HOUSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 2.5 11h2.7v9.3h5.3v-6h3v6h5.3V11h2.7z" fill="currentColor"/></svg>';
+
 /** Texto seguro para popups (o nome é escrito pelo utilizador: nunca como HTML). */
 function textElement(text) {
     const el = document.createElement("strong");
@@ -66,7 +69,8 @@ export async function create(element, dotnet, places) {
     }).addTo(map);
 
     const layer = L.layerGroup().addTo(map);
-    let markers = [];
+    // Marcadores visíveis, pela posição do local na lista completa
+    let markers = new Map();
 
     map.on("click", (e) => dotnet.invokeMethodAsync("OnMapClick", e.latlng.lat, e.latlng.lng));
 
@@ -75,43 +79,54 @@ export async function create(element, dotnet, places) {
     resizeObserver.observe(element);
 
     const api = {
-        /** Redesenha os marcadores. `fit` ajusta o mapa para mostrar todos. */
+        /**
+         * Redesenha os marcadores (só os do filtro atual). Cada local traz `index` (posição
+         * na lista completa), `number` (null no alojamento) e `lodging`.
+         * `fit` ajusta o mapa para mostrar todos.
+         */
         setPlaces(list, fit) {
             layer.clearLayers();
-            markers = list.map((place, index) => {
+            markers = new Map(list.map((place) => {
+                const className = place.lodging ? "map-pin lodging" : place.visited ? "map-pin visited" : "map-pin";
                 const icon = L.divIcon({
-                    className: place.visited ? "map-pin visited" : "map-pin",
-                    html: `<span>${index + 1}</span>`,
-                    iconSize: [28, 28],
-                    iconAnchor: [14, 14],
+                    className,
+                    html: place.lodging ? `<span>${HOUSE_SVG}</span>` : `<span>${place.number}</span>`,
+                    iconSize: place.lodging ? [32, 32] : [28, 28],
+                    iconAnchor: place.lodging ? [16, 16] : [14, 14],
                     popupAnchor: [0, -14],
                 });
 
-                const marker = L.marker([place.lat, place.lng], { icon, draggable: true, title: place.name })
+                const marker = L.marker([place.lat, place.lng], {
+                    icon,
+                    draggable: true,
+                    title: place.name,
+                    zIndexOffset: place.lodging ? 1000 : 0, // a casa fica por cima dos outros marcadores
+                })
                     .bindPopup(textElement(place.name))
                     .addTo(layer);
 
                 marker.on("dragend", () => {
                     const pos = marker.getLatLng();
-                    dotnet.invokeMethodAsync("OnPlaceMoved", index, pos.lat, pos.lng);
+                    dotnet.invokeMethodAsync("OnPlaceMoved", place.index, pos.lat, pos.lng);
                 });
 
-                return marker;
-            });
+                return [place.index, marker];
+            }));
 
             if (fit) api.fitAll();
         },
 
         fitAll() {
-            if (markers.length === 1) {
-                map.setView(markers[0].getLatLng(), 14);
-            } else if (markers.length > 1) {
-                map.fitBounds(L.latLngBounds(markers.map((m) => m.getLatLng())), { padding: [32, 32] });
+            const all = [...markers.values()];
+            if (all.length === 1) {
+                map.setView(all[0].getLatLng(), 14);
+            } else if (all.length > 1) {
+                map.fitBounds(L.latLngBounds(all.map((m) => m.getLatLng())), { padding: [32, 32] });
             }
         },
 
         focus(index) {
-            const marker = markers[index];
+            const marker = markers.get(index);
             if (!marker) return;
             map.setView(marker.getLatLng(), Math.max(map.getZoom(), 15));
             marker.openPopup();
