@@ -1,0 +1,163 @@
+@* Um local da lista do mapa: nome, dia (ou estadia, no alojamento), visitado, notas e ligação.
+   Os locais a visitar têm uma pega para arrastar e mudar a ordem (o arrastar é feito em plan-map.js). *@
+
+<li class="@Css" data-index="@Index" data-visit="@(Place.IsLodging ? null : "true")">
+    @if (!Place.IsLodging)
+    {
+        <button type="button" class="drag-handle" title="Arrasta para mudar a ordem (ou usa as setas ↑ ↓ do teclado)"
+                aria-label="Mudar a ordem de @Place.Name: arrasta, ou usa as setas para cima e para baixo"
+                aria-roledescription="pega para arrastar">
+            <svg viewBox="0 0 10 16" aria-hidden="true" focusable="false"><circle cx="2.5" cy="3" r="1.5" /><circle cx="7.5" cy="3" r="1.5" /><circle cx="2.5" cy="8" r="1.5" /><circle cx="7.5" cy="8" r="1.5" /><circle cx="2.5" cy="13" r="1.5" /><circle cx="7.5" cy="13" r="1.5" /></svg>
+        </button>
+    }
+    else
+    {
+        <span class="drag-spacer" aria-hidden="true"></span>
+    }
+    <button type="button" class="@(Place.IsLodging ? "place-number lodging" : "place-number")" title="Ver no mapa"
+            aria-label="Ver @Place.Name no mapa" @onclick="OnFocus">
+        @if (Place.IsLodging) { <HouseIcon /> } else { @Number }
+    </button>
+
+    <div class="place-fields">
+        <div class="place-row">
+            <input class="input" aria-label="Nome do local" maxlength="@VacationPlanValidator.ShortTextMaxLength"
+                   @bind="Place.Name" @bind:after="ChangedAsync" />
+            <button type="button" class="@(HasDetails ? "btn icon ghost small details-toggle has-details" : "btn icon ghost small details-toggle")"
+                    title="Notas e ligação" aria-label="Notas e ligação de @Place.Name" aria-expanded="@(_open ? "true" : "false")"
+                    @onclick="() => _open = !_open">✎</button>
+        </div>
+
+        <div class="place-row">
+            @if (Place.IsLodging)
+            {
+                @* Estadia: do primeiro ao último dia (podem ser vários alojamentos, um por cidade ou país) *@
+                <select class="input" aria-label="Primeiro dia no alojamento" title="Primeiro dia"
+                        @bind="Place.Date" @bind:format="yyyy-MM-dd" @bind:after="StayStartChangedAsync">
+                    <option value="">Sem datas</option>
+                    @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
+                    {
+                        <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                    }
+                </select>
+                @if (Place.Date is { } stayStart)
+                {
+                    <span class="small muted">até</span>
+                    <select class="input" aria-label="Último dia no alojamento" title="Último dia"
+                            @bind="Place.EndDate" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
+                        @for (var day = stayStart; day <= TripEnd; day = day.AddDays(1))
+                        {
+                            <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                        }
+                    </select>
+                }
+            }
+            else
+            {
+                @* Só os dias das férias podem ser escolhidos *@
+                <select class="input" aria-label="Dia da visita" @bind="Place.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
+                    <option value="">Sem dia</option>
+                    @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
+                    {
+                        <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                    }
+                </select>
+                <label class="check small" title="Já visitei">
+                    <input type="checkbox" @bind="Place.Visited" @bind:after="ChangedAsync" />
+                    <span>Visitado</span>
+                </label>
+            }
+            <button type="button" class="btn icon ghost small lodging-toggle" aria-pressed="@(Place.IsLodging ? "true" : "false")"
+                    title="@(Place.IsLodging ? "Deixar de ser o alojamento" : "Marcar como alojamento (onde vamos ficar)")"
+                    aria-label="Alojamento: @Place.Name" @onclick="ToggleLodgingAsync"><HouseIcon /></button>
+            <button type="button" class="btn icon ghost small" aria-label="Remover @Place.Name" @onclick="OnRemove">✕</button>
+        </div>
+
+        @if (_open)
+        {
+            <div class="place-details">
+                <textarea class="input" rows="2" placeholder="Horários, preço da entrada, dicas…" aria-label="Notas de @Place.Name"
+                          maxlength="@VacationPlanValidator.NotesMaxLength" @bind="Place.Notes" @bind:after="ChangedAsync"></textarea>
+                <div class="place-row">
+                    <input class="input" type="url" placeholder="https://… (site, bilhetes, reserva)" aria-label="Ligação de @Place.Name"
+                           maxlength="@VacationPlanValidator.UrlMaxLength" @bind="Place.Url" @bind:after="ChangedAsync" />
+                    @if (VacationPlanValidator.IsSafeUrl(Place.Url))
+                    {
+                        <a class="btn small" href="@Place.Url!.Trim()" target="_blank" rel="noopener noreferrer">Abrir</a>
+                    }
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(Place.Notes))
+        {
+            <p class="place-notes small muted">@Place.Notes</p>
+        }
+
+        @if (KmFromPrevious is { } km)
+        {
+            <span class="leg small muted">↳ @Pt.Km(km) desde @PreviousName</span>
+        }
+    </div>
+</li>
+
+@code {
+    [Parameter, EditorRequired] public PlanPlaceDto Place { get; set; } = default!;
+
+    /// <summary>Número no mapa (os alojamentos não têm).</summary>
+    [Parameter] public int? Number { get; set; }
+
+    [Parameter] public DateOnly TripStart { get; set; }
+    [Parameter] public DateOnly TripEnd { get; set; }
+
+    /// <summary>Dia escolhido no filtro: primeiro dia por omissão ao passar a alojamento.</summary>
+    [Parameter] public DateOnly? FilterDay { get; set; }
+
+    /// <summary>No percurso do dia: distância (km, em linha reta) desde a paragem anterior.</summary>
+    [Parameter] public double? KmFromPrevious { get; set; }
+    [Parameter] public string? PreviousName { get; set; }
+
+    /// <summary>Posição na lista completa (usada pelo arrastar, em plan-map.js).</summary>
+    [Parameter] public int Index { get; set; }
+
+    [Parameter] public EventCallback OnFocus { get; set; }
+    [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private bool _open;
+
+    private bool HasDetails => !string.IsNullOrWhiteSpace(Place.Notes) || !string.IsNullOrWhiteSpace(Place.Url);
+
+    private string Css => Place.IsLodging ? "place-item lodging" : Place.Visited ? "place-item visited" : "place-item";
+
+    private async Task ToggleLodgingAsync()
+    {
+        Place.IsLodging = !Place.IsLodging;
+        Place.Visited = false;
+        if (Place.IsLodging)
+        {
+            // Estadia por omissão: do dia do local (ou do dia filtrado) até ao fim da viagem
+            Place.Date ??= FilterDay ?? TripStart;
+            Place.EndDate = TripEnd;
+        }
+        else
+        {
+            // Volta a ser um local a visitar: fica com o primeiro dia da estadia
+            Place.EndDate = null;
+        }
+
+        await ChangedAsync();
+    }
+
+    /// <summary>Mudou o primeiro dia: o último nunca fica antes dele (e sem datas fica sem nenhuma).</summary>
+    private async Task StayStartChangedAsync()
+    {
+        if (Place.Date is not { } start)
+            Place.EndDate = null;
+        else if (Place.EndDate is not { } end || end < start)
+            Place.EndDate = start;
+
+        await ChangedAsync();
+    }
+
+    private Task ChangedAsync() => OnChanged.InvokeAsync();
+}

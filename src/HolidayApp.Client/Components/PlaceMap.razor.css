@@ -89,18 +89,14 @@
 
 .chip[aria-pressed="true"] .chip-count { color: inherit; opacity: 0.8; }
 
-.place-list { gap: 8px; }
-.place-item { display: flex; gap: 8px; align-items: flex-start; }
-.place-fields { display: grid; gap: 6px; flex: 1; min-width: 0; }
-.place-row { display: flex; align-items: center; gap: 8px; }
-.place-row select { flex: 1; min-width: 0; }
-.place-row .check { gap: 6px; white-space: nowrap; }
-.place-item.visited .place-fields > .input { color: var(--muted); text-decoration: line-through; }
-.place-item.visited .place-number { background: var(--muted); }
+.place-list { gap: 10px; }
 
-/* Alojamento */
-.lodging-toggle { color: var(--muted); }
-.lodging-toggle[aria-pressed="true"] { color: var(--c-lodging); }
+/* Dia de hoje (durante a viagem) */
+.chip.today:not([aria-pressed="true"]) { border-color: var(--c-primary); color: var(--c-primary); }
+
+.route-total { margin: 0; }
+.lodging-search { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; color: var(--c-lodging); }
+.lodging-search strong { color: var(--text); }
 .inline-house { display: inline-block; vertical-align: -2px; color: var(--c-lodging); }
 
 @media (max-width: 900px) {
@@ -108,3 +104,6 @@
     .map-canvas { height: 320px; }
     .place-side { max-height: none; overflow: visible; }
 }
+
+/* Enquanto se arrasta um local: sem seleção de texto */
+.place-map-root.is-sorting { user-select: none; cursor: grabbing; }

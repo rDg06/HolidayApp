@@ -1,0 +1,191 @@
+using HolidayApp.Client.Components;
+
+namespace HolidayApp.Client.Tests;
+
+/// <summary>Mapa dos locais: filtro por dia, alojamentos, ordem e percurso (o mapa em si é JavaScript e fica de fora).</summary>
+public sealed class PlaceMapTests : BunitContext
+{
+    private static readonly DateOnly TripStart = new(2026, 11, 2);
+    private static readonly DateOnly TripEnd = new(2026, 11, 6);
+    private static DateOnly Nov(int day) => new(2026, 11, day);
+
+    public PlaceMapTests()
+    {
+        // O Leaflet não corre nos testes: as chamadas ao JavaScript devolvem valores vazios
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        JSInterop.SetupModule("./js/plan-map.js").Mode = JSRuntimeMode.Loose;
+    }
+
+    private IRenderedComponent<PlaceMap> RenderMap(List<PlanPlaceDto> places, DateOnly? today = null) =>
+        Render<PlaceMap>(p => p
+            .Add(x => x.Places, places)
+            .Add(x => x.TripStart, TripStart)
+            .Add(x => x.TripEnd, TripEnd)
+            .Add(x => x.Today, today ?? new DateOnly(2026, 1, 1)));
+
+    private static List<string> Names(IRenderedComponent<PlaceMap> cut) =>
+        cut.FindAll("input[aria-label='Nome do local']").Select(i => i.GetAttribute("value") ?? "").ToList();
+
+    private static void ClickChip(IRenderedComponent<PlaceMap> cut, string text) =>
+        cut.FindAll(".chip").First(c => c.TextContent.Contains(text)).Click();
+
+    private static List<PlanPlaceDto> Trip() =>
+    [
+        new() { Name = "Hotel Roma", IsLodging = true, Date = Nov(2), EndDate = Nov(4), Latitude = 41.9, Longitude = 12.49 },
+        new() { Name = "Coliseu", Date = Nov(3), Latitude = 41.8902, Longitude = 12.4922 },
+        new() { Name = "Panteão", Date = Nov(3), Latitude = 41.8986, Longitude = 12.4769 },
+        new() { Name = "Hotel Paris", IsLodging = true, Date = Nov(4), EndDate = Nov(6), Latitude = 48.86, Longitude = 2.35 },
+        new() { Name = "Torre Eiffel", Date = Nov(5), Latitude = 48.8584, Longitude = 2.2945 },
+        new() { Name = "Louvre" },
+    ];
+
+    [Fact]
+    public void Todos_mostra_tudo()
+    {
+        var cut = RenderMap(Trip());
+
+        Assert.Equal(["Hotel Roma", "Coliseu", "Panteão", "Hotel Paris", "Torre Eiffel", "Louvre"], Names(cut));
+    }
+
+    [Fact]
+    public void Num_dia_mostra_os_locais_desse_dia_e_o_alojamento_dessa_noite()
+    {
+        var cut = RenderMap(Trip());
+
+        ClickChip(cut, "ter, 3 nov");
+        Assert.Equal(["Hotel Roma", "Coliseu", "Panteão"], Names(cut));
+
+        // Dia da mudança: os dois alojamentos
+        ClickChip(cut, "qua, 4 nov");
+        Assert.Equal(["Hotel Roma", "Hotel Paris"], Names(cut));
+
+        ClickChip(cut, "Sem dia");
+        Assert.Equal(["Louvre"], Names(cut));
+    }
+
+    [Fact]
+    public void Durante_a_viagem_abre_no_dia_de_hoje()
+    {
+        var cut = RenderMap(Trip(), today: Nov(5));
+
+        Assert.Equal(["Hotel Paris", "Torre Eiffel"], Names(cut));
+        var today = cut.Find(".chip[aria-pressed='true']");
+        Assert.Contains("Hoje", today.TextContent);
+    }
+
+    [Fact]
+    public void Percurso_do_dia_sai_do_alojamento_e_mostra_as_distancias()
+    {
+        var cut = RenderMap(Trip());
+
+        ClickChip(cut, "ter, 3 nov");
+
+        Assert.Contains("Percurso do dia", cut.Find(".route-total").TextContent);
+        var legs = cut.FindAll(".leg").Select(l => l.TextContent).ToList();
+        Assert.Equal(2, legs.Count);
+        Assert.Contains("desde Hotel Roma", legs[0]);
+        Assert.Contains("desde Coliseu", legs[1]);
+    }
+
+    [Fact]
+    public async Task Arrastar_muda_a_ordem_e_os_numeros()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+        ClickChip(cut, "ter, 3 nov");
+
+        // Coliseu (posição 1) largado depois do Panteão (posição 2)
+        await cut.InvokeAsync(() => cut.Instance.OnReorder(1, 2, after: true));
+
+        Assert.Equal(["Hotel Roma", "Panteão", "Coliseu"], Names(cut));
+        Assert.Equal("Panteão", places[1].Name);
+        Assert.Equal("1", cut.FindAll(".place-item")[1].QuerySelector(".place-number")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Arrastar_para_antes_de_um_local_de_outra_posicao_da_lista()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+
+        // Louvre (último) largado antes do Coliseu
+        await cut.InvokeAsync(() => cut.Instance.OnReorder(5, 1, after: false));
+
+        Assert.Equal(["Hotel Roma", "Louvre", "Coliseu", "Panteão", "Hotel Paris", "Torre Eiffel"], places.Select(p => p.Name));
+    }
+
+    [Fact]
+    public async Task Setas_do_teclado_na_pega_trocam_com_o_vizinho_a_vista()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+        ClickChip(cut, "ter, 3 nov");
+
+        var moved = await cut.InvokeAsync(() => cut.Instance.OnReorderStep(1, +1));
+        var stuck = await cut.InvokeAsync(() => cut.Instance.OnReorderStep(moved, +1)); // já é o último do dia
+
+        Assert.Equal(2, moved);
+        Assert.Equal(2, stuck);
+        Assert.Equal(["Hotel Roma", "Panteão", "Coliseu"], Names(cut));
+    }
+
+    [Fact]
+    public void So_os_locais_a_visitar_tem_pega_para_arrastar()
+    {
+        var cut = RenderMap(Trip());
+
+        Assert.Equal(4, cut.FindAll(".drag-handle").Count);
+        Assert.Empty(cut.FindAll("button[aria-label^='Subir']"));
+    }
+
+    [Fact]
+    public void Passar_a_alojamento_fica_do_dia_do_local_ate_ao_fim_da_viagem()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+
+        cut.Find("button[aria-label='Alojamento: Coliseu']").Click();
+
+        var coliseu = places[1];
+        Assert.True(coliseu.IsLodging);
+        Assert.Equal((Nov(3), TripEnd), (coliseu.Date, coliseu.EndDate));
+    }
+
+    [Fact]
+    public void Primeiro_dia_depois_do_ultimo_empurra_o_ultimo()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+
+        cut.FindAll("select[aria-label='Primeiro dia no alojamento']")[0].Change("2026-11-05");
+
+        Assert.Equal((Nov(5), Nov(5)), (places[0].Date, places[0].EndDate));
+    }
+
+    [Fact]
+    public async Task Clicar_no_mapa_com_um_dia_escolhido_junta_o_local_nesse_dia()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+        ClickChip(cut, "sex, 6 nov");
+
+        await cut.InvokeAsync(() => cut.Instance.OnMapClick(48.85, 2.34));
+
+        Assert.Equal(Nov(6), places[^1].Date);
+        Assert.Equal("Local 5", places[^1].Name); // os alojamentos não contam para o número
+    }
+
+    [Fact]
+    public void Notas_e_ligacao_abrem_ao_carregar_no_lapis()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+
+        cut.Find("button[aria-label='Notas e ligação de Louvre']").Click();
+        cut.Find("textarea[aria-label='Notas de Louvre']").Change("Fecha à terça");
+        cut.Find("input[aria-label='Ligação de Louvre']").Change("https://www.louvre.fr");
+
+        Assert.Equal("Fecha à terça", places[5].Notes);
+        Assert.Equal("https://www.louvre.fr", cut.Find("a[href='https://www.louvre.fr']").GetAttribute("href"));
+    }
+}

@@ -9,9 +9,9 @@
         @foreach (var day in Days)
         {
             var d = day;
-            <li class="@(WorkdayCalculator.IsWeekend(d.Date) ? "day-card weekend" : "day-card")">
+            <li class="@DayCss(d.Date)" aria-current="@(d.Date == Today ? "date" : null)">
                 <div class="day-date">
-                    <strong>@Pt.Long(d.Date)</strong>
+                    <strong>@(d.Date == Today ? $"Hoje · {Pt.Long(d.Date)}" : Pt.Long(d.Date))</strong>
                     <span class="muted small">Dia @(d.Date.DayNumber - TripStart.DayNumber + 1)</span>
                 </div>
 
@@ -23,7 +23,7 @@
                         {
                             <li class="day-stay" title="Alojamento">
                                 <span class="place-number small-pin lodging">
-                                    <svg class="house-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.2 2.5 11h2.7v9.3h5.3v-6h3v6h5.3V11h2.7z" fill="currentColor" /></svg>
+                                    <HouseIcon />
                                 </span>
                                 <span class="day-item-name">@stay.Name</span>
                             </li>
@@ -79,6 +79,12 @@
     [Parameter, EditorRequired] public List<PlanPlaceDto> Places { get; set; } = [];
     [Parameter] public DateOnly TripStart { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Dia de hoje (pode ser trocado nos testes): durante a viagem, o cartão fica destacado.</summary>
+    [Parameter] public DateOnly Today { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+
+    private string DayCss(DateOnly date) =>
+        "day-card" + (WorkdayCalculator.IsWeekend(date) ? " weekend" : "") + (date == Today ? " today" : "");
 
     /// <summary>Reservas marcadas para este dia (as que ainda não têm nome ficam de fora).</summary>
     private List<PlanBookingDto> BookingsOn(DateOnly date) =>

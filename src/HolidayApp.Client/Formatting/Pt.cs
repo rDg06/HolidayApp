@@ -78,6 +78,14 @@ public static class Pt
             .Replace(',', ' ')
             .Replace('.', ',') + " €";
 
+    /// <summary>Distância: "850 m" abaixo de 1 km, depois "1,2 km" (ou "35 km" a partir de 10 km).</summary>
+    public static string Km(double km) => km switch
+    {
+        < 1 => $"{Math.Round(km * 1000 / 10) * 10:0} m",
+        < 10 => km.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',') + " km",
+        _ => $"{Math.Round(km):0} km",
+    };
+
     /// <summary>Sufixo CSS para cada tipo (ev-ferias, ev-pessoal, ev-outro).</summary>
     public static string Css(EventType type) => "ev-" + type.ToString().ToLowerInvariant();
 }
