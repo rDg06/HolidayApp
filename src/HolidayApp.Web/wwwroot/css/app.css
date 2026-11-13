@@ -275,6 +275,9 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 /* Alojamento: casa em vez de número */
 .place-number.lodging, .map-pin.lodging { background: var(--c-lodging); color: #fff; }
 .map-pin.lodging > span { display: grid; place-items: center; height: 100%; }
+/* Linha do percurso do dia (desenhada pelo Leaflet) */
+.leaflet-overlay-pane .route-line { stroke: var(--c-primary); stroke-opacity: 0.85; fill: none; }
+
 .house-icon, .map-pin svg { display: block; width: 15px; height: 15px; }
 
 .visually-hidden {
@@ -285,6 +288,21 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+
+/* ---------- Sem ligação (modo offline) ---------- */
+
+#offline-banner {
+    position: sticky;
+    top: 0;
+    z-index: 1001;
+    padding: 8px 16px;
+    background: #fff4d6;
+    color: #1c1b18;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+#offline-banner[hidden] { display: none; }
 
 /* ---------- Erro do Blazor ---------- */
 

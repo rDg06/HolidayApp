@@ -1,0 +1,56 @@
+/* Um local da lista do mapa */
+.place-item { display: flex; gap: 8px; align-items: flex-start; }
+.place-fields { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.place-row { display: flex; align-items: center; gap: 6px; }
+.place-row > .input { flex: 1; min-width: 0; }
+.place-row .check { gap: 6px; white-space: nowrap; }
+.place-item.visited .place-row:first-child > .input { color: var(--muted); text-decoration: line-through; }
+.place-item.visited .place-number { background: var(--muted); }
+
+.place-details { display: grid; gap: 6px; }
+.place-notes { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.leg { padding-left: 2px; }
+
+.details-toggle { color: var(--muted); }
+.details-toggle.has-details { color: var(--c-primary); }
+.btn.icon.small:disabled { opacity: 0.3; }
+
+/* Alojamento */
+.lodging-toggle { color: var(--muted); }
+.lodging-toggle[aria-pressed="true"] { color: var(--c-lodging); }
+
+/* Pega para arrastar (o arrastar em si está em plan-map.js) */
+.drag-handle {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 18px;
+    height: 28px;
+    margin-top: 5px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    cursor: grab;
+    touch-action: none; /* no telemóvel, arrastar a pega não faz scroll à página */
+}
+
+.drag-handle svg { width: 10px; height: 16px; fill: currentColor; }
+.drag-handle:hover { background: var(--surface-2); color: var(--text); }
+.drag-spacer { flex: none; width: 18px; }
+
+.place-item.dragging {
+    position: relative;
+    z-index: 5;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+    opacity: 0.95;
+}
+
+.place-item.dragging .drag-handle { cursor: grabbing; }
+
+/* Onde o local vai ficar ao largar */
+.place-item.drop-before { box-shadow: inset 0 3px 0 -1px var(--c-primary); }
+.place-item.drop-after { box-shadow: inset 0 -3px 0 -1px var(--c-primary); }

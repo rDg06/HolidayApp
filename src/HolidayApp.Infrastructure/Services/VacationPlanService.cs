@@ -173,6 +173,7 @@ internal sealed class VacationPlanService(
                 Date = p.Date,
                 EndDate = p.IsLodging && p.Date is not null ? p.EndDate ?? p.Date : null,
                 Notes = Clean(p.Notes),
+                Url = Clean(p.Url),
                 Visited = !p.IsLodging && p.Visited,
                 IsLodging = p.IsLodging,
             })

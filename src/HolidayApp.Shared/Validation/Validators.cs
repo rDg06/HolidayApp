@@ -195,6 +195,8 @@ public static class VacationPlanValidator
                 Add(nameof(plan.Places), $"O nome do local não pode ter mais de {ShortTextMaxLength} caracteres.");
             if (place.Notes is { Length: > NotesMaxLength })
                 Add(nameof(plan.Places), $"As notas do local não podem ter mais de {NotesMaxLength} caracteres.");
+            if (!string.IsNullOrWhiteSpace(place.Url) && !IsSafeUrl(place.Url))
+                Add(nameof(plan.Places), "A ligação do local tem de começar por http:// ou https://.");
             if (!double.IsFinite(place.Latitude) || place.Latitude is < -90 or > 90
                 || !double.IsFinite(place.Longitude) || place.Longitude is < -180 or > 180)
                 Add(nameof(plan.Places), "Coordenadas do local inválidas.");

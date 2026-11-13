@@ -44,8 +44,15 @@
                             <a class="btn small" href="@b.Url!.Trim()" target="_blank" rel="noopener noreferrer">Abrir</a>
                         }
                     </div>
-                    <input class="input booking-notes" placeholder="Notas" aria-label="Notas"
-                           maxlength="@VacationPlanValidator.NotesMaxLength" @bind="b.Notes" @bind:after="ChangedAsync" />
+                    <div class="notes-field">
+                        <input class="input booking-notes" placeholder="Notas" aria-label="Notas"
+                               maxlength="@VacationPlanValidator.NotesMaxLength" @bind="b.Notes" @bind:after="ChangedAsync" />
+                        @if (CanPutOnMap(b))
+                        {
+                            <button type="button" class="btn small put-on-map" title="Procurar o alojamento e marcá-lo no mapa"
+                                    @onclick="() => OnPutOnMap.InvokeAsync(b)"><HouseIcon /> Pôr no mapa</button>
+                        }
+                    </div>
                     <button type="button" class="btn icon ghost" aria-label="Remover reserva" @onclick="() => RemoveAsync(b)">✕</button>
                 </div>
             }
@@ -60,6 +67,19 @@
 
     /// <summary>Avisa a página de que algo mudou (aviso de "por guardar", orçamento e plano).</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Locais do mapa: para saber se o alojamento da reserva já lá está.</summary>
+    [Parameter] public List<PlanPlaceDto> Places { get; set; } = [];
+
+    /// <summary>"Pôr no mapa" numa reserva de alojamento.</summary>
+    [Parameter] public EventCallback<PlanBookingDto> OnPutOnMap { get; set; }
+
+    /// <summary>Reserva de alojamento com nome que ainda não está no mapa como alojamento.</summary>
+    private bool CanPutOnMap(PlanBookingDto b) =>
+        OnPutOnMap.HasDelegate
+        && b.Type == BookingType.Alojamento
+        && !string.IsNullOrWhiteSpace(b.Name)
+        && !Places.Any(p => p.IsLodging && string.Equals(p.Name.Trim(), b.Name.Trim(), StringComparison.OrdinalIgnoreCase));
 
     private bool IsOutsideTrip(DateOnly? date) => date is { } d && (d < TripStart || d > TripEnd);
 

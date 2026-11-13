@@ -79,7 +79,12 @@ public sealed class PlanPlaceDto
     /// <summary>Só no alojamento: último dia da estadia (inclusive). Sem valor = só um dia.</summary>
     public DateOnly? EndDate { get; set; }
 
+    /// <summary>Horários, preço da entrada, dicas…</summary>
     public string? Notes { get; set; }
+
+    /// <summary>Ligação (site oficial, bilhetes, reserva do alojamento…).</summary>
+    public string? Url { get; set; }
+
     public bool Visited { get; set; }
 
     /// <summary>Onde vamos ficar (hotel, casa…): ícone de casa, sem número nem "visitado".</summary>

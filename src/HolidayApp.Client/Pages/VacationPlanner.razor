@@ -27,7 +27,13 @@
         <header class="plan-header">
             <div class="plan-title">
                 <h1>@_event.Title</h1>
-                <p class="muted">@Pt.Range(_event.StartDate, _event.EndDate) · @Pt.Days(_days.Count)</p>
+                <p class="muted">
+                    @Pt.Range(_event.StartDate, _event.EndDate) · @Pt.Days(_days.Count)
+                    @if (_today >= _event.StartDate && _today <= _event.EndDate)
+                    {
+                        <span class="tag travelling">Em viagem · dia @(_today.DayNumber - _event.StartDate.DayNumber + 1)</span>
+                    }
+                </p>
             </div>
             <div class="plan-save">
                 @{ var dirty = IsDirty; }
@@ -65,14 +71,16 @@
                         <span class="muted small">@toVisit.Count(p => p.Visited) de @toVisit.Count visitados</span>
                     }
                 </div>
-                <PlaceMap Places="_plan.Places"
+                <PlaceMap @ref="_placeMap"
+                          Places="_plan.Places"
                           TripStart="_event.StartDate"
                           TripEnd="_event.EndDate"
                           Destination="@_plan.Destination"
                           OnChanged="StateHasChanged" />
             </section>
 
-            <PlanBookings Bookings="_plan.Bookings" TripStart="_event.StartDate" TripEnd="_event.EndDate" OnChanged="StateHasChanged" />
+            <PlanBookings Bookings="_plan.Bookings" Places="_plan.Places" TripStart="_event.StartDate" TripEnd="_event.EndDate"
+                          OnChanged="StateHasChanged" OnPutOnMap="PutLodgingOnMapAsync" />
             <PlanTasks Tasks="_plan.Tasks" OnChanged="StateHasChanged" />
             <PlanBudget Expenses="_plan.Expenses" Bookings="_plan.Bookings" OnChanged="StateHasChanged" />
 
@@ -101,6 +109,8 @@
 
     private CalendarEventDto? _event;
     private VacationPlanDto? _plan;
+    private PlaceMap? _placeMap;
+    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
     private List<PlanDayDto> _days = [];
     private string? _loadError;
     private List<string> _errors = [];
@@ -206,5 +216,12 @@
     {
         if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Tens alterações por guardar. Sair sem guardar?"))
             context.PreventNavigation();
+    }
+
+    /// <summary>Reserva de alojamento → procura no mapa e marca como alojamento a partir do dia da reserva.</summary>
+    private async Task PutLodgingOnMapAsync(PlanBookingDto booking)
+    {
+        if (_placeMap is not null)
+            await _placeMap.FindLodgingAsync(booking.Name, booking.Date);
     }
 }

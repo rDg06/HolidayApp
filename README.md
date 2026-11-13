@@ -65,11 +65,19 @@ sem pedidos a CDNs nem ao Google Fonts.
   pelo nome, arrastar marcadores, escolher o dia da visita (aparece no plano dia
   a dia) e marcar como visitado. Filtro por dia no mapa e na lista, e
   **alojamentos** (ícone de casa) com primeiro e último dia, para viagens por
-  várias cidades ou países: em cada dia aparece onde se dorme. Usa [Leaflet](https://leafletjs.com) e os mapas
+  várias cidades ou países: em cada dia aparece onde se dorme. Num dia, o mapa
+  mostra o **percurso** (alojamento → locais pela ordem da lista → novo
+  alojamento) com as distâncias em linha reta; as setas ↑ ↓ mudam a ordem.
+  Cada local pode ter notas e uma ligação. As reservas de alojamento têm
+  "Pôr no mapa". Durante a viagem, o mapa e o plano abrem no dia de hoje. Usa [Leaflet](https://leafletjs.com) e os mapas
   do [OpenStreetMap](https://www.openstreetmap.org), sem chave de API; a pesquisa
   e o centro inicial (destino) usam o Nominatim do OpenStreetMap, por isso esses
   textos são enviados a esse serviço
 - Modo claro/escuro automático e layout adaptado a telemóvel
+- **Instalável e sem internet** (PWA): no telemóvel, "Adicionar ao ecrã
+  principal". Sem ligação, abre a última versão vista neste aparelho (só
+  leitura: gravar precisa de internet; os mapas do OpenStreetMap não ficam
+  guardados)
 
 ## Arquitetura
 
@@ -85,6 +93,7 @@ src/
 tests/
   HolidayApp.Domain.Tests/    Testes xUnit das regras de calendário e da validação
   HolidayApp.Api.Tests/       Testes de integração à API (WebApplicationFactory + SQLite)
+  HolidayApp.Client.Tests/    Testes da interface (bUnit): mapa, filtro, alojamentos, reservas
 ```
 
 Os estilos globais (cores, botões, campos, cartões) estão em

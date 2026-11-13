@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <meta name="theme-color" content="#0f766e" />
     <link rel="stylesheet" href="@Assets["css/app.css"]" />
     <link rel="stylesheet" href="@Assets["HolidayApp.Web.styles.css"]" />
     <ImportMap />
@@ -13,6 +16,10 @@
 </head>
 
 <body>
+    <div id="offline-banner" role="status" hidden>
+        Sem ligação à internet: estás a ver a última versão guardada neste aparelho. As alterações só se guardam com ligação.
+    </div>
+
     <Routes @rendermode="ClientOnly" />
 
     <div id="blazor-error-ui">
@@ -22,6 +29,7 @@
     </div>
 
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["js/pwa.js"]"></script>
 </body>
 
 </html>
