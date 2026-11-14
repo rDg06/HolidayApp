@@ -54,8 +54,10 @@ function textElement(text) {
 /**
  * Cria o mapa dentro de `element`. `dotnet` recebe os cliques no mapa
  * (OnMapClick) e os marcadores arrastados (OnPlaceMoved).
+ * Com `options.readOnly` (página de partilha/PDF) não há cliques nem arrastar.
  */
-export async function create(element, dotnet, places, route) {
+export async function create(element, dotnet, places, route, options) {
+    const readOnly = !!options?.readOnly;
     await loadLeaflet();
     const L = window.L;
 
@@ -70,7 +72,9 @@ export async function create(element, dotnet, places, route) {
     // Marcadores visíveis, pela posição do local na lista completa
     let markers = new Map();
 
-    map.on("click", (e) => dotnet.invokeMethodAsync("OnMapClick", e.latlng.lat, e.latlng.lng));
+    if (!readOnly) {
+        map.on("click", (e) => dotnet.invokeMethodAsync("OnMapClick", e.latlng.lat, e.latlng.lng));
+    }
 
     // O mapa precisa de saber quando o tamanho do cartão muda (ex.: rodar o telemóvel)
     const resizeObserver = new ResizeObserver(() => map.invalidateSize());
@@ -109,14 +113,14 @@ export async function create(element, dotnet, places, route) {
 
                 const marker = L.marker([place.lat, place.lng], {
                     icon,
-                    draggable: true,
+                    draggable: !readOnly,
                     title: place.icon ? `${place.label}: ${place.name}` : place.name,
                     zIndexOffset: place.front ? 1000 : 0, // a casa fica por cima dos outros marcadores
                 })
                     .bindPopup(textElement(place.name))
                     .addTo(layer);
 
-                marker.on("dragend", () => {
+                if (!readOnly) marker.on("dragend", () => {
                     const pos = marker.getLatLng();
                     dotnet.invokeMethodAsync("OnPlaceMoved", place.index, pos.lat, pos.lng);
                 });

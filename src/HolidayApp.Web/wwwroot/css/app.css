@@ -332,3 +332,38 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 @media (max-width: 640px) {
     .field-row { grid-template-columns: 1fr; }
 }
+
+/* Marca pequena de um local (página de partilha) */
+.place-number.pin-small { width: 22px; height: 22px; margin: 0; border-width: 1px; font-size: 0.72rem; box-shadow: none; }
+.place-number.pin-small .place-icon { width: 12px; height: 12px; }
+
+/* ---------- Impressão / PDF ---------- */
+
+@page { margin: 14mm 12mm; }
+
+@media print {
+    /* Sempre em claro e com as cores das marcas (casa, números…) */
+    :root {
+        --bg: #ffffff;
+        --surface: #ffffff;
+        --surface-2: #f4f3ef;
+        --border: #dedad1;
+        --text: #1c1b18;
+        --muted: #6b675f;
+        --c-ferias: #0f766e;
+        --c-primary: #0f766e;
+        --c-primary-text: #ffffff;
+        --c-lodging: #c2410c;
+        --c-transport: #2557c4;
+        color-scheme: light;
+    }
+
+    html, body { background: #fff !important; color: var(--text); font-size: 12px; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    .app-header, .no-print, #offline-banner, #blazor-error-ui,
+    .leaflet-control-zoom { display: none !important; }
+
+    main.page { padding: 0 !important; max-width: none !important; }
+    a { text-decoration: none; }
+}

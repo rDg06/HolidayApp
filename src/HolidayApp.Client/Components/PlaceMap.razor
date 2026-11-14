@@ -280,28 +280,7 @@
     }
 
     /// <summary>Marcadores dos locais visíveis com o filtro atual (o índice é a posição na lista completa).</summary>
-    private object[] MarkerData()
-    {
-        var numbers = PlanPlaceDto.Numbers(Places);
-        return Places
-            .Select((p, i) => (p, i))
-            .Where(x => Visible(x.p))
-            .Select(x => (object)new
-            {
-                index = x.i,
-                number = numbers[x.i],
-                name = x.p.Name,
-                lat = x.p.Latitude,
-                lng = x.p.Longitude,
-                visited = x.p.Visited,
-                kind = x.p.IsVisit ? null : PlaceIcons.Css(x.p.Kind),
-                icon = x.p.IsVisit ? null : PlaceIcons.Svg(x.p.Kind),
-                label = Pt.Label(x.p.Kind),
-                front = x.p.IsLodging,
-                reference = IsReference(x.p),
-            })
-            .ToArray();
-    }
+    private object[] MarkerData() => MapMarkers.Build(Places, Visible, IsReference);
 
     /// <summary>Pontos da linha do percurso do dia ([lat, lng], pela ordem).</summary>
     private double[][] RouteData() =>

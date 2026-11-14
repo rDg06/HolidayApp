@@ -1,0 +1,95 @@
+/* Página de partilha / PDF de uma viagem */
+.share-page { max-width: 820px; margin: 0 auto; display: grid; gap: 16px; }
+
+.share-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+}
+
+.back-link { color: var(--muted); text-decoration: none; font-weight: 500; margin-right: auto; }
+.back-link:hover { color: var(--text); }
+
+.share-options { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; border: 0; }
+.share-hint { margin: 0; }
+
+/* O documento: papel branco também no modo escuro, igual ao que sai no PDF */
+.share-doc {
+    --text: #1c1b18;
+    --muted: #6b675f;
+    --border: #e5e2da;
+    display: grid;
+    gap: 22px;
+    padding: 32px;
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--text);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
+    color-scheme: light;
+}
+
+.share-header h1 { font-size: 1.9rem; letter-spacing: -0.02em; }
+.share-header p { margin: 6px 0 0; color: var(--muted); }
+
+.share-section { display: grid; gap: 10px; break-inside: avoid-page; }
+.share-section h2 { font-size: 1.15rem; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+.share-map {
+    height: 340px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    isolation: isolate;
+    background: #eef0ec;
+    break-inside: avoid;
+}
+
+.share-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px 14px;
+    font-size: 0.85rem;
+}
+
+.share-legend li, .share-items li { display: flex; align-items: flex-start; gap: 8px; }
+.share-items { gap: 6px; font-size: 0.92rem; }
+.share-items .tag { flex: none; }
+
+.share-days { gap: 12px; }
+
+.share-day {
+    display: grid;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    break-inside: avoid;
+}
+
+.share-day h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 1rem; }
+.share-km { margin-left: auto; font-size: 0.8rem; font-weight: 500; }
+.share-day-place { margin: 0; font-weight: 600; }
+.share-activities { margin: 0; white-space: pre-line; font-size: 0.92rem; }
+.share-note { display: block; color: var(--muted); font-size: 0.82rem; white-space: pre-line; overflow-wrap: anywhere; }
+.share-note a { color: inherit; }
+
+.share-money { width: 100%; max-width: 360px; border-collapse: collapse; font-size: 0.92rem; }
+.share-money th { text-align: left; font-weight: 500; }
+.share-money td { text-align: right; font-variant-numeric: tabular-nums; }
+.share-money th, .share-money td { padding: 4px 0; border-bottom: 1px solid var(--border); }
+.share-money tfoot th, .share-money tfoot td { font-weight: 700; border-bottom: 0; }
+
+.share-footer { text-align: center; }
+
+@media (max-width: 640px) {
+    .share-doc { padding: 18px; }
+    .share-km { margin-left: 0; }
+}
+
+/* Impressão / PDF: só o documento, sem caixa à volta */
+@media print {
+    .share-page { max-width: none; gap: 0; }
+    .share-doc { padding: 0; border-radius: 0; box-shadow: none; }
+    .share-map { height: 300px; }
+}
