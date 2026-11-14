@@ -122,9 +122,22 @@
             }
 
             <dl class="vacation-stats">
-                <div><dt>Dias úteis</dt><dd>@v.Workdays</dd></div>
+                @* Dias de férias no total (com fins de semana e feriados) e, por baixo, os úteis que descontam *@
+                <div>
+                    <dt>Dias</dt>
+                    <dd>@(v.EndDate.DayNumber - v.StartDate.DayNumber + 1) <span class="stat-sub">@v.Workdays úteis</span></dd>
+                </div>
                 <div><dt>Reservas</dt><dd>@v.Bookings</dd></div>
-                <div><dt>Locais</dt><dd>@(v.Places == 0 ? "0" : $"{v.PlacesVisited}/{v.Places}")</dd></div>
+                <div>
+                    <dt>Locais a visitar</dt>
+                    <dd>
+                        @v.Places
+                        @if (v.PlacesVisited > 0)
+                        {
+                            <span class="stat-sub">@(v.PlacesVisited == 1 ? "1 visitado" : $"{v.PlacesVisited} visitados")</span>
+                        }
+                    </dd>
+                </div>
                 <div><dt>Tarefas</dt><dd>@(v.Tasks == 0 ? "0" : $"{v.TasksDone}/{v.Tasks}")</dd></div>
                 <div class="wide">
                     <dt>Orçamento</dt>

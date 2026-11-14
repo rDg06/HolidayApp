@@ -39,9 +39,12 @@
     border-top: 1px solid var(--border);
 }
 
-.vacation-stats dt { font-size: 0.75rem; color: var(--muted); }
+/* Rótulo e número em linhas partilhadas (subgrid): um rótulo em duas linhas não desalinha os números */
+.vacation-stats > div { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 0; }
+.vacation-stats dt { align-self: end; font-size: 0.75rem; line-height: 1.25; color: var(--muted); }
 .vacation-stats dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .vacation-stats .wide { grid-column: 1 / -1; }
+.stat-sub { display: block; font-size: 0.72rem; font-weight: 500; color: var(--muted); }
 .vacation-stats .over { color: var(--c-danger); }
 
 .vacation-open { justify-self: end; color: var(--c-primary); font-weight: 600; font-size: 0.9rem; }

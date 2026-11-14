@@ -32,7 +32,12 @@ public sealed class FakeApi(Guid tripId) : ICalendarApi
     public Task<CalendarEventDto> CreateEventAsync(SaveCalendarEventRequest request, CancellationToken ct = default) => throw new NotSupportedException();
     public Task<CalendarEventDto> UpdateEventAsync(Guid id, SaveCalendarEventRequest request, CancellationToken ct = default) => throw new NotSupportedException();
     public Task DeleteEventAsync(Guid id, CancellationToken ct = default) => throw new NotSupportedException();
-    public Task<IReadOnlyList<VacationSummaryDto>> GetVacationsAsync(CancellationToken ct = default) => throw new NotSupportedException();
+    public Task<IReadOnlyList<VacationSummaryDto>> GetVacationsAsync(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<VacationSummaryDto>>(
+        [
+            // 2–6 nov 2026: 5 dias, 4 úteis (feriado ou ponte à parte); 3 locais a visitar, 1 visitado
+            new VacationSummaryDto(tripId, "Roma", Nov(2), Nov(6), 4, "Roma", 2, 3, 1, 2, 1, 500m, 557.90m),
+        ]);
     public Task<VacationPlanDto> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default) => throw new NotSupportedException();
     public Task<UserSettingsDto> GetSettingsAsync(CancellationToken ct = default) => throw new NotSupportedException();
     public Task<UserSettingsDto> SaveSettingsAsync(UserSettingsDto settings, CancellationToken ct = default) => throw new NotSupportedException();
