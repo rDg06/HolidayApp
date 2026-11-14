@@ -125,6 +125,9 @@ public static class VacationPlanValidator
                 list.Add(message);
         }
 
+        if (!Enum.IsDefined(plan.RouteMode))
+            Add(nameof(plan.RouteMode), "Modo de percurso inválido.");
+
         if (plan.Destination is { Length: > DestinationMaxLength })
             Add(nameof(plan.Destination), $"O destino não pode ter mais de {DestinationMaxLength} caracteres.");
 

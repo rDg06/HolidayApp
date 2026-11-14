@@ -1,4 +1,5 @@
 using HolidayApp.Client.Components;
+using HolidayApp.Client.Services;
 
 namespace HolidayApp.Client.Tests;
 
@@ -13,8 +14,12 @@ public sealed class PlaceMapTests : BunitContext
     {
         // O Leaflet não corre nos testes: as chamadas ao JavaScript devolvem valores vazios
         JSInterop.Mode = JSRuntimeMode.Loose;
-        JSInterop.SetupModule("./js/plan-map.js").Mode = JSRuntimeMode.Loose;
+        _module = JSInterop.SetupModule("./js/plan-map.js");
+        _module.Mode = JSRuntimeMode.Loose;
+        Routing.ClearCache();
     }
+
+    private readonly BunitJSModuleInterop _module;
 
     private IRenderedComponent<PlaceMap> RenderMap(List<PlanPlaceDto> places, DateOnly? today = null) =>
         Render<PlaceMap>(p => p
@@ -269,5 +274,63 @@ public sealed class PlaceMapTests : BunitContext
         // Carregar outra vez no mesmo botão fecha o menu
         cut.Find("button[aria-label^='Tipo de Panteão:']").Click();
         Assert.Empty(cut.FindAll(".kind-menu"));
+    }
+
+    // ---------- Caminho por ruas ----------
+
+    /// <summary>Caminho falso: Hotel → Coliseu (1,2 km, 15 min) → Panteão (2,1 km, 28 min).</summary>
+    private static RouteResult FakeRoute() => new()
+    {
+        Distance = 3300,
+        Duration = 2580,
+        Legs = [new RouteLeg { Distance = 1200, Duration = 900 }, new RouteLeg { Distance = 2100, Duration = 1680 }],
+        Geometry = [[41.9, 12.49], [41.8902, 12.4922], [41.8986, 12.4769]],
+    };
+
+    [Fact]
+    public void Num_dia_mostra_o_caminho_por_ruas_com_tempos()
+    {
+        _module.Setup<RouteResult?>("route", _ => true).SetResult(FakeRoute());
+        var cut = RenderMap(Trip());
+
+        ClickChip(cut, "ter, 3 nov");
+
+        cut.WaitForAssertion(() => Assert.Contains("3,3 km · 43 min a pé", cut.Find(".route-total").TextContent));
+        var legs = cut.FindAll(".leg").Select(l => l.TextContent).ToList();
+        Assert.Contains("1,2 km · 15 min desde Hotel Roma", legs[0]);
+        Assert.Contains("2,1 km · 28 min desde Coliseu", legs[1]);
+    }
+
+    [Fact]
+    public void Sem_servico_de_percursos_fica_a_linha_reta()
+    {
+        _module.Setup<RouteResult?>("route", _ => true).SetException(new Microsoft.JSInterop.JSException("sem internet"));
+        var cut = RenderMap(Trip());
+
+        ClickChip(cut, "ter, 3 nov");
+
+        cut.WaitForAssertion(() => Assert.Contains("sem caminho por ruas", cut.Find(".route-total").TextContent));
+        Assert.Contains("em linha reta desde Hotel Roma", cut.FindAll(".leg")[0].TextContent);
+    }
+
+    [Fact]
+    public void Mudar_para_carro_guarda_o_modo_e_pede_o_caminho_de_carro()
+    {
+        var route = _module.Setup<RouteResult?>("route", _ => true);
+        route.SetResult(FakeRoute());
+        RouteMode? chosen = null;
+        var cut = Render<PlaceMap>(p => p
+            .Add(x => x.Places, Trip())
+            .Add(x => x.TripStart, TripStart)
+            .Add(x => x.TripEnd, TripEnd)
+            .Add(x => x.Today, new DateOnly(2026, 1, 1))
+            .Add(x => x.RouteModeChanged, m => chosen = m));
+        ClickChip(cut, "ter, 3 nov");
+
+        cut.FindAll(".route-modes .chip").First(c => c.TextContent == "Carro").Click();
+
+        Assert.Equal(RouteMode.Carro, chosen);
+        cut.WaitForAssertion(() => Assert.Contains(route.Invocations, i => (string?)i.Arguments[1] == "Carro"));
+        Assert.Contains("de carro", cut.Find(".route-total").TextContent);
     }
 }

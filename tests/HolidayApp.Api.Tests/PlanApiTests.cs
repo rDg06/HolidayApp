@@ -39,6 +39,7 @@ public sealed class PlanApiTests : IAsyncLifetime
                 new PlanDayDto { Date = new DateOnly(2026, 8, 4) }, // vazio: não é guardado
             ],
             Tasks = [new PlanTaskDto { Text = " Malas " }],
+            RouteMode = RouteMode.Carro,
         };
 
         var saved = await (await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", plan)).Content.ReadFromJsonAsync<VacationPlanDto>();
@@ -48,6 +49,7 @@ public sealed class PlanApiTests : IAsyncLifetime
         Assert.Equal("Algarve", reloaded!.Destination);
         Assert.Equal("Faro", Assert.Single(reloaded.Days).Place);
         Assert.Equal("Malas", Assert.Single(reloaded.Tasks).Text);
+        Assert.Equal(RouteMode.Carro, reloaded.RouteMode);
     }
 
     [Theory]

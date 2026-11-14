@@ -88,7 +88,8 @@
         {
             var numbers = PlanPlaceDto.Numbers(Places);
             var route = Route;
-            var legs = route.Skip(1).Select((s, i) => (s.Place, s.KmFromPrevious, Previous: route[i].Place)).ToList();
+            var routed = RoutedFor(route);
+            var legs = route.Skip(1).Select((s, i) => (s.Place, Text: LegText(route, routed, i))).ToList();
             @if (!_filter.All && !Places.Any(p => !p.IsLodging && Visible(p) && !IsReference(p)))
             {
                 <p class="muted small">Nenhum local @(_filter.Day is { } fd ? $"para {Pt.Long(fd)}" : "sem dia"). Clica no mapa para juntar um.</p>
@@ -96,10 +97,36 @@
 
             @if (route.Count > 1)
             {
-                <p class="route-total small">
-                    Percurso do dia: <strong>@Pt.Km(PlaceRoute.TotalKm(route))</strong>
-                    <span class="muted">em linha reta · arrasta os locais para mudar a ordem</span>
-                </p>
+                <div class="route-total small">
+                    <p>
+                        Percurso do dia:
+                        @if (routed is not null)
+                        {
+                            <strong>@Pt.Km(routed.Distance / 1000) · @Pt.Duration(routed.Duration) @Pt.Label(RouteMode)</strong>
+                        }
+                        else
+                        {
+                            <strong>@Pt.Km(PlaceRoute.TotalKm(route))</strong>
+                            <span class="muted">
+                                em linha reta@(_routeState switch
+                                {
+                                    RouteState.Loading => " · a calcular o caminho…",
+                                    RouteState.Failed => " · sem caminho por ruas (sem internet ou sem caminho possível)",
+                                    _ => "",
+                                })
+                            </span>
+                        }
+                        <span class="muted"> · arrasta os locais para mudar a ordem</span>
+                    </p>
+                    <div class="route-modes" role="group" aria-label="Como te deslocas">
+                        @foreach (var mode in Enum.GetValues<RouteMode>())
+                        {
+                            var m = mode;
+                            <button type="button" class="chip" aria-pressed="@(RouteMode == m ? "true" : "false")"
+                                    @onclick="() => SetRouteModeAsync(m)">@ModeName(m)</button>
+                        }
+                    </div>
+                </div>
             }
 
             <ol class="plain-list place-list">
@@ -120,8 +147,7 @@
                                TripStart="TripStart"
                                TripEnd="TripEnd"
                                FilterDay="FilterDate"
-                               KmFromPrevious="leg.KmFromPrevious"
-                               PreviousName="@leg.Previous?.Name"
+                               Leg="@leg.Text"
                                OnFocus="() => FocusAsync(index)"
                                KindMenuOpen="ReferenceEquals(_kindMenuFor, p)"
                                OnToggleKindMenu="() => ToggleKindMenu(p)"
@@ -147,6 +173,10 @@
 
     /// <summary>Avisa a página de que os locais mudaram (para o aviso de "por guardar").</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Como se anda entre os locais (caminho e tempos). Guardado na viagem.</summary>
+    [Parameter] public RouteMode RouteMode { get; set; }
+    [Parameter] public EventCallback<RouteMode> RouteModeChanged { get; set; }
 
     /// <summary>Filtro da lista e do mapa: todos, um dia das férias, ou os locais sem dia.</summary>
     private readonly record struct DayFilter(bool All, DateOnly? Day)
@@ -230,10 +260,12 @@
         if (firstRender)
         {
             await CreateMapAsync();
+            await UpdateRouteAsync(); // em viagem abre já num dia
             return;
         }
 
         await RedrawIfChangedAsync(fit: false);
+        await UpdateRouteAsync();
     }
 
     private async Task CreateMapAsync()
@@ -290,8 +322,96 @@
     private object[] MarkerData() => MapMarkers.Build(Places, Visible, IsReference);
 
     /// <summary>Pontos da linha do percurso do dia ([lat, lng], pela ordem).</summary>
-    private double[][] RouteData() =>
-        Route.Select(s => new[] { s.Place.Latitude, s.Place.Longitude }).ToArray();
+    private object RouteData()
+    {
+        var route = Route;
+        return RoutedFor(route) is { } routed
+            ? new { points = routed.Geometry, exact = true }
+            : new { points = route.Select(s => new[] { s.Place.Latitude, s.Place.Longitude }).ToArray(), exact = false };
+    }
+
+    // ---------- Caminho por ruas (serviço de rotas do OpenStreetMap) ----------
+
+    private enum RouteState { None, Loading, Done, Failed }
+
+    private string? _routeKey;
+    private RouteResult? _routeResult;
+    private RouteState _routeState;
+
+    /// <summary>O caminho calculado, se for deste percurso e deste modo (senão, linha reta).</summary>
+    private RouteResult? RoutedFor(List<RouteStop> route) =>
+        route.Count > 1 && _routeState == RouteState.Done && _routeKey == Routing.Key(route.Select(s => s.Place), RouteMode)
+            ? _routeResult
+            : null;
+
+    private string LegText(List<RouteStop> route, RouteResult? routed, int index)
+    {
+        var previous = route[index].Place.Name;
+        if (routed is not null)
+        {
+            var leg = routed.Legs[index];
+            return $"{Pt.Km(leg.Distance / 1000)} · {Pt.Duration(leg.Duration)} desde {previous}";
+        }
+
+        return $"{Pt.Km(route[index + 1].KmFromPrevious ?? 0)} em linha reta desde {previous}";
+    }
+
+    private static string ModeName(RouteMode mode) => mode switch
+    {
+        RouteMode.Carro => "Carro",
+        RouteMode.Bicicleta => "Bicicleta",
+        _ => "A pé",
+    };
+
+    private async Task SetRouteModeAsync(RouteMode mode)
+    {
+        if (mode == RouteMode)
+            return;
+
+        RouteMode = mode;
+        await RouteModeChanged.InvokeAsync(mode);
+        await ChangedAsync();
+    }
+
+    /// <summary>Pede o caminho quando o percurso do dia (ou o modo) muda. Corre depois de cada desenho.</summary>
+    private async Task UpdateRouteAsync()
+    {
+        var route = Route;
+        if (_module is null || route.Count < 2)
+        {
+            _routeKey = null;
+            _routeState = RouteState.None;
+            return;
+        }
+
+        var key = Routing.Key(route.Select(s => s.Place), RouteMode);
+        if (key == _routeKey)
+            return;
+
+        _routeKey = key;
+        _routeResult = null;
+        _routeState = RouteState.Loading;
+        StateHasChanged();
+
+        RouteResult? result = null;
+        var state = RouteState.Failed;
+        try
+        {
+            result = await Routing.GetAsync(_module, route.Select(s => s.Place).ToList(), RouteMode);
+            state = result is null ? RouteState.Failed : RouteState.Done;
+        }
+        catch (Exception)
+        {
+            // Sem internet ou serviço em baixo: fica a linha reta
+        }
+
+        if (_routeKey != key)
+            return; // entretanto mudou o dia, a ordem ou o modo
+
+        _routeResult = result;
+        _routeState = state;
+        StateHasChanged();
+    }
 
     private string Signature() => JsonSerializer.Serialize(new { m = MarkerData(), r = RouteData() });
 

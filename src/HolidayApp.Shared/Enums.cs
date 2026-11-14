@@ -36,6 +36,15 @@ public enum BookingType
     Outro = 4,
 }
 
+/// <summary>Como se anda entre os locais de um dia (para o caminho e os tempos no mapa).</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<RouteMode>))]
+public enum RouteMode
+{
+    APe = 0,
+    Carro = 1,
+    Bicicleta = 2,
+}
+
 /// <summary>Tipo de local no mapa das férias.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<PlaceKind>))]
 public enum PlaceKind

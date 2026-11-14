@@ -77,6 +77,7 @@
                     {
                         var d = day;
                         var route = PlaceRoute.ForDay(_plan.Places, d);
+                        var routed = _routes.GetValueOrDefault(d);
                         var bookings = _plan.Bookings.Where(b => b.Date == d && !string.IsNullOrWhiteSpace(b.Name)).ToList();
                         var notes = _plan.Days.FirstOrDefault(x => x.Date == d);
 
@@ -84,7 +85,11 @@
                             <h3>
                                 <span>Dia @(d.DayNumber - _event.StartDate.DayNumber + 1)</span>
                                 <span class="muted">@Pt.Long(d)</span>
-                                @if (route.Count > 1)
+                                @if (routed is not null)
+                                {
+                                    <span class="share-km muted">@Pt.Km(routed.Distance / 1000) · @Pt.Duration(routed.Duration) @Pt.Label(_plan.RouteMode)</span>
+                                }
+                                else if (route.Count > 1)
                                 {
                                     <span class="share-km muted">@Pt.Km(PlaceRoute.TotalKm(route)) em linha reta</span>
                                 }
@@ -108,13 +113,19 @@
                             @if (route.Count > 0)
                             {
                                 <ol class="plain-list share-items share-route">
-                                    @foreach (var stop in route)
+                                    @for (var i = 0; i < route.Count; i++)
                                     {
+                                        var stop = route[i];
+                                        var leg = routed is not null && i > 0 ? routed.Legs[i - 1] : null;
                                         <li>
                                             <Pin Place="stop.Place" Number="NumberOf(stop.Place)" />
                                             <span>
                                                 @stop.Place.Name
-                                                @if (stop.KmFromPrevious is { } km)
+                                                @if (leg is not null)
+                                                {
+                                                    <span class="muted small"> · @Pt.Km(leg.Distance / 1000) · @Pt.Duration(leg.Duration)</span>
+                                                }
+                                                else if (stop.KmFromPrevious is { } km)
                                                 {
                                                     <span class="muted small"> · @Pt.Km(km)</span>
                                                 }
@@ -231,6 +242,9 @@
     private IJSObjectReference? _map;
     private bool _mapCreated;
 
+    /// <summary>Caminho por ruas de cada dia (os que ainda não chegaram ficam em linha reta).</summary>
+    private readonly Dictionary<DateOnly, RouteResult> _routes = [];
+
     private int DayCount => _event is null ? 0 : _event.EndDate.DayNumber - _event.StartDate.DayNumber + 1;
 
     protected override async Task OnInitializedAsync()
@@ -259,14 +273,44 @@
             // Mapa só de leitura com todos os locais (transportes de todos os dias não puxam o zoom)
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/plan-map.js");
             var markers = MapMarkers.Build(_plan.Places, _ => true, p => p.IsTransport && p.Date is null);
-            _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, null, markers, Array.Empty<double[]>(), new { readOnly = true });
+            _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, null, markers, null, new { readOnly = true });
         }
         catch (JSDisconnectedException)
         {
+            return;
         }
         catch (Exception)
         {
             // Sem mapa (ex.: sem internet): o resto do resumo continua a servir
+        }
+
+        await LoadRoutesAsync();
+    }
+
+    /// <summary>Pede o caminho por ruas de cada dia com dois ou mais locais (um dia de cada vez).</summary>
+    private async Task LoadRoutesAsync()
+    {
+        if (_module is null || _event is null || _plan is null)
+            return;
+
+        for (var day = _event.StartDate; day <= _event.EndDate; day = day.AddDays(1))
+        {
+            var stops = PlaceRoute.ForDay(_plan.Places, day).Select(s => s.Place).ToList();
+            if (stops.Count < 2)
+                continue;
+
+            try
+            {
+                if (await Routing.GetAsync(_module, stops, _plan.RouteMode) is { } routed)
+                {
+                    _routes[day] = routed;
+                    StateHasChanged();
+                }
+            }
+            catch (Exception)
+            {
+                return; // sem serviço: os dias ficam em linha reta
+            }
         }
     }
 

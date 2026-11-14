@@ -131,6 +131,7 @@ internal sealed class VacationPlanService(
     private static VacationPlanDto Normalise(VacationPlanDto plan, CalendarEvent ev) => new()
     {
         Destination = Clean(plan.Destination),
+        RouteMode = plan.RouteMode,
         Bookings = plan.Bookings
             .Select(b => new PlanBookingDto
             {

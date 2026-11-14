@@ -94,7 +94,11 @@
 /* Dia de hoje (durante a viagem) */
 .chip.today:not([aria-pressed="true"]) { border-color: var(--c-primary); color: var(--c-primary); }
 
-.route-total { margin: 0; }
+/* Percurso do dia: total e modo (a pé, carro, bicicleta) */
+.route-total { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.route-total p { margin: 0; }
+.route-modes { display: flex; gap: 4px; }
+.route-modes .chip { height: 26px; padding: 0 10px; font-size: 0.8rem; }
 .lodging-search { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; color: var(--c-lodging); }
 .lodging-search strong { color: var(--text); }
 .inline-icon { display: inline-flex; align-items: center; gap: 2px; vertical-align: -3px; }

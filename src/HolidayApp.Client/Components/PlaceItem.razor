@@ -126,9 +126,9 @@
             <p class="place-notes small muted">@Place.Notes</p>
         }
 
-        @if (KmFromPrevious is { } km)
+        @if (Leg is not null)
         {
-            <span class="leg small muted">↳ @Pt.Km(km) desde @PreviousName</span>
+            <span class="leg small muted">↳ @Leg</span>
         }
     </div>
 </li>
@@ -146,8 +146,7 @@
     [Parameter] public DateOnly? FilterDay { get; set; }
 
     /// <summary>No percurso do dia: distância (km, em linha reta) desde a paragem anterior.</summary>
-    [Parameter] public double? KmFromPrevious { get; set; }
-    [Parameter] public string? PreviousName { get; set; }
+    [Parameter] public string? Leg { get; set; }
 
     /// <summary>Posição na lista completa (usada pelo arrastar, em plan-map.js).</summary>
     [Parameter] public int Index { get; set; }

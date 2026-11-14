@@ -87,13 +87,19 @@ export async function create(element, dotnet, places, route, options) {
          * no alojamento e nos transportes), `front` (fica por cima) e `reference` (transporte
          * sem dia: aparece, mas fica fora do zoom).
          * `fit` ajusta o mapa para mostrar todos. `route` é a linha do percurso do dia
-         * ([lat, lng] pela ordem), vazia quando não há dia escolhido.
+         * ({ points, exact }), sem pontos quando não há dia escolhido.
          */
         setPlaces(list, fit, route) {
             layer.clearLayers();
             routeLayer.clearLayers();
-            if (route && route.length > 1) {
-                L.polyline(route, { className: "route-line", weight: 3, dashArray: "6 8", interactive: false }).addTo(routeLayer);
+            // `route`: { points: [[lat, lng]], exact } — exato = caminho por ruas (linha cheia);
+            // senão é a linha reta entre os locais (tracejado), enquanto se calcula ou sem serviço
+            const points = route?.points ?? [];
+            if (points.length > 1) {
+                const style = route.exact
+                    ? { className: "route-line exact", weight: 4, interactive: false }
+                    : { className: "route-line", weight: 3, dashArray: "6 8", interactive: false };
+                L.polyline(points, style).addTo(routeLayer);
             }
 
             markers = new Map(list.map((place) => {
@@ -298,4 +304,43 @@ export function attachSortable(root, dotnet) {
         // Depois de o Blazor redesenhar, a pega do mesmo local continua com o foco
         requestAnimationFrame(() => root.querySelector(`li[data-index="${newIndex}"] .drag-handle`)?.focus());
     });
+}
+
+// Caminhos por ruas: serviço de rotas do OpenStreetMap (FOSSGIS, o mesmo do openstreetmap.org),
+// gratuito para uso pessoal. Recebe as coordenadas dos locais do dia, pela ordem.
+const ROUTE_PROFILES = {
+    APe: "routed-foot",
+    Carro: "routed-car",
+    Bicicleta: "routed-bike",
+};
+
+/**
+ * Caminho entre os pontos ([lat, lng] pela ordem) a pé, de carro ou de bicicleta.
+ * Devolve { distance (m), duration (s), legs: [{ distance, duration }], geometry: [[lat, lng]] },
+ * ou null se não houver caminho. Lança erro se o serviço não responder.
+ */
+export async function route(points, mode) {
+    const profile = ROUTE_PROFILES[mode] ?? ROUTE_PROFILES.APe;
+    const coords = points.map(([lat, lng]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join(";");
+    const url = `https://routing.openstreetmap.de/${profile}/route/v1/driving/${coords}?overview=simplified&geometries=geojson`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+        const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error(`O serviço de percursos respondeu ${response.status}.`);
+
+        const data = await response.json();
+        const best = data.code === "Ok" ? data.routes?.[0] : null;
+        if (!best) return null;
+
+        return {
+            distance: best.distance,
+            duration: best.duration,
+            legs: best.legs.map((leg) => ({ distance: leg.distance, duration: leg.duration })),
+            geometry: best.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+        };
+    } finally {
+        clearTimeout(timer);
+    }
 }

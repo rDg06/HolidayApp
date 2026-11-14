@@ -81,4 +81,12 @@ public class PlaceRouteTests
 
         Assert.Equal([null, 1, null, 2], PlanPlaceDto.Numbers(places));
     }
+
+    [Fact]
+    public void Modo_de_percurso_invalido_e_recusado()
+    {
+        var plan = new VacationPlanDto { RouteMode = (RouteMode)99 };
+
+        Assert.True(VacationPlanValidator.Validate(plan).ContainsKey(nameof(plan.RouteMode)));
+    }
 }
