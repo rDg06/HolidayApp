@@ -25,6 +25,10 @@
 .nav-main { margin-left: 12px; }
 .nav-side { margin-left: auto; }
 
+/* Definições: só a engrenagem */
+.nav ::deep a.nav-icon { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; }
+.nav ::deep a.nav-icon svg { width: 20px; height: 20px; }
+
 .nav ::deep a {
     padding: 6px 12px;
     border-radius: 999px;
