@@ -23,9 +23,7 @@
         <div class="place-row">
             <input class="input" aria-label="Nome do local" maxlength="@VacationPlanValidator.ShortTextMaxLength"
                    @bind="Place.Name" @bind:after="ChangedAsync" />
-            <button type="button" class="@(HasDetails ? "btn icon ghost small details-toggle has-details" : "btn icon ghost small details-toggle")"
-                    title="Notas e ligação" aria-label="Notas e ligação de @Place.Name" aria-expanded="@(_open ? "true" : "false")"
-                    @onclick="() => _open = !_open">✎</button>
+            <button type="button" class="btn icon ghost small" aria-label="Remover @Place.Name" @onclick="OnRemove">✕</button>
         </div>
 
         <div class="place-row">
@@ -79,7 +77,9 @@
                     <svg class="kind-caret" viewBox="0 0 10 6" aria-hidden="true" focusable="false"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </button>
             </div>
-            <button type="button" class="btn icon ghost small" aria-label="Remover @Place.Name" @onclick="OnRemove">✕</button>
+            <button type="button" class="@(HasDetails ? "btn icon ghost small details-toggle has-details" : "btn icon ghost small details-toggle")"
+                    title="Notas e ligação" aria-label="Notas e ligação de @Place.Name" aria-expanded="@(_open ? "true" : "false")"
+                    @onclick="() => _open = !_open">✎</button>
         </div>
 
         @if (KindMenuOpen)
