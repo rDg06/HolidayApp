@@ -88,6 +88,43 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Gravar_por_cima_de_outra_pessoa_e_recusado()
+    {
+        var ev = await CreateVacationAsync();
+
+        // Duas pessoas abrem a mesma viagem (ainda sem planeamento: versão 0)
+        var ana = await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan");
+        var rui = await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan");
+        Assert.Equal(0, ana!.Version);
+
+        ana.Destination = "Algarve";
+        var anaSaves = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", ana);
+        rui!.Destination = "Açores";
+        var ruiSaves = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", rui);
+
+        Assert.Equal(HttpStatusCode.OK, anaSaves.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, ruiSaves.StatusCode);
+        Assert.Contains("Outra pessoa", await ruiSaves.Content.ReadAsStringAsync());
+        Assert.Equal("Algarve", (await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan"))!.Destination);
+    }
+
+    [Fact]
+    public async Task Gravar_com_a_versao_devolvida_continua_a_funcionar()
+    {
+        var ev = await CreateVacationAsync();
+        var plan = (await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan"))!;
+
+        plan.Destination = "Algarve";
+        var first = (await (await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", plan)).Content.ReadFromJsonAsync<VacationPlanDto>())!;
+        first.Destination = "Lagos";
+        var second = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", first);
+
+        Assert.NotEqual(0, first.Version);
+        Assert.True(first.Version < 9_007_199_254_740_991); // cabe num número do JavaScript sem arredondar
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+    }
+
+    [Fact]
     public async Task Planeamento_de_marcacao_inexistente_da_404()
     {
         var response = await _client.PutAsJsonAsync($"api/events/{Guid.NewGuid()}/plan", new VacationPlanDto());

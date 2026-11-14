@@ -53,6 +53,13 @@ public sealed class VacationPlanDto
     public RouteMode RouteMode { get; set; }
 
     /// <summary>
+    /// Versão do que está guardado (muda a cada gravação; 0 = ainda não há planeamento).
+    /// Ao guardar, se não for a versão atual, outra pessoa gravou entretanto e a gravação é
+    /// recusada em vez de apagar as alterações dela. Sem versão (null) grava sempre.
+    /// </summary>
+    public long? Version { get; set; }
+
+    /// <summary>
     /// Gasto por categoria: valor real das despesas + valor das reservas (na categoria
     /// do tipo de reserva). Pela ordem fixa das categorias; só as que têm valor.
     /// </summary>

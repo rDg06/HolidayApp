@@ -16,9 +16,12 @@ public interface IVacationPlanService
 }
 
 /// <summary>Resultado de guardar um planeamento: não encontrado, inválido ou guardado.</summary>
-public sealed record SavePlanResult(VacationPlanDto? Plan, IDictionary<string, string[]>? Errors)
+public sealed record SavePlanResult(VacationPlanDto? Plan, IDictionary<string, string[]>? Errors, bool Conflict = false)
 {
     public static SavePlanResult NotFound { get; } = new(null, null);
+
+    /// <summary>Outra pessoa gravou este planeamento depois de ele ter sido aberto.</summary>
+    public static SavePlanResult Outdated { get; } = new(null, null, Conflict: true);
     public static SavePlanResult Invalid(IDictionary<string, string[]> errors) => new(null, errors);
     public static SavePlanResult Saved(VacationPlanDto plan) => new(plan, null);
 }
