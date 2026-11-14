@@ -14,7 +14,7 @@ public sealed class VacationsTests : BunitContext
     }
 
     [Fact]
-    public void Cartao_mostra_o_total_de_dias_e_os_locais_a_visitar()
+    public void Cartao_mostra_o_total_de_dias_e_os_locais()
     {
         var cut = Render<Vacations>();
         cut.WaitForElement(".vacation-stats");
@@ -24,7 +24,7 @@ public sealed class VacationsTests : BunitContext
 
         Assert.StartsWith("5", stats["Dias"]);
         Assert.Contains("4 úteis", stats["Dias"]);
-        Assert.StartsWith("3", stats["Locais a visitar"]);
-        Assert.Contains("1 visitado", stats["Locais a visitar"]);
+        Assert.StartsWith("3", stats["Locais"]);
+        Assert.Contains("1 visitado", stats["Locais"]);
     }
 }
