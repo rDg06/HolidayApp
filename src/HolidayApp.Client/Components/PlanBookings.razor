@@ -50,7 +50,7 @@
                         @if (CanPutOnMap(b))
                         {
                             <button type="button" class="btn small put-on-map" title="Procurar o alojamento e marcá-lo no mapa"
-                                    @onclick="() => OnPutOnMap.InvokeAsync(b)"><HouseIcon /> Pôr no mapa</button>
+                                    @onclick="() => OnPutOnMap.InvokeAsync(b)"><PlaceIcon /> Pôr no mapa</button>
                         }
                     </div>
                     <button type="button" class="btn icon ghost" aria-label="Remover reserva" @onclick="() => RemoveAsync(b)">✕</button>

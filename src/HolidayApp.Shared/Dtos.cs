@@ -72,7 +72,7 @@ public sealed class PlanPlaceDto
 
     /// <summary>
     /// Dia em que se vai visitar (aparece no plano dia a dia). No alojamento é o
-    /// primeiro dia da estadia.
+    /// primeiro dia da estadia. Num ponto de transporte sem dia, aparece em todos os dias.
     /// </summary>
     public DateOnly? Date { get; set; }
 
@@ -87,8 +87,33 @@ public sealed class PlanPlaceDto
 
     public bool Visited { get; set; }
 
-    /// <summary>Onde vamos ficar (hotel, casa…): ícone de casa, sem número nem "visitado".</summary>
-    public bool IsLodging { get; set; }
+    /// <summary>Visita, alojamento ou ponto de transporte (aeroporto, metro, autocarro, comboio).</summary>
+    public PlaceKind Kind { get; set; }
+
+    /// <summary>
+    /// Onde vamos ficar (hotel, casa…): ícone de casa, sem número nem "visitado".
+    /// Atalho para <see cref="Kind"/>; continua no JSON para ler planeamentos antigos.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsLodging
+    {
+        get => Kind == PlaceKind.Alojamento;
+        set
+        {
+            if (value)
+                Kind = PlaceKind.Alojamento;
+            else if (Kind == PlaceKind.Alojamento)
+                Kind = PlaceKind.Visita;
+        }
+    }
+
+    /// <summary>Local a visitar (com número e "visitado").</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsVisit => Kind == PlaceKind.Visita;
+
+    /// <summary>Aeroporto ou estação (metro, autocarro, comboio).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsTransport => Kind is PlaceKind.Aeroporto or PlaceKind.Metro or PlaceKind.Autocarro or PlaceKind.Comboio;
 
     /// <summary>
     /// Se é o alojamento nesse dia. No dia em que se muda de alojamento (ex.: Roma 1–3,
@@ -99,14 +124,14 @@ public sealed class PlanPlaceDto
 
     /// <summary>
     /// Número de cada local, igual na lista, no mapa e no plano dia a dia. Só os locais a
-    /// visitar são numerados (1, 2, 3…); o alojamento fica com <c>null</c>.
+    /// visitar são numerados (1, 2, 3…); alojamentos e transportes ficam com <c>null</c>.
     /// </summary>
     public static int?[] Numbers(IReadOnlyList<PlanPlaceDto> places)
     {
         var numbers = new int?[places.Count];
         var next = 1;
         for (var i = 0; i < places.Count; i++)
-            numbers[i] = places[i].IsLodging ? null : next++;
+            numbers[i] = places[i].IsVisit ? next++ : null;
         return numbers;
     }
 }

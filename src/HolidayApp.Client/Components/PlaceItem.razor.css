@@ -15,9 +15,47 @@
 .details-toggle.has-details { color: var(--c-primary); }
 .btn.icon.small:disabled { opacity: 0.3; }
 
-/* Alojamento */
-.lodging-toggle { color: var(--muted); }
-.lodging-toggle[aria-pressed="true"] { color: var(--c-lodging); }
+/* Tipo do local: botão com o ícone e menu (visita, alojamento, aeroporto, metro, autocarro, comboio) */
+.kind-picker { position: relative; flex: none; }
+.kind-button { gap: 3px; padding: 0 6px; color: var(--c-primary); } /* visita: a cor dos números */
+.kind-caret { width: 8px; height: 5px; opacity: 0.7; }
+.kind-button[aria-expanded="true"] { background: var(--surface-2); }
+.kind-button[aria-expanded="true"] .kind-caret { transform: rotate(180deg); }
+.kind-button.kind-alojamento { color: var(--c-lodging); }
+.kind-button.kind-aeroporto, .kind-button.kind-metro, .kind-button.kind-autocarro, .kind-button.kind-comboio { color: var(--c-transport); }
+
+/* Menu do tipo: abre por baixo do local, dentro da lista (não fica cortado pelo scroll) */
+.kind-menu {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 2px;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-2);
+}
+
+.kind-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.kind-option:hover { background: var(--surface-2); }
+.kind-option.selected { font-weight: 600; background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
+.kind-swatch { width: 24px; height: 24px; margin: 0; border-width: 1px; font-size: 0.7rem; cursor: inherit; }
 
 /* Pega para arrastar (o arrastar em si está em plan-map.js) */
 .drag-handle {

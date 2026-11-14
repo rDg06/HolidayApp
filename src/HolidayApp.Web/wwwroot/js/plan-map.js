@@ -44,9 +44,6 @@ function loadLeaflet() {
     return leafletLoading;
 }
 
-// Ícone de casa do alojamento (o mesmo desenho do PlaceMap.razor)
-const HOUSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 2.5 11h2.7v9.3h5.3v-6h3v6h5.3V11h2.7z" fill="currentColor"/></svg>';
-
 /** Texto seguro para popups (o nome é escrito pelo utilizador: nunca como HTML). */
 function textElement(text) {
     const el = document.createElement("strong");
@@ -82,7 +79,9 @@ export async function create(element, dotnet, places, route) {
     const api = {
         /**
          * Redesenha os marcadores (só os do filtro atual). Cada local traz `index` (posição
-         * na lista completa), `number` (null no alojamento) e `lodging`.
+         * na lista completa), `number` (só nas visitas), `kind` e `icon` (SVG feito pela app,
+         * no alojamento e nos transportes), `front` (fica por cima) e `reference` (transporte
+         * sem dia: aparece, mas fica fora do zoom).
          * `fit` ajusta o mapa para mostrar todos. `route` é a linha do percurso do dia
          * ([lat, lng] pela ordem), vazia quando não há dia escolhido.
          */
@@ -94,20 +93,25 @@ export async function create(element, dotnet, places, route) {
             }
 
             markers = new Map(list.map((place) => {
-                const className = place.lodging ? "map-pin lodging" : place.visited ? "map-pin visited" : "map-pin";
+                const classes = ["map-pin"];
+                if (place.icon) classes.push("has-icon", place.kind);
+                if (place.visited) classes.push("visited");
+                if (place.reference) classes.push("reference");
+                const big = !!place.icon;
                 const icon = L.divIcon({
-                    className,
-                    html: place.lodging ? `<span>${HOUSE_SVG}</span>` : `<span>${place.number}</span>`,
-                    iconSize: place.lodging ? [32, 32] : [28, 28],
-                    iconAnchor: place.lodging ? [16, 16] : [14, 14],
+                    className: classes.join(" "),
+                    // O ícone é SVG fixo gerado pela app (PlaceIcons.cs), nunca texto do utilizador
+                    html: place.icon ? `<span>${place.icon}</span>` : `<span>${place.number}</span>`,
+                    iconSize: big ? [32, 32] : [28, 28],
+                    iconAnchor: big ? [16, 16] : [14, 14],
                     popupAnchor: [0, -14],
                 });
 
                 const marker = L.marker([place.lat, place.lng], {
                     icon,
                     draggable: true,
-                    title: place.name,
-                    zIndexOffset: place.lodging ? 1000 : 0, // a casa fica por cima dos outros marcadores
+                    title: place.icon ? `${place.label}: ${place.name}` : place.name,
+                    zIndexOffset: place.front ? 1000 : 0, // a casa fica por cima dos outros marcadores
                 })
                     .bindPopup(textElement(place.name))
                     .addTo(layer);
@@ -117,6 +121,7 @@ export async function create(element, dotnet, places, route) {
                     dotnet.invokeMethodAsync("OnPlaceMoved", place.index, pos.lat, pos.lng);
                 });
 
+                marker.isReference = !!place.reference;
                 return [place.index, marker];
             }));
 
@@ -124,7 +129,9 @@ export async function create(element, dotnet, places, route) {
         },
 
         fitAll() {
-            const all = [...markers.values()];
+            // Transportes que servem todos os dias não puxam o zoom (ex.: metro de outra cidade)
+            const main = [...markers.values()].filter((m) => !m.isReference);
+            const all = main.length > 0 ? main : [...markers.values()];
             if (all.length === 1) {
                 map.setView(all[0].getLatLng(), 14);
             } else if (all.length > 1) {

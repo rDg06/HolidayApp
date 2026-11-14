@@ -97,7 +97,7 @@
 .route-total { margin: 0; }
 .lodging-search { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; color: var(--c-lodging); }
 .lodging-search strong { color: var(--text); }
-.inline-house { display: inline-block; vertical-align: -2px; color: var(--c-lodging); }
+.inline-icon { display: inline-flex; align-items: center; gap: 2px; vertical-align: -3px; }
 
 @media (max-width: 900px) {
     .place-map { grid-template-columns: 1fr; }

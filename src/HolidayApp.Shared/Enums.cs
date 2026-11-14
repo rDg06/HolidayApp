@@ -36,6 +36,22 @@ public enum BookingType
     Outro = 4,
 }
 
+/// <summary>Tipo de local no mapa das férias.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<PlaceKind>))]
+public enum PlaceKind
+{
+    /// <summary>Local a visitar: tem número, dia e "visitado".</summary>
+    Visita = 0,
+
+    /// <summary>Onde se dorme: tem primeiro e último dia.</summary>
+    Alojamento = 1,
+
+    Aeroporto = 2,
+    Metro = 3,
+    Autocarro = 4,
+    Comboio = 5,
+}
+
 /// <summary>Categoria de uma despesa no orçamento das férias.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ExpenseCategory>))]
 public enum ExpenseCategory

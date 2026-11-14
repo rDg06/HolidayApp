@@ -1,0 +1,6 @@
+@* Ícone de um tipo de local (casa, avião, metro, autocarro, comboio). O desenho está em PlaceIcons. *@
+@((MarkupString)PlaceIcons.Svg(Kind))
+
+@code {
+    [Parameter] public PlaceKind Kind { get; set; } = PlaceKind.Alojamento;
+}

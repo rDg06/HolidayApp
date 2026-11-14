@@ -189,6 +189,8 @@ public static class VacationPlanValidator
 
         foreach (var place in plan.Places)
         {
+            if (!Enum.IsDefined(place.Kind))
+                Add(nameof(plan.Places), "Tipo de local inválido.");
             if (string.IsNullOrWhiteSpace(place.Name))
                 Add(nameof(plan.Places), "Cada local precisa de um nome.");
             else if (place.Name.Trim().Length > ShortTextMaxLength)

@@ -29,6 +29,13 @@ public sealed class PlaceMapTests : BunitContext
     private static void ClickChip(IRenderedComponent<PlaceMap> cut, string text) =>
         cut.FindAll(".chip").First(c => c.TextContent.Contains(text)).Click();
 
+    /// <summary>Abre o menu do tipo de um local e escolhe uma opção.</summary>
+    private static void ChooseKind(IRenderedComponent<PlaceMap> cut, string place, string option)
+    {
+        cut.Find($"button[aria-label^='Tipo de {place}:']").Click();
+        cut.FindAll(".kind-option").First(o => o.TextContent.Contains(option)).Click();
+    }
+
     private static List<PlanPlaceDto> Trip() =>
     [
         new() { Name = "Hotel Roma", IsLodging = true, Date = Nov(2), EndDate = Nov(4), Latitude = 41.9, Longitude = 12.49 },
@@ -144,7 +151,7 @@ public sealed class PlaceMapTests : BunitContext
         var places = Trip();
         var cut = RenderMap(places);
 
-        cut.Find("button[aria-label='Alojamento: Coliseu']").Click();
+        ChooseKind(cut, "Coliseu", "Alojamento");
 
         var coliseu = places[1];
         Assert.True(coliseu.IsLodging);
@@ -187,5 +194,80 @@ public sealed class PlaceMapTests : BunitContext
 
         Assert.Equal("Fecha à terça", places[5].Notes);
         Assert.Equal("https://www.louvre.fr", cut.Find("a[href='https://www.louvre.fr']").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Metro_sem_dia_aparece_em_todos_os_dias_mas_fora_do_percurso()
+    {
+        var places = Trip();
+        places.Add(new() { Name = "Metro Colosseo", Kind = PlaceKind.Metro, Latitude = 41.891, Longitude = 12.4923 });
+        var cut = RenderMap(places);
+
+        ClickChip(cut, "ter, 3 nov");
+
+        Assert.Contains("Metro Colosseo", Names(cut));
+        Assert.DoesNotContain(cut.FindAll(".leg"), l => l.TextContent.Contains("Metro Colosseo"));
+        Assert.Equal(PlaceKind.Metro, places[^1].Kind);
+    }
+
+    [Fact]
+    public void Aeroporto_com_dia_entra_no_percurso_desse_dia()
+    {
+        var places = Trip();
+        places.Insert(1, new() { Name = "Fiumicino", Kind = PlaceKind.Aeroporto, Date = Nov(3), Latitude = 41.8, Longitude = 12.25 });
+        var cut = RenderMap(places);
+
+        ClickChip(cut, "ter, 3 nov");
+
+        var legs = cut.FindAll(".leg").Select(l => l.TextContent).ToList();
+        Assert.Contains(legs, l => l.Contains("desde Hotel Roma")); // aeroporto logo a seguir ao hotel
+        Assert.Contains(legs, l => l.Contains("desde Fiumicino"));
+    }
+
+    [Fact]
+    public void Passar_a_autocarro_tira_o_numero_e_o_visitado()
+    {
+        var places = Trip();
+        places[2].Visited = true; // Panteão
+        var cut = RenderMap(places);
+
+        ChooseKind(cut, "Panteão", "autocarro");
+
+        var item = cut.FindAll(".place-item")[2];
+        Assert.Equal(PlaceKind.Autocarro, places[2].Kind);
+        Assert.False(places[2].Visited);
+        Assert.Contains("kind-autocarro", item.ClassName);
+        Assert.Null(item.QuerySelector("input[type=checkbox]"));
+        // Torre Eiffel passa de 3 para 2: os transportes não têm número
+        Assert.Equal("2", cut.FindAll(".place-item")[4].QuerySelector(".place-number")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Deixar_de_ser_alojamento_tira_o_ultimo_dia()
+    {
+        var places = Trip();
+        var cut = RenderMap(places);
+
+        ChooseKind(cut, "Hotel Roma", "Estação de comboio");
+
+        Assert.Equal(PlaceKind.Comboio, places[0].Kind);
+        Assert.Equal(Nov(2), places[0].Date);
+        Assert.Null(places[0].EndDate);
+    }
+
+    [Fact]
+    public void So_um_menu_de_tipo_aberto_de_cada_vez()
+    {
+        var cut = RenderMap(Trip());
+
+        cut.Find("button[aria-label^='Tipo de Coliseu:']").Click();
+        cut.Find("button[aria-label^='Tipo de Panteão:']").Click();
+
+        var menu = Assert.Single(cut.FindAll(".kind-menu"));
+        Assert.Equal("Tipo de Panteão", menu.GetAttribute("aria-label"));
+
+        // Carregar outra vez no mesmo botão fecha o menu
+        cut.Find("button[aria-label^='Tipo de Panteão:']").Click();
+        Assert.Empty(cut.FindAll(".kind-menu"));
     }
 }
