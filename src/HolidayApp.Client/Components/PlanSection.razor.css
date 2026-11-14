@@ -1,0 +1,28 @@
+/* Título que recolhe e mostra a secção */
+.section-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: -4px -6px;
+    padding: 4px 6px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.section-toggle:hover { background: var(--surface-2); }
+
+.section-chevron { width: 11px; height: 7px; color: var(--muted); transition: transform 0.15s; }
+.collapsed .section-chevron { transform: rotate(-90deg); }
+
+.section-extra { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+.plan-section-body { display: grid; gap: 12px; min-width: 0; }
+.plan-section-body[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .section-chevron { transition: none; }
+}
