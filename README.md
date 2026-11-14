@@ -72,8 +72,8 @@ sem pedidos a CDNs nem ao Google Fonts.
   comboio), com ícone próprio; aeroportos e estações sem dia aparecem em todos
   os dias, fora do percurso. Cada local pode ter notas e uma ligação. As reservas de alojamento têm
   "Pôr no mapa". Durante a viagem, o mapa e o plano abrem no dia de hoje.
-  Cada secção do planeador recolhe ao carregar no título (fica lembrado
-  neste navegador). Usa [Leaflet](https://leafletjs.com) e os mapas
+  O planeador está dividido em separadores por baixo das datas: Locais,
+  Reservas, Tarefas, Orçamento e Dia a dia. Usa [Leaflet](https://leafletjs.com) e os mapas
   do [OpenStreetMap](https://www.openstreetmap.org), sem chave de API; a pesquisa
   e o centro inicial (destino) usam o Nominatim do OpenStreetMap, por isso esses
   textos são enviados a esse serviço

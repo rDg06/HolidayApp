@@ -56,42 +56,74 @@
 
         @Errors
 
-        <div class="plan-grid">
-            <section class="card plan-section plan-wide">
-                <label class="field">
-                    <span>Destino</span>
-                    <input class="input" placeholder="ex.: Algarve, Roma, Açores…" maxlength="@VacationPlanValidator.DestinationMaxLength"
-                           @bind="_plan.Destination" />
-                </label>
-            </section>
-
-            <PlanSection Id="places" Title="Locais a visitar" Wide="true">
-                <Info>
-                    @{ var toVisit = _plan.Places.Where(p => p.IsVisit).ToList(); }
-                    @if (toVisit.Count > 0)
+        @* Separadores: só o separador escolhido é desenhado (os dados ficam em _plan, nada se perde) *@
+        <div class="plan-tabs" role="tablist" aria-label="Partes do planeamento" @onkeydown="OnTabKeyDown">
+            @foreach (var tab in Tabs)
+            {
+                var t = tab;
+                var selected = _tab == t.Key;
+                <button @ref="_tabButtons[t.Key]" type="button" role="tab" id="@($"tab-{t.Key}")" aria-controls="@($"panel-{t.Key}")"
+                        aria-selected="@(selected ? "true" : "false")" tabindex="@(selected ? 0 : -1)"
+                        class="@(selected ? "plan-tab selected" : "plan-tab")" @onclick="() => SelectTab(t.Key)">
+                    @t.Label
+                    @if (t.Count is { } count)
                     {
-                        <span class="muted small">@toVisit.Count(p => p.Visited) de @toVisit.Count visitados</span>
+                        <span class="plan-tab-count">@count</span>
                     }
-                </Info>
-                <ChildContent>
-                <PlaceMap @ref="_placeMap"
-                          Places="_plan.Places"
-                          TripStart="_event.StartDate"
-                          TripEnd="_event.EndDate"
-                          Destination="@_plan.Destination"
-                          OnChanged="StateHasChanged" />
-                </ChildContent>
-            </PlanSection>
+                </button>
+            }
+        </div>
 
-            <PlanBookings Bookings="_plan.Bookings" Places="_plan.Places" TripStart="_event.StartDate" TripEnd="_event.EndDate"
-                          OnChanged="StateHasChanged" OnPutOnMap="PutLodgingOnMapAsync" />
-            <PlanTasks Tasks="_plan.Tasks" OnChanged="StateHasChanged" />
-            <PlanBudget Expenses="_plan.Expenses" Bookings="_plan.Bookings" OnChanged="StateHasChanged" />
+        <div class="plan-grid" role="tabpanel" id="@($"panel-{_tab}")" aria-labelledby="@($"tab-{_tab}")">
+            @switch (_tab)
+            {
+                case PlanTab.Locais:
+                    <section class="card plan-section plan-wide">
+                        <label class="field">
+                            <span>Destino</span>
+                            <input class="input" placeholder="ex.: Algarve, Roma, Açores…" maxlength="@VacationPlanValidator.DestinationMaxLength"
+                                   @bind="_plan.Destination" />
+                        </label>
+                    </section>
 
-            @* Atualiza enquanto se edita o orçamento e as reservas *@
-            <SpendingChart Amounts="_plan.SpentByCategory()" />
+                    <PlanSection Id="places" Title="Locais a visitar" Wide="true">
+                        <Info>
+                            @{ var toVisit = _plan.Places.Where(p => p.IsVisit).ToList(); }
+                            @if (toVisit.Count > 0)
+                            {
+                                <span class="muted small">@toVisit.Count(p => p.Visited) de @toVisit.Count visitados</span>
+                            }
+                        </Info>
+                        <ChildContent>
+                            <PlaceMap @ref="_placeMap"
+                                      Places="_plan.Places"
+                                      TripStart="_event.StartDate"
+                                      TripEnd="_event.EndDate"
+                                      Destination="@_plan.Destination"
+                                      OnChanged="StateHasChanged" />
+                        </ChildContent>
+                    </PlanSection>
+                    break;
 
-            <PlanDays Days="_days" Bookings="_plan.Bookings" Places="_plan.Places" TripStart="_event.StartDate" OnChanged="StateHasChanged" />
+                case PlanTab.Reservas:
+                    <PlanBookings Bookings="_plan.Bookings" Places="_plan.Places" TripStart="_event.StartDate" TripEnd="_event.EndDate"
+                                  OnChanged="StateHasChanged" OnPutOnMap="PutLodgingOnMapAsync" />
+                    break;
+
+                case PlanTab.Tarefas:
+                    <PlanTasks Tasks="_plan.Tasks" OnChanged="StateHasChanged" />
+                    break;
+
+                case PlanTab.Orcamento:
+                    <PlanBudget Expenses="_plan.Expenses" Bookings="_plan.Bookings" OnChanged="StateHasChanged" />
+                    @* Atualiza enquanto se edita o orçamento *@
+                    <SpendingChart Amounts="_plan.SpentByCategory()" />
+                    break;
+
+                default:
+                    <PlanDays Days="_days" Bookings="_plan.Bookings" Places="_plan.Places" TripStart="_event.StartDate" OnChanged="StateHasChanged" />
+                    break;
+            }
         </div>
 
         @* Os erros também aparecem aqui, junto ao segundo botão "Guardar" *@
@@ -222,11 +254,15 @@
             context.PreventNavigation();
     }
 
-    /// <summary>Reserva de alojamento → procura no mapa e marca como alojamento a partir do dia da reserva.</summary>
-    private async Task PutLodgingOnMapAsync(PlanBookingDto booking)
+    /// <summary>
+    /// Reserva de alojamento → vai para o separador Locais e procura-a no mapa (fica como
+    /// alojamento a partir do dia da reserva). A procura corre quando o mapa aparecer.
+    /// </summary>
+    private Task PutLodgingOnMapAsync(PlanBookingDto booking)
     {
-        if (_placeMap is not null)
-            await _placeMap.FindLodgingAsync(booking.Name, booking.Date);
+        _pendingLodging = booking;
+        _tab = PlanTab.Locais;
+        return Task.CompletedTask;
     }
 
     /// <summary>Abre o resumo para partilhar/PDF. Guarda antes, porque o resumo mostra o que está guardado.</summary>
@@ -240,5 +276,73 @@
         }
 
         Navigation.NavigateTo($"ferias/{Id}/partilhar");
+    }
+
+    // ---------- Separadores ----------
+
+    private enum PlanTab { Locais, Reservas, Tarefas, Orcamento, DiaADia }
+
+    private sealed record TabInfo(PlanTab Key, string Label, string? Count);
+
+    private PlanTab _tab = PlanTab.Locais;
+
+    private readonly Dictionary<PlanTab, ElementReference> _tabButtons = [];
+
+    /// <summary>Reserva de alojamento à espera que o mapa apareça para ser procurada.</summary>
+    private PlanBookingDto? _pendingLodging;
+
+    private IEnumerable<TabInfo> Tabs
+    {
+        get
+        {
+            var visits = _plan!.Places.Count(p => p.IsVisit);
+            var bookings = _plan.Bookings.Count;
+            var tasks = _plan.Tasks.Count;
+            yield return new(PlanTab.Locais, "Locais", visits > 0 ? visits.ToString() : null);
+            yield return new(PlanTab.Reservas, "Reservas", bookings > 0 ? bookings.ToString() : null);
+            yield return new(PlanTab.Tarefas, "Tarefas", tasks > 0 ? $"{_plan.Tasks.Count(t => t.Done)}/{tasks}" : null);
+            yield return new(PlanTab.Orcamento, "Orçamento", null);
+            yield return new(PlanTab.DiaADia, "Dia a dia", null);
+        }
+    }
+
+    private void SelectTab(PlanTab tab) => _tab = tab;
+
+    /// <summary>Setas ← → (e Início/Fim) mudam de separador, como nos separadores normais.</summary>
+    private async Task OnTabKeyDown(KeyboardEventArgs e)
+    {
+        var all = Enum.GetValues<PlanTab>();
+        var index = Array.IndexOf(all, _tab);
+        var next = e.Key switch
+        {
+            "ArrowRight" => (index + 1) % all.Length,
+            "ArrowLeft" => (index - 1 + all.Length) % all.Length,
+            "Home" => 0,
+            "End" => all.Length - 1,
+            _ => -1,
+        };
+        if (next < 0)
+            return;
+
+        _tab = all[next];
+        StateHasChanged();
+        try
+        {
+            await _tabButtons[_tab].FocusAsync();
+        }
+        catch (Exception)
+        {
+            // Sem foco (ex.: nos testes): o separador mudou na mesma
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // "Pôr no mapa" numa reserva: abriu o separador Locais, agora já há mapa
+        if (_pendingLodging is { } booking && _placeMap is not null)
+        {
+            _pendingLodging = null;
+            await _placeMap.FindLodgingAsync(booking.Name, booking.Date);
+        }
     }
 }

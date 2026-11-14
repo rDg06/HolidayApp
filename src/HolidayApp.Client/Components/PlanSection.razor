@@ -1,41 +1,19 @@
-@* Secção do planeador que se pode recolher, carregando no título. Lembra-se do estado neste
-   navegador (localStorage), por isso uma secção recolhida fica recolhida em todas as viagens. *@
-@inject IJSRuntime JS
+@* Cartão de uma parte do planeador: título, informação ao lado (ex.: "3 reservas") e botões. *@
 
 <section class="@Css" aria-labelledby="@($"{Id}-title")">
     <div class="section-head">
-        <h2 id="@($"{Id}-title")">
-            <button type="button" class="section-toggle" aria-expanded="@(_collapsed ? "false" : "true")"
-                    aria-controls="@($"{Id}-body")" title="@(_collapsed ? "Mostrar" : "Recolher")" @onclick="ToggleAsync">
-                <svg class="section-chevron" viewBox="0 0 10 6" aria-hidden="true" focusable="false"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                @Title
-            </button>
-        </h2>
+        <h2 id="@($"{Id}-title")">@Title</h2>
         <div class="section-extra">
             @Info
-            @if (!_collapsed)
-            {
-                @Actions
-            }
+            @Actions
         </div>
     </div>
 
-    @* Escondida com "hidden" (não sai da página): o mapa e o que se escreveu ficam como estavam *@
-    <div class="plan-section-body" id="@($"{Id}-body")" hidden="@_collapsed">
-        @ChildContent
-    </div>
+    @ChildContent
 </section>
 
 @code {
-    private const string StorageKey = "holidayapp.planner.collapsed";
-
-    /// <summary>
-    /// Uma gravação de cada vez: várias secções podem mudar quase ao mesmo tempo e todas
-    /// leem e escrevem a mesma lista (sem isto, a última apagava as outras).
-    /// </summary>
-    private static readonly SemaphoreSlim Saving = new(1, 1);
-
-    /// <summary>Identificador da secção (único na página; também é a chave guardada).</summary>
+    /// <summary>Identificador da secção (único na página).</summary>
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
     [Parameter, EditorRequired] public string Title { get; set; } = "";
@@ -46,68 +24,13 @@
     /// <summary>Classes extra da secção.</summary>
     [Parameter] public string? Class { get; set; }
 
-    /// <summary>Informação ao lado do título, sempre visível (ex.: "3 reservas", "1 de 4 feitas").</summary>
+    /// <summary>Informação ao lado do título (ex.: "3 reservas", "1 de 4 feitas").</summary>
     [Parameter] public RenderFragment? Info { get; set; }
 
-    /// <summary>Botões do cabeçalho (ex.: "+ Reserva"), só com a secção aberta.</summary>
+    /// <summary>Botões do cabeçalho (ex.: "+ Reserva").</summary>
     [Parameter] public RenderFragment? Actions { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private bool _collapsed;
-
-    private string Css =>
-        "card plan-section" + (Wide ? " plan-wide" : "") + (_collapsed ? " collapsed" : "") + (Class is null ? "" : " " + Class);
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender)
-            return;
-
-        var collapsed = await ReadAsync();
-        if (collapsed.Contains(Id))
-        {
-            _collapsed = true;
-            StateHasChanged();
-        }
-    }
-
-    private async Task ToggleAsync()
-    {
-        _collapsed = !_collapsed;
-        var collapse = _collapsed;
-
-        await Saving.WaitAsync();
-        try
-        {
-            var collapsed = await ReadAsync();
-            if (collapse)
-                collapsed.Add(Id);
-            else
-                collapsed.Remove(Id);
-
-            await JS.InvokeVoidAsync("localStorage.setItem", StorageKey, string.Join(",", collapsed));
-        }
-        catch (Exception)
-        {
-            // Sem localStorage (modo privado, testes…): fica só até sair da página
-        }
-        finally
-        {
-            Saving.Release();
-        }
-    }
-
-    private async Task<HashSet<string>> ReadAsync()
-    {
-        try
-        {
-            var value = await JS.InvokeAsync<string?>("localStorage.getItem", StorageKey);
-            return (value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-        }
-        catch (Exception)
-        {
-            return [];
-        }
-    }
+    private string Css => "card plan-section" + (Wide ? " plan-wide" : "") + (Class is null ? "" : " " + Class);
 }
