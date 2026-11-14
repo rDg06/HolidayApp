@@ -1,0 +1,14 @@
+@* Marca de um local igual à do mapa: número nas visitas, ícone (casa, avião, metro…) nos outros. *@
+@if (Place.IsVisit)
+{
+    <span class="place-number pin-small" title="@Pt.Label(Place.Kind)">@Number</span>
+}
+else
+{
+    <span class="place-number pin-small @PlaceIcons.Css(Place.Kind)" title="@Pt.Label(Place.Kind)"><PlaceIcon Kind="Place.Kind" /></span>
+}
+
+@code {
+    [Parameter, EditorRequired] public PlanPlaceDto Place { get; set; } = default!;
+    [Parameter] public int? Number { get; set; }
+}

@@ -12,7 +12,7 @@
 
 .plan-title h1 { font-size: 1.8rem; letter-spacing: -0.02em; }
 .plan-title p { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.plan-save { display: flex; align-items: center; gap: 12px; }
+.plan-save { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 
 .plan-grid {
     display: grid;

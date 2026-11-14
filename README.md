@@ -77,6 +77,10 @@ sem pedidos a CDNs nem ao Google Fonts.
   do [OpenStreetMap](https://www.openstreetmap.org), sem chave de API; a pesquisa
   e o centro inicial (destino) usam o Nominatim do OpenStreetMap, por isso esses
   textos são enviados a esse serviço
+- **Partilhar em PDF**: no planeador, "Partilhar (PDF)" abre um resumo da viagem
+  (mapa, dia a dia, outros locais, reservas) pronto a guardar como PDF pela
+  impressão do navegador. Valores, códigos/ligações das reservas e notas só
+  entram se escolhidos
 - Modo claro/escuro automático e layout adaptado a telemóvel
 - **Instalável e sem internet** (PWA): no telemóvel, "Adicionar ao ecrã
   principal". Sem ligação, abre a última versão vista neste aparelho (só

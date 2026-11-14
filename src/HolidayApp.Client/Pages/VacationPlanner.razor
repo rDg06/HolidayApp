@@ -1,6 +1,7 @@
 @page "/ferias/{Id:guid}"
 @inject ICalendarApi Api
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @using System.Text.Json
 
 <PageTitle>Organizar férias · HolidayApp</PageTitle>
@@ -45,6 +46,8 @@
                 {
                     <span class="muted small" role="status">Alterações por guardar</span>
                 }
+                <button type="button" class="btn" disabled="@_saving" title="Resumo para partilhar com amigos (guarda primeiro, se for preciso)"
+                        @onclick="ShareAsync">Partilhar (PDF)</button>
                 <button type="button" class="btn primary" disabled="@_saving" @onclick="SaveAsync">
                     @(_saving ? "A guardar…" : "Guardar")
                 </button>
@@ -224,5 +227,18 @@
     {
         if (_placeMap is not null)
             await _placeMap.FindLodgingAsync(booking.Name, booking.Date);
+    }
+
+    /// <summary>Abre o resumo para partilhar/PDF. Guarda antes, porque o resumo mostra o que está guardado.</summary>
+    private async Task ShareAsync()
+    {
+        if (IsDirty)
+        {
+            await SaveAsync();
+            if (IsDirty)
+                return; // não guardou (erros à vista)
+        }
+
+        Navigation.NavigateTo($"ferias/{Id}/partilhar");
     }
 }
