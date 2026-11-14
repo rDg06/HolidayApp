@@ -1,10 +1,16 @@
 @* Reservas da viagem: tipo, nome, dia, código, valor, ligação e notas. *@
 
-<section class="card plan-section plan-wide" aria-labelledby="bookings-title">
-    <div class="section-head">
-        <h2 id="bookings-title">Reservas</h2>
+<PlanSection Id="bookings" Title="Reservas" Wide="true">
+    <Info>
+        @if (Bookings.Count > 0)
+        {
+            <span class="muted small">@(Bookings.Count == 1 ? "1 reserva" : $"{Bookings.Count} reservas")</span>
+        }
+    </Info>
+    <Actions>
         <button type="button" class="btn small" @onclick="AddAsync">+ Reserva</button>
-    </div>
+    </Actions>
+    <ChildContent>
 
     @if (Bookings.Count == 0)
     {
@@ -58,7 +64,8 @@
             }
         </div>
     }
-</section>
+    </ChildContent>
+</PlanSection>
 
 @code {
     [Parameter, EditorRequired] public List<PlanBookingDto> Bookings { get; set; } = [];

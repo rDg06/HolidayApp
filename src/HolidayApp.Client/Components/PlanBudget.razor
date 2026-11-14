@@ -1,10 +1,16 @@
 @* Orçamento: despesas previstas e reais, mais o valor das reservas. *@
 
-<section class="card plan-section" aria-labelledby="budget-title">
-    <div class="section-head">
-        <h2 id="budget-title">Orçamento</h2>
+<PlanSection Id="budget" Title="Orçamento">
+    <Info>
+        @if (TotalActual > 0 || TotalPlanned > 0)
+        {
+            <span class="muted small">@Pt.Money(TotalActual) gastos</span>
+        }
+    </Info>
+    <Actions>
         <button type="button" class="btn small" @onclick="AddAsync">+ Despesa</button>
-    </div>
+    </Actions>
+    <ChildContent>
 
     @if (Expenses.Count == 0 && PricedBookings.Count == 0)
     {
@@ -58,7 +64,8 @@
             </div>
         </dl>
     }
-</section>
+    </ChildContent>
+</PlanSection>
 
 @code {
     [Parameter, EditorRequired] public List<PlanExpenseDto> Expenses { get; set; } = [];

@@ -1,10 +1,14 @@
 @* Gráfico circular (donut) com o gasto por categoria de uma viagem. *@
 @using System.Globalization
 
-<section class="card plan-section spending-card plan-wide" aria-labelledby="spending-title">
-    <div class="section-head">
-        <h2 id="spending-title">Onde gastei mais</h2>
-    </div>
+<PlanSection Id="spending" Title="Onde gastei mais" Wide="true" Class="spending-card">
+    <Info>
+        @if (Total > 0)
+        {
+            <span class="muted small">@Pt.Money(Total)</span>
+        }
+    </Info>
+    <ChildContent>
 
     @if (Total <= 0)
     {
@@ -73,7 +77,8 @@
             </table>
         </div>
     }
-</section>
+    </ChildContent>
+</PlanSection>
 
 @code {
     /// <summary>Gasto por categoria, pela ordem fixa das categorias (a cor segue a categoria, não o valor).</summary>

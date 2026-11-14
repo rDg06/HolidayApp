@@ -1,13 +1,13 @@
 @* Lista de tarefas da viagem. *@
 
-<section class="card plan-section" aria-labelledby="tasks-title">
-    <div class="section-head">
-        <h2 id="tasks-title">Tarefas</h2>
+<PlanSection Id="tasks" Title="Tarefas">
+    <Info>
         @if (Tasks.Count > 0)
         {
             <span class="muted small">@Tasks.Count(t => t.Done) de @Tasks.Count feitas</span>
         }
-    </div>
+    </Info>
+    <ChildContent>
 
     <div class="task-add">
         <input class="input" placeholder="Nova tarefa (ex.: renovar cartão de cidadão)" aria-label="Nova tarefa"
@@ -31,7 +31,8 @@
             }
         </ul>
     }
-</section>
+    </ChildContent>
+</PlanSection>
 
 @code {
     [Parameter, EditorRequired] public List<PlanTaskDto> Tasks { get; set; } = [];

@@ -1,9 +1,8 @@
 @* Plano dia a dia: um cartão por dia, com o alojamento, as reservas e os locais desse dia. *@
 
-<section class="card plan-section plan-wide" aria-labelledby="days-title">
-    <div class="section-head">
-        <h2 id="days-title">Plano dia a dia</h2>
-    </div>
+<PlanSection Id="days" Title="Plano dia a dia" Wide="true">
+    <Info><span class="muted small">@Pt.Days(Days.Count)</span></Info>
+    <ChildContent>
 
     <ol class="day-plan">
         @foreach (var day in Days)
@@ -77,7 +76,8 @@
             </li>
         }
     </ol>
-</section>
+    </ChildContent>
+</PlanSection>
 
 @code {
     /// <summary>Um elemento por dia das férias (já preenchido pela página).</summary>
