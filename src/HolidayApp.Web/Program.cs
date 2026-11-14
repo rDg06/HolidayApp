@@ -54,6 +54,3 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(HolidayApp.Client._Imports).Assembly);
 
 app.Run();
-
-// Para os testes de integração (WebApplicationFactory<Program>)
-public partial class Program;

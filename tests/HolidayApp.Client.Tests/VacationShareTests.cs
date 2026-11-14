@@ -47,7 +47,7 @@ public sealed class VacationShareTests : BunitContext
         Assert.Empty(cut.FindAll("h2:contains('Gastos')"));
 
         cut.Find("input[type=checkbox]:not(:checked)").Change(true); // Valores
-        cut.FindAll("input[type=checkbox]").Last().Change(true);     // Códigos e ligações
+        cut.FindAll("input[type=checkbox]")[^1].Change(true);     // Códigos e ligações
 
         text = cut.Find(".share-doc").TextContent;
         Assert.Contains("TP832", text);

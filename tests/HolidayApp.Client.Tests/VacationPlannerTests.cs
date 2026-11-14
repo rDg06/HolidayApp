@@ -47,8 +47,8 @@ public sealed class VacationPlannerTests : BunitContext
 
         var tabs = cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()).ToList();
         Assert.Equal(5, tabs.Count);
-        Assert.Contains(tabs, t => t.StartsWith("Locais") && t.EndsWith("1"));      // 1 visita (hotel e metro não contam)
-        Assert.Contains(tabs, t => t.StartsWith("Reservas") && t.EndsWith("2"));
+        Assert.Contains(tabs, t => t.StartsWith("Locais") && t.EndsWith('1'));      // 1 visita (hotel e metro não contam)
+        Assert.Contains(tabs, t => t.StartsWith("Reservas") && t.EndsWith('2'));
         Assert.Contains(tabs, t => t.StartsWith("Tarefas") && t.EndsWith("1/2"));
     }
 
