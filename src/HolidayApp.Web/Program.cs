@@ -38,6 +38,16 @@ else
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
+
+// Palavra-passe do grupo: sem sessão, só a página de entrada fica aberta
+var groupPassword = GroupPassword.IsEnabled(app.Configuration);
+if (groupPassword)
+{
+    app.UseRateLimiter();
+    app.UseGroupPasswordGate();
+    app.MapGroupPasswordEndpoints();
+}
+
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets();

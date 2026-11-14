@@ -73,6 +73,7 @@ internal sealed class VacationPlanService(
 
         // As datas da marcação podem ter mudado: os dias fora do intervalo deixam de aparecer.
         plan.Days = plan.Days.Where(d => d.Date >= ev.StartDate && d.Date <= ev.EndDate).ToList();
+        plan.Version = VersionOf(entity);
         return plan;
     }
 
@@ -87,16 +88,22 @@ internal sealed class VacationPlanService(
         if (errors.Count > 0)
             return SavePlanResult.Invalid(errors);
 
+        var existing = await db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, ct);
+
+        // Outra pessoa gravou depois de este planeamento ter sido aberto: não se grava por cima
+        if (plan.Version is { } version && version != VersionOf(existing))
+            return SavePlanResult.Outdated;
+
         var clean = Normalise(plan, ev);
-        var content = JsonSerializer.Serialize(clean, Json);
+        var content = JsonSerializer.Serialize(clean, Json); // a versão não vai no conteúdo (é a data da gravação)
+        var savedAt = DateTime.UtcNow;
 
         void Apply(VacationPlan entity)
         {
             entity.Content = content;
-            entity.UpdatedAtUtc = DateTime.UtcNow;
+            entity.UpdatedAtUtc = savedAt;
         }
 
-        var existing = await db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, ct);
         if (existing is not null)
         {
             Apply(existing);
@@ -105,14 +112,24 @@ internal sealed class VacationPlanService(
         else
         {
             await db.InsertOrUpdateAsync(
-                new VacationPlan { EventId = eventId, UserId = currentUser.UserId, Content = content },
+                new VacationPlan { EventId = eventId, UserId = currentUser.UserId, Content = content, UpdatedAtUtc = savedAt },
                 token => db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, token),
                 Apply,
                 ct);
         }
 
+        clean.Version = VersionOf(savedAt);
         return SavePlanResult.Saved(clean);
     }
+
+    /// <summary>Versão de um planeamento: a data da última gravação (0 se ainda não existe).</summary>
+    private static long VersionOf(VacationPlan? entity) => entity is null ? 0 : VersionOf(entity.UpdatedAtUtc);
+
+    /// <summary>
+    /// Milissegundos desde 1970: cabe num número do JavaScript sem arredondar (os "ticks" do
+    /// .NET não cabem, e um cliente em JavaScript nunca conseguiria gravar).
+    /// </summary>
+    private static long VersionOf(DateTime savedAtUtc) => (savedAtUtc.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerMillisecond;
 
     private static VacationPlanDto Deserialize(string content)
     {

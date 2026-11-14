@@ -29,29 +29,20 @@ dotnet test
 
 ## Servidor de casa (Windows)
 
-Para usar só na rede de casa, num PC Windows sempre ligado (ex.: o mesmo do Home
-Assistant). Precisa do Git e do .NET 10 SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`).
+Num PC Windows sempre ligado (ex.: o mesmo do Home Assistant). Precisa do Git e do
+.NET 10 SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`).
+
+**Instalar (uma vez):**
 
 ```bash
 cd $HOME\Documents
 git clone https://github.com/rDg06/HolidayApp.git
-cd HolidayApp
-dotnet publish src/HolidayApp.Web -c Release -o C:\HolidayApp\app
-mkdir C:\HolidayApp\dados
 ```
 
-`C:\HolidayApp\iniciar.bat` (abre na porta 5180, sem login, dados fora da pasta da app):
-
-```bat
-@echo off
-title HolidayApp
-set ASPNETCORE_URLS=http://0.0.0.0:5180
-set ASPNETCORE_ENVIRONMENT=Production
-set Auth__Disabled=true
-set ConnectionStrings__Default=Data Source=C:\HolidayApp\dados\holidayapp.db
-cd /d C:\HolidayApp\app
-dotnet HolidayApp.Web.dll
-```
+Depois, e para **cada atualização**, corre `scripts\atualizar.bat` (duplo clique):
+vai buscar a versão nova, prepara a app em `C:\HolidayApp\app`, copia o
+`scripts\iniciar.bat` para `C:\HolidayApp\iniciar.bat` e arranca-a na porta 5180.
+Os dados ficam em `C:\HolidayApp\dados` e não são tocados.
 
 Uma vez, num PowerShell de administrador, abrir a porta na rede privada:
 
@@ -59,11 +50,26 @@ Uma vez, num PowerShell de administrador, abrir a porta na rede privada:
 New-NetFirewallRule -DisplayName "HolidayApp" -Direction Inbound -Protocol TCP -LocalPort 5180 -Action Allow -Profile Private
 ```
 
-Abre-se em `http://IP-DO-SERVIDOR:5180`. Para atualizar: fechar a app, `git pull`,
-o mesmo `dotnet publish` e voltar a correr o `iniciar.bat` (os dados em
-`C:\HolidayApp\dados` mantêm-se). Sem login, quem estiver na rede de casa pode
-abrir a app; sem HTTPS, o modo sem internet e o "Instalar app" do telemóvel não
-funcionam.
+Na rede de casa abre-se em `http://IP-DO-SERVIDOR:5180`.
+
+**Palavra-passe do grupo.** Sem o ficheiro `C:\HolidayApp\dados\senha.txt` a app
+abre sem login (só serve para a rede de casa). Com ele, toda a gente tem de escrever
+essa palavra-passe (sessão de 30 dias em cada aparelho) e todos veem os mesmos dados.
+Criar ou mudar (sem acentos; reiniciar a app depois):
+
+```bash
+Set-Content C:\HolidayApp\dados\senha.txt -Value "a-palavra-passe" -Encoding ascii -NoNewline
+```
+
+**Abrir a amigos fora de casa (Tailscale Funnel).** Só depois de criar a palavra-passe:
+
+```bash
+tailscale funnel --bg 5180
+```
+
+Mostra o endereço público (`https://NOME.xxxx.ts.net`) para enviar com a palavra-passe.
+Para fechar: `tailscale funnel --bg 5180 off`. Se duas pessoas editarem a mesma viagem,
+quem guardar depois é avisado para recarregar, em vez de apagar o trabalho do outro.
 
 ## Publicar (Azure App Service)
 

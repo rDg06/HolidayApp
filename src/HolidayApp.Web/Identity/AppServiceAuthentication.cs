@@ -56,6 +56,7 @@ public static class AppServiceAuthenticationExtensions
     /// <summary>
     /// Login e lista de emails autorizados ("Auth:AllowedEmails"). Em desenvolvimento a
     /// API fica aberta (utilizador "local"); fora dele, só passa quem estiver na lista.
+    /// Com "Auth:GroupPassword" o login passa a ser a palavra-passe do grupo (ver GroupPassword).
     /// </summary>
     public static IServiceCollection AddAppServiceAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
@@ -64,22 +65,32 @@ public static class AppServiceAuthenticationExtensions
             .Select(e => e.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        services.AddAuthentication(AppServiceAuthenticationHandler.SchemeName)
-            .AddScheme<AuthenticationSchemeOptions, AppServiceAuthenticationHandler>(AppServiceAuthenticationHandler.SchemeName, null);
+        var groupPassword = GroupPassword.IsEnabled(configuration);
+
+        services.AddAuthentication(groupPassword ? GroupPassword.SchemeName : AppServiceAuthenticationHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, AppServiceAuthenticationHandler>(AppServiceAuthenticationHandler.SchemeName, null)
+            .AddGroupPasswordCookie();
+
+        services.AddGroupPasswordRateLimit();
 
         services.AddAuthorizationBuilder()
             .AddPolicy(AllowedUserPolicy, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireAssertion(context =>
-                    context.User.FindFirstValue(ClaimTypes.Email) is { } email && allowed.Contains(email)));
+                    context.User.Identity?.AuthenticationType == GroupPassword.SchemeName
+                    || (context.User.FindFirstValue(ClaimTypes.Email) is { } email && allowed.Contains(email))));
 
         return services;
     }
 
-    /// <summary>Protege a API, exceto em desenvolvimento (ou com "Auth:Disabled": true).</summary>
+    /// <summary>
+    /// Protege a API, exceto em desenvolvimento (ou com "Auth:Disabled": true). Com a
+    /// palavra-passe do grupo definida, protege sempre.
+    /// </summary>
     public static RouteGroupBuilder RequireAllowedUser(this RouteGroupBuilder api, IHostEnvironment environment, IConfiguration configuration)
     {
-        if (environment.IsDevelopment() || configuration.GetValue<bool>("Auth:Disabled"))
+        if (!GroupPassword.IsEnabled(configuration)
+            && (environment.IsDevelopment() || configuration.GetValue<bool>("Auth:Disabled")))
             return api;
 
         api.RequireAuthorization(AllowedUserPolicy);

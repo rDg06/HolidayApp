@@ -35,6 +35,10 @@ public static class PlanEndpoints
             return result switch
             {
                 { Errors: { } errors } => Results.ValidationProblem(errors),
+                { Conflict: true } => Results.Problem(
+                    title: "Outra pessoa guardou alterações nesta viagem depois de a abrires. "
+                           + "Recarrega a página para veres a versão nova e volta a fazer as tuas alterações.",
+                    statusCode: StatusCodes.Status409Conflict),
                 { Plan: { } saved } => Results.Ok(saved),
                 _ => Results.NotFound(),
             };
