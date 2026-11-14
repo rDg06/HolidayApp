@@ -246,6 +246,13 @@
             _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, _self, MarkerData(), RouteData());
             await _module.InvokeVoidAsync("attachSortable", _root, _self);
 
+            // "Pôr no mapa" pedido antes de o mapa estar pronto: procura agora
+            if (_lodgingSearch is not null && _results.Count == 0)
+            {
+                await SearchAsync();
+                StateHasChanged();
+            }
+
             // Sem locais: centra no destino, se houver
             if (_map is not null && Places.Count == 0 && !string.IsNullOrWhiteSpace(Destination))
             {

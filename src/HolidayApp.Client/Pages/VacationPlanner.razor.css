@@ -14,6 +14,48 @@
 .plan-title p { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .plan-save { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 
+/* Separadores por baixo das datas */
+.plan-tabs {
+    display: flex;
+    gap: 4px;
+    margin-top: -4px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none; /* no telemóvel desliza para o lado */
+}
+
+.plan-tabs::-webkit-scrollbar { display: none; }
+
+.plan-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    margin-bottom: -1px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.plan-tab:hover { color: var(--text); }
+.plan-tab.selected { color: var(--text); border-bottom-color: var(--c-primary); }
+
+.plan-tab-count {
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.plan-tab.selected .plan-tab-count { background: color-mix(in srgb, var(--c-primary) 18%, transparent); color: var(--c-primary); }
+
 .plan-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
