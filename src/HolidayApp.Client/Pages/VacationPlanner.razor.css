@@ -1,6 +1,4 @@
 .plan-page { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
-.back-link { color: var(--muted); text-decoration: none; font-weight: 500; width: fit-content; }
-.back-link:hover { color: var(--text); }
 
 .plan-header {
     display: flex;

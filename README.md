@@ -20,12 +20,50 @@ automaticamente na primeira execução.
 No Visual Studio: abre `HolidayApp.slnx`, define **HolidayApp.Web** como projeto
 de arranque e carrega em F5.
 
-Testes (regras de calendário e validação, mais testes de integração à API com
-uma base de dados SQLite temporária):
+Testes (regras de calendário e validação, interface com bUnit e integração à API
+com uma base de dados SQLite temporária):
 
 ```bash
 dotnet test
 ```
+
+## Servidor de casa (Windows)
+
+Para usar só na rede de casa, num PC Windows sempre ligado (ex.: o mesmo do Home
+Assistant). Precisa do Git e do .NET 10 SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`).
+
+```bash
+cd $HOME\Documents
+git clone https://github.com/rDg06/HolidayApp.git
+cd HolidayApp
+dotnet publish src/HolidayApp.Web -c Release -o C:\HolidayApp\app
+mkdir C:\HolidayApp\dados
+```
+
+`C:\HolidayApp\iniciar.bat` (abre na porta 5180, sem login, dados fora da pasta da app):
+
+```bat
+@echo off
+title HolidayApp
+set ASPNETCORE_URLS=http://0.0.0.0:5180
+set ASPNETCORE_ENVIRONMENT=Production
+set Auth__Disabled=true
+set ConnectionStrings__Default=Data Source=C:\HolidayApp\dados\holidayapp.db
+cd /d C:\HolidayApp\app
+dotnet HolidayApp.Web.dll
+```
+
+Uma vez, num PowerShell de administrador, abrir a porta na rede privada:
+
+```bash
+New-NetFirewallRule -DisplayName "HolidayApp" -Direction Inbound -Protocol TCP -LocalPort 5180 -Action Allow -Profile Private
+```
+
+Abre-se em `http://IP-DO-SERVIDOR:5180`. Para atualizar: fechar a app, `git pull`,
+o mesmo `dotnet publish` e voltar a correr o `iniciar.bat` (os dados em
+`C:\HolidayApp\dados` mantêm-se). Sem login, quem estiver na rede de casa pode
+abrir a app; sem HTTPS, o modo sem internet e o "Instalar app" do telemóvel não
+funcionam.
 
 ## Publicar (Azure App Service)
 
@@ -58,29 +96,26 @@ sem pedidos a CDNs nem ao Google Fonts.
 - Contagem de dias úteis: fins de semana e feriados não contam
 - Saldo anual (22 dias por omissão) e sugestões de **pontes** com marcação num clique
 - **Organizar férias**: em cada marcação de férias, o botão "Organizar férias"
-  abre uma página com destino, reservas (códigos, ligações e valor), plano dia
-  a dia, lista de tarefas e orçamento (previsto vs. gasto, incluindo o valor
-  das reservas)
-- **Mapa dos locais a visitar**: marcar locais clicando no mapa ou procurando
-  pelo nome, arrastar marcadores, escolher o dia da visita (aparece no plano dia
-  a dia) e marcar como visitado. Filtro por dia no mapa e na lista, e
-  **alojamentos** (ícone de casa) com primeiro e último dia, para viagens por
-  várias cidades ou países: em cada dia aparece onde se dorme. Num dia, o mapa
-  mostra o **percurso por ruas** (alojamento → locais pela ordem da lista →
-  novo alojamento) com distância e tempo de cada troço, a pé, de carro ou de
-  bicicleta (escolhido em cada viagem). Usa o serviço de rotas gratuito do
-  OpenStreetMap ([FOSSGIS](https://routing.openstreetmap.de)), por isso as
-  coordenadas dos locais desse dia são enviadas a esse serviço; sem ligação
-  fica a linha reta. Arrasta os locais para mudar a ordem.
-  Cada local tem um **tipo** (visita, alojamento, aeroporto, metro, autocarro,
-  comboio), com ícone próprio; aeroportos e estações sem dia aparecem em todos
-  os dias, fora do percurso. Cada local pode ter notas e uma ligação. As reservas de alojamento têm
-  "Pôr no mapa". Durante a viagem, o mapa e o plano abrem no dia de hoje.
-  O planeador está dividido em separadores por baixo das datas: Locais,
-  Reservas, Tarefas, Orçamento e Dia a dia. Usa [Leaflet](https://leafletjs.com) e os mapas
-  do [OpenStreetMap](https://www.openstreetmap.org), sem chave de API; a pesquisa
-  e o centro inicial (destino) usam o Nominatim do OpenStreetMap, por isso esses
-  textos são enviados a esse serviço
+  abre uma página com separadores por baixo das datas: Locais (destino e mapa),
+  Reservas (códigos, ligações e valor), Tarefas, Orçamento (previsto vs. gasto,
+  incluindo o valor das reservas, e o gráfico "Onde gastei mais") e Dia a dia
+- **Página Férias** com todas as viagens: dias, reservas, locais, tarefas e orçamento
+- **Mapa dos locais** ([Leaflet](https://leafletjs.com) e mapas do
+  [OpenStreetMap](https://www.openstreetmap.org), sem chave de API):
+  - marcar locais clicando no mapa ou procurando pelo nome, arrastar marcadores
+  - dia da visita (aparece no plano dia a dia), "visitado", notas e ligação
+  - **tipos** com ícone próprio: visita, alojamento, aeroporto, metro, autocarro,
+    comboio; aeroportos e estações sem dia aparecem em todos os dias
+  - **alojamentos** com primeiro e último dia, para viagens por várias cidades
+    ou países; as reservas de alojamento têm "Pôr no mapa"
+  - **filtro por dia** no mapa e na lista; durante a viagem abre no dia de hoje
+  - **percurso por ruas** do dia (alojamento → locais pela ordem da lista →
+    novo alojamento) com distância e tempo de cada troço, a pé, de carro ou de
+    bicicleta; arrasta os locais para mudar a ordem
+  - serviços usados: a pesquisa e o centro do destino usam o Nominatim e os
+    percursos o serviço de rotas ([FOSSGIS](https://routing.openstreetmap.de)),
+    ambos do OpenStreetMap, por isso esses textos e as coordenadas dos locais do
+    dia são enviados a esses serviços; sem ligação fica a linha reta
 - **Partilhar em PDF**: no planeador, "Partilhar (PDF)" abre um resumo da viagem
   (mapa, dia a dia, outros locais, reservas) pronto a guardar como PDF pela
   impressão do navegador. Valores, códigos/ligações das reservas e notas só
@@ -168,7 +203,9 @@ calendário.
 
 ## Ideias para a próxima iteração
 
+- "O que há perto" do alojamento (restaurantes, supermercados, farmácias…)
+- Informação automática dos locais (resumo e foto da Wikipédia, horários)
+- Mapa de todas as viagens na página Férias
 - Login e partilha de calendário
-- Exportar para `.ics` (Google Calendar / Outlook)
 - Saldo transitado do ano anterior
 - Feriados de outros países (nova implementação de `IHolidayProvider`)
