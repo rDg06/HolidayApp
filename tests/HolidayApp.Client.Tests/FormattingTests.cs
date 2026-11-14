@@ -14,4 +14,15 @@ public class FormattingTests
     {
         Assert.Equal(expected, Pt.Km(km));
     }
+
+    [Theory]
+    [InlineData(20, "1 min")]
+    [InlineData(900, "15 min")]
+    [InlineData(3600, "1 h")]
+    [InlineData(3900, "1 h 05")]
+    [InlineData(9000, "2 h 30")]
+    public void Duracoes_em_formato_portugues(double seconds, string expected)
+    {
+        Assert.Equal(expected, Pt.Duration(seconds));
+    }
 }

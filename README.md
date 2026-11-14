@@ -66,8 +66,12 @@ sem pedidos a CDNs nem ao Google Fonts.
   a dia) e marcar como visitado. Filtro por dia no mapa e na lista, e
   **alojamentos** (ícone de casa) com primeiro e último dia, para viagens por
   várias cidades ou países: em cada dia aparece onde se dorme. Num dia, o mapa
-  mostra o **percurso** (alojamento → locais pela ordem da lista → novo
-  alojamento) com as distâncias em linha reta; as setas ↑ ↓ mudam a ordem.
+  mostra o **percurso por ruas** (alojamento → locais pela ordem da lista →
+  novo alojamento) com distância e tempo de cada troço, a pé, de carro ou de
+  bicicleta (escolhido em cada viagem). Usa o serviço de rotas gratuito do
+  OpenStreetMap ([FOSSGIS](https://routing.openstreetmap.de)), por isso as
+  coordenadas dos locais desse dia são enviadas a esse serviço; sem ligação
+  fica a linha reta. Arrasta os locais para mudar a ordem.
   Cada local tem um **tipo** (visita, alojamento, aeroporto, metro, autocarro,
   comboio), com ícone próprio; aeroportos e estações sem dia aparecem em todos
   os dias, fora do percurso. Cada local pode ter notas e uma ligação. As reservas de alojamento têm

@@ -62,6 +62,24 @@ public static class Pt
         _ => "Outro",
     };
 
+    /// <summary>Duração de um caminho: "8 min", "1 h", "1 h 05".</summary>
+    public static string Duration(double seconds)
+    {
+        var minutes = Math.Max(1, (int)Math.Round(seconds / 60));
+        if (minutes < 60)
+            return $"{minutes} min";
+        var (h, m) = (minutes / 60, minutes % 60);
+        return m == 0 ? $"{h} h" : $"{h} h {m:00}";
+    }
+
+    /// <summary>Como se anda: "a pé", "de carro", "de bicicleta".</summary>
+    public static string Label(RouteMode mode) => mode switch
+    {
+        RouteMode.Carro => "de carro",
+        RouteMode.Bicicleta => "de bicicleta",
+        _ => "a pé",
+    };
+
     public static string Label(PlaceKind kind) => kind switch
     {
         PlaceKind.Alojamento => "Alojamento",

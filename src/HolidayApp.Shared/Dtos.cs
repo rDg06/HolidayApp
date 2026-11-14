@@ -49,6 +49,9 @@ public sealed class VacationPlanDto
     public List<PlanExpenseDto> Expenses { get; set; } = [];
     public List<PlanPlaceDto> Places { get; set; } = [];
 
+    /// <summary>Como se anda entre os locais (caminho e tempos no mapa): a pé por omissão.</summary>
+    public RouteMode RouteMode { get; set; }
+
     /// <summary>
     /// Gasto por categoria: valor real das despesas + valor das reservas (na categoria
     /// do tipo de reserva). Pela ordem fixa das categorias; só as que têm valor.

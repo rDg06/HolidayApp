@@ -100,6 +100,7 @@
                                       TripStart="_event.StartDate"
                                       TripEnd="_event.EndDate"
                                       Destination="@_plan.Destination"
+                                      @bind-RouteMode="_plan.RouteMode"
                                       OnChanged="StateHasChanged" />
                         </ChildContent>
                     </PlanSection>
@@ -162,7 +163,7 @@
     private bool IsDirty => _plan is not null && CurrentState() != _savedState;
 
     private string CurrentState() =>
-        JsonSerializer.Serialize(new { _plan!.Destination, _plan.Bookings, _plan.Tasks, _plan.Expenses, _plan.Places, Days = _days });
+        JsonSerializer.Serialize(new { _plan!.Destination, _plan.RouteMode, _plan.Bookings, _plan.Tasks, _plan.Expenses, _plan.Places, Days = _days });
 
     private RenderFragment Errors => __builder =>
     {

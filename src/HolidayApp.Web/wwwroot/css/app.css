@@ -285,6 +285,7 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 .map-pin.reference { opacity: 0.75; }
 /* Linha do percurso do dia (desenhada pelo Leaflet) */
 .leaflet-overlay-pane .route-line { stroke: var(--c-primary); stroke-opacity: 0.85; fill: none; }
+.leaflet-overlay-pane .route-line.exact { stroke-opacity: 0.9; stroke-linecap: round; stroke-linejoin: round; }
 
 .place-icon, .map-pin svg { display: block; width: 15px; height: 15px; }
 
