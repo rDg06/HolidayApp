@@ -5,8 +5,9 @@ public sealed record RouteStop(PlanPlaceDto Place, double? KmFromPrevious);
 
 /// <summary>
 /// Percurso de um dia: sai do alojamento onde se acordou, passa pelos locais desse dia
-/// pela ordem da lista e acaba no alojamento onde se vai dormir (se for outro, no dia
-/// da mudança). As distâncias são em linha reta.
+/// (visitas e transportes com esse dia, pela ordem da lista) e acaba no alojamento onde
+/// se vai dormir (se for outro, no dia da mudança). Transportes sem dia ficam de fora.
+/// As distâncias são em linha reta.
 /// </summary>
 public static class PlaceRoute
 {

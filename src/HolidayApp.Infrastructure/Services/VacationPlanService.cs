@@ -53,8 +53,8 @@ internal sealed class VacationPlanService(
                 WorkdayCalculator.CountWorkdays(e.StartDate, e.EndDate, holidayDates),
                 plan.Destination,
                 plan.Bookings.Count,
-                plan.Places.Count(p => !p.IsLodging),
-                plan.Places.Count(p => !p.IsLodging && p.Visited),
+                plan.Places.Count(p => p.IsVisit),
+                plan.Places.Count(p => p.IsVisit && p.Visited),
                 plan.Tasks.Count,
                 plan.Tasks.Count(t => t.Done),
                 plan.Expenses.Sum(x => x.Planned ?? 0) + bookingsTotal,
@@ -174,8 +174,8 @@ internal sealed class VacationPlanService(
                 EndDate = p.IsLodging && p.Date is not null ? p.EndDate ?? p.Date : null,
                 Notes = Clean(p.Notes),
                 Url = Clean(p.Url),
-                Visited = !p.IsLodging && p.Visited,
-                IsLodging = p.IsLodging,
+                Visited = p.IsVisit && p.Visited, // só os locais a visitar têm "visitado"
+                Kind = p.Kind,
             })
             .ToList(),
     };

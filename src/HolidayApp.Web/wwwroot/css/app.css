@@ -29,6 +29,7 @@
     --c-primary-text: #ffffff;
     --c-danger: #c8323a;
     --c-lodging: #c2410c;
+    --c-transport: #2557c4;
 
     /* Categorias do orçamento (paleta categórica validada para daltonismo, ordem fixa) */
     --cat-1: #2a78d6;
@@ -63,6 +64,7 @@
         --c-primary-text: #0b1f1c;
         --c-danger: #ff6b6f;
         --c-lodging: #d9541a;
+        --c-transport: #3b6fe0;
 
         --cat-1: #3987e5;
         --cat-2: #d95926;
@@ -273,12 +275,18 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 .map-pin.visited { background: var(--muted); }
 
 /* Alojamento: casa em vez de número */
-.place-number.lodging, .map-pin.lodging { background: var(--c-lodging); color: #fff; }
-.map-pin.lodging > span { display: grid; place-items: center; height: 100%; }
+/* Alojamento (casa) e transportes (avião, metro, autocarro, comboio): ícone em vez de número */
+.place-number.kind-alojamento, .map-pin.kind-alojamento { background: var(--c-lodging); color: #fff; }
+.place-number.kind-aeroporto, .map-pin.kind-aeroporto,
+.place-number.kind-metro, .map-pin.kind-metro,
+.place-number.kind-autocarro, .map-pin.kind-autocarro,
+.place-number.kind-comboio, .map-pin.kind-comboio { background: var(--c-transport); color: #fff; }
+.map-pin.has-icon > span { display: grid; place-items: center; height: 100%; }
+.map-pin.reference { opacity: 0.75; }
 /* Linha do percurso do dia (desenhada pelo Leaflet) */
 .leaflet-overlay-pane .route-line { stroke: var(--c-primary); stroke-opacity: 0.85; fill: none; }
 
-.house-icon, .map-pin svg { display: block; width: 15px; height: 15px; }
+.place-icon, .map-pin svg { display: block; width: 15px; height: 15px; }
 
 .visually-hidden {
     position: absolute;

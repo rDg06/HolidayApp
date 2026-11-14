@@ -51,7 +51,7 @@
         @if (_lodgingSearch is not null)
         {
             <p class="small lodging-search" role="status">
-                <HouseIcon /> Escolhe o resultado certo para o alojamento <strong>@_lodgingSearch.Name</strong>.
+                <PlaceIcon /> Escolhe o resultado certo para o alojamento <strong>@_lodgingSearch.Name</strong>.
                 <button type="button" class="btn ghost small" @onclick="CancelLodgingSearch">Cancelar</button>
             </p>
         }
@@ -81,7 +81,7 @@
         {
             <p class="muted small">
                 Clica no mapa ou procura um local para o marcar. Podes arrastar os marcadores para os acertar.
-                Usa o botão <span class="inline-house"><HouseIcon /></span> para marcar onde vais ficar.
+                No botão do tipo (<span class="inline-icon"><PlaceIcon Kind="PlaceKind.Visita" /> ▾</span>) marcas o alojamento, aeroportos e estações de metro, autocarro ou comboio.
             </p>
         }
         else
@@ -89,9 +89,7 @@
             var numbers = PlanPlaceDto.Numbers(Places);
             var route = Route;
             var legs = route.Skip(1).Select((s, i) => (s.Place, s.KmFromPrevious, Previous: route[i].Place)).ToList();
-            var order = VisibleVisits;
-
-            @if (!_filter.All && order.Count == 0)
+            @if (!_filter.All && !Places.Any(p => !p.IsLodging && Visible(p) && !IsReference(p)))
             {
                 <p class="muted small">Nenhum local @(_filter.Day is { } fd ? $"para {Pt.Long(fd)}" : "sem dia"). Clica no mapa para juntar um.</p>
             }
@@ -125,6 +123,8 @@
                                KmFromPrevious="leg.KmFromPrevious"
                                PreviousName="@leg.Previous?.Name"
                                OnFocus="() => FocusAsync(index)"
+                               KindMenuOpen="ReferenceEquals(_kindMenuFor, p)"
+                               OnToggleKindMenu="() => ToggleKindMenu(p)"
                                OnRemove="() => RemoveAsync(index)"
                                OnChanged="ChangedAsync" />
                 }
@@ -158,20 +158,31 @@
 
     private DayFilter _filter = DayFilter.Everything;
 
-    private IEnumerable<PlanPlaceDto> ToVisit => Places.Where(p => !p.IsLodging);
+    /// <summary>Local com o menu do tipo aberto (só um de cada vez).</summary>
+    private PlanPlaceDto? _kindMenuFor;
+
+    private void ToggleKindMenu(PlanPlaceDto place) =>
+        _kindMenuFor = ReferenceEquals(_kindMenuFor, place) ? null : place;
+
+    /// <summary>Locais a visitar (os que contam nos números dos filtros).</summary>
+    private IEnumerable<PlanPlaceDto> ToVisit => Places.Where(p => p.IsVisit);
 
     /// <summary>
-    /// Se o local aparece com o filtro atual: num dia, os locais desse dia e o alojamento
-    /// dessa noite; em "Sem dia", os locais e alojamentos sem data.
+    /// Se o local aparece com o filtro atual: num dia, os locais e transportes desse dia, o
+    /// alojamento dessa noite e os transportes sem dia (servem todos os dias); em "Sem dia",
+    /// tudo o que não tem data.
     /// </summary>
     private bool Visible(PlanPlaceDto p) => _filter switch
     {
         { All: true } => true,
-        { Day: { } day } => p.IsLodging ? p.StaysOn(day) : p.Date == day,
+        { Day: { } day } => p.IsLodging ? p.StaysOn(day) : p.Date == day || (p.IsTransport && p.Date is null),
         _ => p.Date is null,
     };
 
-    /// <summary>Posições (na lista completa) dos locais a visitar que estão à vista, pela ordem.</summary>
+    /// <summary>Num dia: transporte sem dia, mostrado só como referência (fora do percurso e do zoom).</summary>
+    private bool IsReference(PlanPlaceDto p) => _filter.Day is not null && p.IsTransport && p.Date is null;
+
+    /// <summary>Posições (na lista completa) dos locais que se podem arrastar e estão à vista, pela ordem.</summary>
     private List<int> VisibleVisits =>
         Places.Select((p, i) => (p, i)).Where(x => !x.p.IsLodging && Visible(x.p)).Select(x => x.i).ToList();
 
@@ -283,7 +294,11 @@
                 lat = x.p.Latitude,
                 lng = x.p.Longitude,
                 visited = x.p.Visited,
-                lodging = x.p.IsLodging,
+                kind = x.p.IsVisit ? null : PlaceIcons.Css(x.p.Kind),
+                icon = x.p.IsVisit ? null : PlaceIcons.Svg(x.p.Kind),
+                label = Pt.Label(x.p.Kind),
+                front = x.p.IsLodging,
+                reference = IsReference(x.p),
             })
             .ToArray();
     }
@@ -299,7 +314,7 @@
     [JSInvokable]
     public async Task OnMapClick(double lat, double lng)
     {
-        var number = Places.Count(p => !p.IsLodging) + 1;
+        var number = Places.Count(p => p.IsVisit) + 1;
         Places.Add(new PlanPlaceDto { Name = $"Local {number}", Latitude = lat, Longitude = lng, Date = FilterDate });
         await ChangedAsync();
     }

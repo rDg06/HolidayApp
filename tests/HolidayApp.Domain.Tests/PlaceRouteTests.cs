@@ -53,4 +53,32 @@ public class PlaceRouteTests
 
         Assert.True(VacationPlanValidator.Validate(plan).ContainsKey(nameof(plan.Places)));
     }
+
+    [Fact]
+    public void Planeamentos_antigos_com_isLodging_continuam_a_ser_alojamento()
+    {
+        var json = """{"places":[{"name":"Hotel","isLodging":true},{"name":"Museu"}]}""";
+        var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+
+        var plan = System.Text.Json.JsonSerializer.Deserialize<VacationPlanDto>(json, options)!;
+        var again = System.Text.Json.JsonSerializer.Serialize(plan, options);
+
+        Assert.Equal([PlaceKind.Alojamento, PlaceKind.Visita], plan.Places.Select(p => p.Kind));
+        Assert.Contains("\"kind\":\"Metro\"", System.Text.Json.JsonSerializer.Serialize(new PlanPlaceDto { Kind = PlaceKind.Metro }, options));
+        Assert.DoesNotContain("isVisit", again);
+    }
+
+    [Fact]
+    public void So_as_visitas_sao_numeradas()
+    {
+        PlanPlaceDto[] places =
+        [
+            new() { Name = "Aeroporto", Kind = PlaceKind.Aeroporto },
+            new() { Name = "Coliseu" },
+            new() { Name = "Metro", Kind = PlaceKind.Metro },
+            new() { Name = "Panteão" },
+        ];
+
+        Assert.Equal([null, 1, null, 2], PlanPlaceDto.Numbers(places));
+    }
 }

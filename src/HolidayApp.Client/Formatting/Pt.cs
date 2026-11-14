@@ -62,6 +62,16 @@ public static class Pt
         _ => "Outro",
     };
 
+    public static string Label(PlaceKind kind) => kind switch
+    {
+        PlaceKind.Alojamento => "Alojamento",
+        PlaceKind.Aeroporto => "Aeroporto",
+        PlaceKind.Metro => "Estação de metro",
+        PlaceKind.Autocarro => "Paragem de autocarro",
+        PlaceKind.Comboio => "Estação de comboio",
+        _ => "Local a visitar",
+    };
+
     public static string Label(ExpenseCategory category) => category switch
     {
         ExpenseCategory.Transporte => "Transporte",
