@@ -10,7 +10,7 @@
 
 <div class="plan-page">
     @* Volta para onde se veio: a lista de férias ou o calendário *@
-    <a class="back-link" href="@(From == "ferias" ? "ferias" : "")">@(From == "ferias" ? "← Férias" : "← Calendário")</a>
+    <a class="back-link" href="@BackLink.Href">@BackLink.Label</a>
 
     @if (_event is null || _plan is null)
     {
@@ -141,7 +141,15 @@
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    /// <summary>De onde se veio ("ferias" = lista de férias), para o link de voltar.</summary>
+    /// <summary>Link de voltar: para a página de onde se veio (Férias, Mapa) ou o calendário.</summary>
+    private (string Href, string Label) BackLink => From switch
+    {
+        "ferias" => ("ferias", "← Férias"),
+        "mapa" => ("mapa", "← Mapa"),
+        _ => ("", "← Calendário"),
+    };
+
+    /// <summary>De onde se veio ("ferias" = lista de férias, "mapa" = mapa das viagens), para o link de voltar.</summary>
     [SupplyParameterFromQuery(Name = "de")] public string? From { get; set; }
 
     private CalendarEventDto? _event;

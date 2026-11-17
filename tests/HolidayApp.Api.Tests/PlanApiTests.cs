@@ -125,6 +125,36 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Resumo_tem_um_ponto_por_alojamento_ou_o_centro_dos_locais()
+    {
+        var porCidades = await CreateVacationAsync();
+        await _client.PutAsJsonAsync($"api/events/{porCidades.Id}/plan", new VacationPlanDto
+        {
+            Places =
+            [
+                new PlanPlaceDto { Name = "Hotel Paris", Kind = PlaceKind.Alojamento, Date = new DateOnly(2026, 8, 8), EndDate = new DateOnly(2026, 8, 14), Latitude = 48.86, Longitude = 2.35 },
+                new PlanPlaceDto { Name = "Hotel Roma", Kind = PlaceKind.Alojamento, Date = new DateOnly(2026, 8, 3), EndDate = new DateOnly(2026, 8, 8), Latitude = 41.9, Longitude = 12.49 },
+                new PlanPlaceDto { Name = "Coliseu", Latitude = 41.89, Longitude = 12.49 },
+            ],
+        });
+        var soLocais = await CreateVacationAsync("2026-09-01", "2026-09-03");
+        await _client.PutAsJsonAsync($"api/events/{soLocais.Id}/plan", new VacationPlanDto
+        {
+            Destination = "Lisboa",
+            Places = [new PlanPlaceDto { Name = "A", Latitude = 38.70, Longitude = -9.10 }, new PlanPlaceDto { Name = "B", Latitude = 38.72, Longitude = -9.14 }],
+        });
+        var semNada = await CreateVacationAsync("2026-10-01", "2026-10-02");
+
+        var summaries = (await _client.GetFromJsonAsync<List<VacationSummaryDto>>("api/vacations"))!.ToDictionary(v => v.Id);
+
+        // Por ordem da estadia: Roma e depois Paris
+        Assert.Equal(["Hotel Roma", "Hotel Paris"], summaries[porCidades.Id].Points!.Select(p => p.Name));
+        var centro = Assert.Single(summaries[soLocais.Id].Points!);
+        Assert.Equal(("Lisboa", 38.71, -9.12), (centro.Name, Math.Round(centro.Latitude, 2), Math.Round(centro.Longitude, 2)));
+        Assert.Empty(summaries[semNada.Id].Points!);
+    }
+
+    [Fact]
     public async Task Planeamento_de_marcacao_inexistente_da_404()
     {
         var response = await _client.PutAsJsonAsync($"api/events/{Guid.NewGuid()}/plan", new VacationPlanDto());

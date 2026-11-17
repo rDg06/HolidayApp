@@ -106,6 +106,10 @@ sem pedidos a CDNs nem ao Google Fonts.
   Reservas (códigos, ligações e valor), Tarefas, Orçamento (previsto vs. gasto,
   incluindo o valor das reservas, e o gráfico "Onde gastei mais") e Dia a dia
 - **Página Férias** com todas as viagens: dias, reservas, locais, tarefas e orçamento
+- **Mapa (Onde já estive)**, separador próprio: todas as viagens (um ponto por alojamento, ou o centro
+  dos locais, ou o destino procurado pelo nome), feitas e próximas; viagens feitas,
+  dias em viagem e países. Os países vêm do Nominatim (OpenStreetMap) e ficam
+  guardados no navegador
 - **Mapa dos locais** ([Leaflet](https://leafletjs.com) e mapas do
   [OpenStreetMap](https://www.openstreetmap.org), sem chave de API):
   - marcar locais clicando no mapa ou procurando pelo nome, arrastar marcadores

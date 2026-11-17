@@ -1,0 +1,288 @@
+@* "Onde já estive" (página Mapa): mapa com todas as viagens (feitas e próximas), países e números. *@
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<section class="card travel-map" aria-labelledby="travel-map-title">
+    <div class="section-head">
+        <h2 id="travel-map-title" class="visually-hidden">Mapa das viagens</h2>
+        <div class="travel-legend small">
+            <span><span class="legend-dot trip-past"></span>Feitas</span>
+            <span><span class="legend-dot trip-next"></span>Próximas</span>
+        </div>
+    </div>
+
+    <dl class="travel-stats">
+        <div><dt>Viagens feitas</dt><dd>@PastTrips.Count</dd></div>
+        <div><dt>Dias em viagem</dt><dd>@PastTrips.Sum(DaysOf)</dd></div>
+        <div>
+            <dt>Países</dt>
+            <dd>@(_locating && Countries.Count == 0 ? "…" : Countries.Count.ToString())</dd>
+        </div>
+        <div><dt>Próximas</dt><dd>@(Vacations.Count - PastTrips.Count)</dd></div>
+    </dl>
+
+    @if (Countries.Count > 0)
+    {
+        <ul class="plain-list travel-countries" aria-label="Países visitados">
+            @foreach (var country in Countries)
+            {
+                <li class="tag">@country</li>
+            }
+        </ul>
+    }
+
+    <div class="travel-canvas" @ref="_mapElement" aria-label="Mapa das viagens"></div>
+
+    @{ var unplaced = Vacations.Count(v => !_points.ContainsKey(v.Id)); }
+    @if (!_locating && unplaced > 0)
+    {
+        <p class="muted small travel-note">
+            @(unplaced == 1 ? "1 viagem ainda não aparece" : $"{unplaced} viagens ainda não aparecem") no mapa:
+            junta o destino ou locais em "Organizar".
+        </p>
+    }
+</section>
+
+@code {
+    private const string CacheKey = "holidayapp.geo.v1";
+
+    [Parameter, EditorRequired] public IReadOnlyList<VacationSummaryDto> Vacations { get; set; } = [];
+
+    /// <summary>Dia de hoje (pode ser trocado nos testes): separa viagens feitas de próximas.</summary>
+    [Parameter] public DateOnly Today { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+
+    /// <summary>Um ponto da viagem no mapa e o país dele (quando já se sabe).</summary>
+    private sealed record TripPoint(string Name, double Lat, double Lng, string? Country);
+
+    /// <summary>Lugar já procurado: guardado no navegador para não perguntar outra vez.</summary>
+    public sealed class GeoEntry
+    {
+        public double? Lat { get; set; }
+        public double? Lng { get; set; }
+        public string? Country { get; set; }
+    }
+
+    /// <summary>Resultado da pesquisa de um destino (vem do plan-map.js).</summary>
+    public sealed class SearchResult
+    {
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+        public string? Country { get; set; }
+    }
+
+    private readonly Dictionary<Guid, List<TripPoint>> _points = [];
+    private Dictionary<string, GeoEntry> _cache = [];
+    private bool _locating = true;
+
+    private ElementReference _mapElement;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _map;
+    private DotNetObjectReference<TravelMap>? _self;
+
+    private List<VacationSummaryDto> PastTrips => Vacations.Where(v => v.EndDate < Today).ToList();
+
+    private static int DaysOf(VacationSummaryDto v) => v.EndDate.DayNumber - v.StartDate.DayNumber + 1;
+
+    /// <summary>Países das viagens feitas (por ordem alfabética).</summary>
+    private List<string> Countries => PastTrips
+        .SelectMany(v => _points.GetValueOrDefault(v.Id) ?? [])
+        .Select(p => p.Country)
+        .OfType<string>()
+        .Distinct()
+        .Order(StringComparer.Create(new System.Globalization.CultureInfo("pt-PT"), ignoreCase: true))
+        .ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/plan-map.js");
+            _self = DotNetObjectReference.Create(this);
+            _cache = await ReadCacheAsync();
+
+            // Primeiro o que já se sabe (pontos do planeamento e destinos procurados antes)
+            foreach (var v in Vacations)
+                AddKnownPoints(v);
+
+            _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, _self, MarkerData(), null,
+                new { readOnly = true, fitMaxZoom = 6 });
+            StateHasChanged();
+
+            // Depois o que falta perguntar ao OpenStreetMap (destinos sem locais e países)
+            await LocateMissingAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            // Sem mapa (ex.: sem internet): ficam os números
+        }
+
+        _locating = false;
+        StateHasChanged();
+    }
+
+    /// <summary>Pontos que não precisam de perguntas: os do planeamento, ou o destino já procurado.</summary>
+    private void AddKnownPoints(VacationSummaryDto v)
+    {
+        if (v.Points is { Count: > 0 } points)
+        {
+            _points[v.Id] = points
+                .Select(p => new TripPoint(p.Name, p.Latitude, p.Longitude, _cache.GetValueOrDefault(CoordinateKey(p.Latitude, p.Longitude))?.Country))
+                .ToList();
+        }
+        else if (DestinationKey(v) is { } key && _cache.GetValueOrDefault(key) is { Lat: { } lat, Lng: { } lng } found)
+        {
+            _points[v.Id] = [new TripPoint(v.Destination!, lat, lng, found.Country)];
+        }
+    }
+
+    /// <summary>
+    /// Pergunta ao Nominatim o que falta: onde fica o destino (viagens sem locais) e o país de
+    /// cada ponto. Uma pergunta por segundo, como pede o OpenStreetMap; as respostas ficam guardadas.
+    /// </summary>
+    private async Task LocateMissingAsync()
+    {
+        if (_module is null)
+            return;
+
+        var asked = false;
+        async Task PoliteDelayAsync()
+        {
+            if (asked)
+                await Task.Delay(1100);
+            asked = true;
+        }
+
+        foreach (var v in Vacations)
+        {
+            if (!_points.ContainsKey(v.Id) && DestinationKey(v) is { } key && !_cache.ContainsKey(key))
+            {
+                await PoliteDelayAsync();
+                var found = (await _module.InvokeAsync<List<SearchResult>?>("search", v.Destination!.Trim()))?.FirstOrDefault();
+                _cache[key] = found is null ? new GeoEntry() : new GeoEntry { Lat = found.Lat, Lng = found.Lng, Country = found.Country };
+                AddKnownPoints(v);
+                await RedrawAsync();
+            }
+
+            if (_points.GetValueOrDefault(v.Id) is not { } points)
+                continue;
+
+            for (var i = 0; i < points.Count; i++)
+            {
+                var point = points[i];
+                var coordinateKey = CoordinateKey(point.Lat, point.Lng);
+                if (point.Country is not null)
+                    continue;
+                if (_cache.GetValueOrDefault(coordinateKey) is { } cached)
+                {
+                    points[i] = point with { Country = cached.Country };
+                    continue;
+                }
+
+                await PoliteDelayAsync();
+                var country = await _module.InvokeAsync<string?>("country", point.Lat, point.Lng);
+                _cache[coordinateKey] = new GeoEntry { Country = country };
+                points[i] = point with { Country = country };
+                StateHasChanged();
+            }
+        }
+
+        await SaveCacheAsync();
+    }
+
+    private static string? DestinationKey(VacationSummaryDto v) =>
+        string.IsNullOrWhiteSpace(v.Destination) ? null : "q:" + v.Destination.Trim().ToLowerInvariant();
+
+    /// <summary>Coordenadas arredondadas (~1 km): pontos da mesma cidade partilham a resposta.</summary>
+    private static string CoordinateKey(double lat, double lng) =>
+        FormattableString.Invariant($"c:{lat:0.00},{lng:0.00}");
+
+    /// <summary>Um marcador por ponto; o índice é a posição da viagem na lista (para a abrir).</summary>
+    private object[] MarkerData() => Vacations
+        .Select((v, index) => (v, index))
+        .SelectMany(x => (_points.GetValueOrDefault(x.v.Id) ?? []).Select(p => (object)new
+        {
+            index = x.index,
+            number = (int?)null,
+            name = $"{x.v.Title} · {Pt.Range(x.v.StartDate, x.v.EndDate)}",
+            lat = p.Lat,
+            lng = p.Lng,
+            visited = false,
+            kind = x.v.EndDate < Today ? "trip-past" : "trip-next",
+            icon = PlaceIcons.Svg(PlaceKind.Visita),
+            label = p.Name,
+            front = x.v.EndDate >= Today,
+            reference = false,
+        }))
+        .ToArray();
+
+    private async Task RedrawAsync()
+    {
+        if (_map is not null)
+            await _map.InvokeVoidAsync("setPlaces", MarkerData(), true, null);
+        StateHasChanged();
+    }
+
+    /// <summary>Carregar num ponto abre essa viagem.</summary>
+    [JSInvokable]
+    public void OnPlaceClick(int index)
+    {
+        if (index >= 0 && index < Vacations.Count)
+            Navigation.NavigateTo($"ferias/{Vacations[index].Id}?de=mapa");
+    }
+
+    private async Task<Dictionary<string, GeoEntry>> ReadCacheAsync()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string?>("localStorage.getItem", CacheKey);
+            return string.IsNullOrEmpty(json)
+                ? []
+                : JsonSerializer.Deserialize<Dictionary<string, GeoEntry>>(json) ?? [];
+        }
+        catch (Exception)
+        {
+            return []; // sem localStorage ou conteúdo estragado: pergunta outra vez
+        }
+    }
+
+    private async Task SaveCacheAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", CacheKey, JsonSerializer.Serialize(_cache));
+        }
+        catch (Exception)
+        {
+            // Sem localStorage: na próxima visita volta a perguntar
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_map is not null)
+            {
+                await _map.InvokeVoidAsync("dispose");
+                await _map.DisposeAsync();
+            }
+
+            if (_module is not null)
+                await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        _self?.Dispose();
+    }
+}

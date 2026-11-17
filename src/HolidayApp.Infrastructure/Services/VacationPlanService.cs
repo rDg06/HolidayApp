@@ -58,8 +58,33 @@ internal sealed class VacationPlanService(
                 plan.Tasks.Count,
                 plan.Tasks.Count(t => t.Done),
                 plan.Expenses.Sum(x => x.Planned ?? 0) + bookingsTotal,
-                plan.Expenses.Sum(x => x.Actual ?? 0) + bookingsTotal);
+                plan.Expenses.Sum(x => x.Actual ?? 0) + bookingsTotal,
+                MapPoints(plan, e.Title));
         }).ToList();
+    }
+
+    /// <summary>
+    /// Pontos da viagem no mapa "Onde já estive": cada alojamento (uma viagem por várias
+    /// cidades fica com várias) ou, sem alojamentos, o centro dos locais marcados. Sem locais
+    /// fica vazio e o navegador procura o destino pelo nome.
+    /// </summary>
+    private static List<MapPointDto> MapPoints(VacationPlanDto plan, string title)
+    {
+        static bool HasCoordinates(PlanPlaceDto p) => p.Latitude != 0 || p.Longitude != 0;
+
+        var lodgings = plan.Places
+            .Where(p => p.IsLodging && HasCoordinates(p))
+            .OrderBy(p => p.Date ?? DateOnly.MaxValue)
+            .Select(p => new MapPointDto(p.Name, p.Latitude, p.Longitude))
+            .DistinctBy(p => (Math.Round(p.Latitude, 3), Math.Round(p.Longitude, 3)))
+            .ToList();
+        if (lodgings.Count > 0)
+            return lodgings;
+
+        var places = plan.Places.Where(HasCoordinates).ToList();
+        return places.Count == 0
+            ? []
+            : [new MapPointDto(plan.Destination ?? title, places.Average(p => p.Latitude), places.Average(p => p.Longitude))];
     }
 
     public async Task<VacationPlanDto?> GetPlanAsync(Guid eventId, CancellationToken ct = default)
