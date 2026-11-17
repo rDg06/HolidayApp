@@ -203,7 +203,14 @@ public sealed record VacationSummaryDto(
     int Tasks,
     int TasksDone,
     decimal Planned,
-    decimal Spent);
+    decimal Spent,
+    IReadOnlyList<MapPointDto>? Points = null);
+
+/// <summary>
+/// Onde fica uma viagem no mapa "Onde já estive": um ponto por alojamento (cada cidade
+/// onde se dormiu) ou, sem alojamentos, o centro dos locais marcados.
+/// </summary>
+public sealed record MapPointDto(string Name, double Latitude, double Longitude);
 
 /// <summary>Valor gasto numa categoria do orçamento (inclui o valor das reservas).</summary>
 public sealed record CategoryAmountDto(ExpenseCategory Category, decimal Amount);

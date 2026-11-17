@@ -1,0 +1,37 @@
+/* "Onde já estive" (página Férias) */
+.travel-map { display: grid; gap: 14px; }
+
+.travel-legend { display: flex; gap: 14px; color: var(--muted); }
+.travel-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.legend-dot.trip-past { background: var(--c-ferias); }
+.legend-dot.trip-next { background: var(--c-pessoal); }
+
+.travel-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.travel-stats > div { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.travel-stats dt { font-size: 0.78rem; color: var(--muted); }
+.travel-stats dd { margin: 2px 0 0; font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.travel-countries { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.travel-canvas {
+    height: max(380px, calc(100vh - 420px));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--surface-2);
+}
+
+.travel-note { margin: 0; }
+
+@media (max-width: 640px) {
+    .travel-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .travel-canvas { height: 280px; }
+}

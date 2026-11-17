@@ -54,10 +54,13 @@ function textElement(text) {
 /**
  * Cria o mapa dentro de `element`. `dotnet` recebe os cliques no mapa
  * (OnMapClick) e os marcadores arrastados (OnPlaceMoved).
- * Com `options.readOnly` (página de partilha/PDF) não há cliques nem arrastar.
+ * Com `options.readOnly` (página de partilha/PDF, mapa "Onde já estive") não há cliques no
+ * mapa nem arrastar; se houver `dotnet`, carregar num marcador avisa-o (OnPlaceClick).
+ * `options.fitMaxZoom` limita o zoom ao ajustar aos marcadores (por omissão 14).
  */
 export async function create(element, dotnet, places, route, options) {
     const readOnly = !!options?.readOnly;
+    const fitMaxZoom = options?.fitMaxZoom ?? 14;
     await loadLeaflet();
     const L = window.L;
 
@@ -126,6 +129,10 @@ export async function create(element, dotnet, places, route, options) {
                     .bindPopup(textElement(place.name))
                     .addTo(layer);
 
+                if (readOnly && dotnet) {
+                    marker.on("click", () => dotnet.invokeMethodAsync("OnPlaceClick", place.index));
+                }
+
                 if (!readOnly) marker.on("dragend", () => {
                     const pos = marker.getLatLng();
                     dotnet.invokeMethodAsync("OnPlaceMoved", place.index, pos.lat, pos.lng);
@@ -143,9 +150,9 @@ export async function create(element, dotnet, places, route, options) {
             const main = [...markers.values()].filter((m) => !m.isReference);
             const all = main.length > 0 ? main : [...markers.values()];
             if (all.length === 1) {
-                map.setView(all[0].getLatLng(), 14);
+                map.setView(all[0].getLatLng(), fitMaxZoom);
             } else if (all.length > 1) {
-                map.fitBounds(L.latLngBounds(all.map((m) => m.getLatLng())), { padding: [32, 32] });
+                map.fitBounds(L.latLngBounds(all.map((m) => m.getLatLng())), { padding: [32, 32], maxZoom: fitMaxZoom });
             }
         },
 
@@ -177,7 +184,7 @@ export function scrollIntoView(element) {
 
 /** Procura locais pelo nome (Nominatim / OpenStreetMap). Devolve no máximo 6 resultados. */
 export async function search(query) {
-    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=pt&q="
+    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&accept-language=pt&q="
         + encodeURIComponent(query);
 
     const response = await fetch(url, { headers: { Accept: "application/json" } });
@@ -187,6 +194,7 @@ export async function search(query) {
     return results.map((r) => ({
         name: r.name || r.display_name.split(",")[0],
         description: r.display_name,
+        country: r.address?.country ?? null,
         lat: Number(r.lat),
         lng: Number(r.lon),
     }));
@@ -343,4 +351,14 @@ export async function route(points, mode) {
     } finally {
         clearTimeout(timer);
     }
+}
+
+/** País (em português) de umas coordenadas, pelo Nominatim; null se não houver (ex.: no mar). */
+export async function country(lat, lng) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&accept-language=pt&lat=${lat}&lon=${lng}`;
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`A pesquisa do país falhou (${response.status}).`);
+
+    const data = await response.json();
+    return data.address?.country ?? null;
 }

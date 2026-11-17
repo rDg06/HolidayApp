@@ -1,0 +1,57 @@
+@page "/mapa"
+@inject ICalendarApi Api
+
+<PageTitle>Mapa · HolidayApp</PageTitle>
+
+<div class="map-page">
+    <header>
+        <h1>Onde já estive</h1>
+        <p class="muted">Todas as viagens no mapa. Carrega num ponto para abrir a viagem.</p>
+    </header>
+
+    @if (_vacations is null)
+    {
+        if (_loadError is not null)
+        {
+            <div class="alert" role="alert">
+                <span>@_loadError</span>
+                <button type="button" class="btn ghost small" @onclick="LoadAsync">Tentar de novo</button>
+            </div>
+        }
+        else
+        {
+            <p class="muted">A carregar…</p>
+        }
+    }
+    else if (_vacations.Count == 0)
+    {
+        <div class="card empty-state">
+            <p>Ainda não tens férias marcadas.</p>
+            <a class="btn primary" href="">Ir ao calendário</a>
+        </div>
+    }
+    else
+    {
+        <TravelMap Vacations="_vacations" />
+    }
+</div>
+
+@code {
+    private List<VacationSummaryDto>? _vacations;
+    private string? _loadError;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loadError = null;
+        try
+        {
+            _vacations = (await Api.GetVacationsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Não foi possível carregar as férias. {ex.Message}";
+        }
+    }
+}

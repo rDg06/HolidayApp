@@ -287,6 +287,10 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 .place-number.kind-comboio, .map-pin.kind-comboio { background: var(--c-transport); color: #fff; }
 .map-pin.has-icon > span { display: grid; place-items: center; height: 100%; }
 .map-pin.reference { opacity: 0.75; }
+
+/* Mapa "Onde já estive": viagens feitas e próximas */
+.map-pin.trip-past { background: var(--c-ferias); color: #fff; }
+.map-pin.trip-next { background: var(--c-pessoal); color: #fff; }
 /* Linha do percurso do dia (desenhada pelo Leaflet) */
 .leaflet-overlay-pane .route-line { stroke: var(--c-primary); stroke-opacity: 0.85; fill: none; }
 .leaflet-overlay-pane .route-line.exact { stroke-opacity: 0.9; stroke-linecap: round; stroke-linejoin: round; }
