@@ -93,3 +93,6 @@
     .share-doc { padding: 0; border-radius: 0; box-shadow: none; }
     .share-map { height: 300px; }
 }
+
+/* Whose trip it is (for people who did not create it) */
+.share-owner { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

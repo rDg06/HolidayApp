@@ -25,8 +25,24 @@ public interface ICalendarApi
     Task<VisitedPlaceDto> AddVisitedPlaceAsync(SaveVisitedPlaceRequest request, CancellationToken ct = default);
     Task DeleteVisitedPlaceAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>The signed-in account, or null without accounts (home mode).</summary>
+    /// <summary>The signed-in account.</summary>
     Task<AccountDto?> GetMeAsync(CancellationToken ct = default);
+
+    Task<AccountDto> ChangeUsernameAsync(string username, CancellationToken ct = default);
+
+    /// <summary>Who sees a trip (public or private, the people in it) and what I can do.</summary>
+    Task<TripSharingDto> GetSharingAsync(Guid eventId, CancellationToken ct = default);
+    Task<TripSharingDto> SetTripPublicAsync(Guid eventId, bool isPublic, CancellationToken ct = default);
+
+    /// <summary>Adds someone to the trip by email or user name.</summary>
+    Task<TripSharingDto> AddTripMemberAsync(Guid eventId, string person, bool canEdit, CancellationToken ct = default);
+    Task<TripSharingDto> SetTripMemberAsync(Guid eventId, string username, bool canEdit, CancellationToken ct = default);
+
+    /// <summary>The owner removes someone, or I leave the trip (my own user name).</summary>
+    Task RemoveTripMemberAsync(Guid eventId, string username, CancellationToken ct = default);
+
+    /// <summary>Public trips of everyone ("Explore").</summary>
+    Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default);
 
     /// <summary>Deletes the account and all its data.</summary>
     Task DeleteMeAsync(CancellationToken ct = default);

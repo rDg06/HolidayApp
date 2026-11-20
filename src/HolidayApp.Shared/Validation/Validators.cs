@@ -223,6 +223,37 @@ public static class AccountValidator
     public const int NameMaxLength = 60;
     public const int PasswordMinLength = 8;
     public const int PasswordMaxLength = 128;
+    public const int UsernameMinLength = 3;
+    public const int UsernameMaxLength = 30;
+
+    /// <summary>Normalised user name (no spaces, no leading "@", lower case): how it is stored and looked up.</summary>
+    public static string NormaliseUsername(string? username) => (username ?? "").Trim().TrimStart('@').ToLowerInvariant();
+
+    /// <summary>3 to 30 characters: letters a–z, digits, "." and "_", starting with a letter or digit.</summary>
+    public static List<string> ValidateUsername(string? username)
+    {
+        var clean = NormaliseUsername(username);
+        if (clean.Length == 0)
+            return ["Choose a user name."];
+        if (clean.Length < UsernameMinLength || clean.Length > UsernameMaxLength)
+            return [$"The user name must have {UsernameMinLength} to {UsernameMaxLength} characters."];
+        if (!clean.All(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '.' or '_') || !char.IsAsciiLetterOrDigit(clean[0]))
+            return ["The user name can only have letters (a–z, no accents), digits, \".\" and \"_\", and starts with a letter or digit."];
+        return [];
+    }
+
+    /// <summary>
+    /// A user name made from the email (e.g. "Ana.Silva+x@mail.com" → "ana.silva"), for accounts
+    /// that did not choose one. May need a number at the end if it is taken.
+    /// </summary>
+    public static string UsernameFromEmail(string? email)
+    {
+        var local = NormaliseEmail(email).Split('@')[0].Split('+')[0];
+        var clean = new string(local.Where(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '.' or '_').ToArray()).Trim('.', '_');
+        if (clean.Length > UsernameMaxLength - 4)
+            clean = clean[..(UsernameMaxLength - 4)].Trim('.', '_');
+        return clean.Length < UsernameMinLength ? $"user{clean}" : clean;
+    }
 
     /// <summary>Normalised email (no spaces, lower case): this is how it is stored and looked up.</summary>
     public static string NormaliseEmail(string? email) => (email ?? "").Trim().ToLowerInvariant();

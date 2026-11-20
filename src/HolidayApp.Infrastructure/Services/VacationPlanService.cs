@@ -1,5 +1,4 @@
 using System.Text.Json;
-using HolidayApp.Domain.Abstractions;
 using HolidayApp.Domain.Entities;
 using HolidayApp.Domain.Holidays;
 using HolidayApp.Infrastructure.Persistence;
@@ -12,15 +11,22 @@ namespace HolidayApp.Infrastructure.Services;
 
 internal sealed class VacationPlanService(
     AppDbContext db,
-    ICurrentUser currentUser,
+    TripAccess access,
     IHolidayProvider holidayProvider) : IVacationPlanService
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     public async Task<IReadOnlyList<VacationSummaryDto>> GetVacationsAsync(CancellationToken ct = default)
     {
-        var vacations = await db.Events.AsNoTracking()
-            .Where(e => e.Type == EventType.Vacation)
+        // Mine and the ones I was added to (by friends who travel with me)
+        var me = access.Me;
+        var added = await db.TripMembers.AsNoTracking()
+            .Where(m => m.UserId == me)
+            .ToDictionaryAsync(m => m.EventId, m => m.CanEdit, ct);
+        var addedIds = added.Keys.ToList();
+
+        var vacations = await db.Events.IgnoreQueryFilters().AsNoTracking()
+            .Where(e => e.Type == EventType.Vacation && (e.UserId == me || addedIds.Contains(e.Id)))
             .OrderBy(e => e.StartDate)
             .ToListAsync(ct);
 
@@ -28,9 +34,17 @@ internal sealed class VacationPlanService(
             return [];
 
         var ids = vacations.Select(e => e.Id).ToList();
-        var plans = await db.VacationPlans.AsNoTracking()
+        var plans = await db.VacationPlans.IgnoreQueryFilters().AsNoTracking()
             .Where(p => ids.Contains(p.EventId))
             .ToDictionaryAsync(p => p.EventId, p => Deserialize(p.Content), ct);
+
+        // How many people were added to each trip, and who owns the shared ones
+        var peopleCount = await db.TripMembers.AsNoTracking()
+            .Where(m => ids.Contains(m.EventId))
+            .GroupBy(m => m.EventId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+        var owners = await access.PeopleAsync(vacations.Where(e => e.UserId != me).Select(e => e.UserId), ct);
 
         // Holidays of every year covered, to count the working days
         var options = (await db.GetSettingsOrDefaultAsync(ct)).ToHolidayOptions();
@@ -59,7 +73,11 @@ internal sealed class VacationPlanService(
                 plan.Tasks.Count(t => t.Done),
                 plan.Expenses.Sum(x => x.Planned ?? 0) + bookingsTotal,
                 plan.Expenses.Sum(x => x.Actual ?? 0) + bookingsTotal,
-                MapPoints(plan, e.Title));
+                MapPoints(plan, e.Title),
+                e.UserId == me ? TripRole.Owner : added[e.Id] ? TripRole.Editor : TripRole.Viewer,
+                e.UserId == me ? null : owners.GetValueOrDefault(e.UserId) ?? TripAccess.Unknown,
+                peopleCount.GetValueOrDefault(e.Id),
+                e.IsPublic);
         }).ToList();
     }
 
@@ -89,11 +107,11 @@ internal sealed class VacationPlanService(
 
     public async Task<VacationPlanDto?> GetPlanAsync(Guid eventId, CancellationToken ct = default)
     {
-        var ev = await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct);
+        var (ev, _) = await access.FindAsync(eventId, ct);
         if (ev is null)
             return null;
 
-        var entity = await db.VacationPlans.AsNoTracking().FirstOrDefaultAsync(p => p.EventId == eventId, ct);
+        var entity = await db.VacationPlans.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(p => p.EventId == eventId, ct);
         var plan = entity is null ? new VacationPlanDto() : Deserialize(entity.Content);
 
         // The entry dates may have changed: days outside the range are no longer shown.
@@ -104,16 +122,20 @@ internal sealed class VacationPlanService(
 
     public async Task<SavePlanResult> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default)
     {
-        var ev = await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct);
+        var (ev, role) = await access.FindAsync(eventId, ct);
         if (ev is null)
             return SavePlanResult.NotFound;
+
+        // The owner and the people added with "can edit"
+        if (role is not (TripRole.Owner or TripRole.Editor))
+            return SavePlanResult.ViewOnly;
 
         // The entry dates limit the days of bookings and places
         var errors = VacationPlanValidator.Validate(plan, ev.StartDate, ev.EndDate);
         if (errors.Count > 0)
             return SavePlanResult.Invalid(errors);
 
-        var existing = await db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, ct);
+        var existing = await db.VacationPlans.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.EventId == eventId, ct);
 
         // Someone else saved after this plan was opened: do not overwrite it
         if (plan.Version is { } version && version != VersionOf(existing))
@@ -137,8 +159,9 @@ internal sealed class VacationPlanService(
         else
         {
             await db.InsertOrUpdateAsync(
-                new VacationPlan { EventId = eventId, UserId = currentUser.UserId, Content = content, UpdatedAtUtc = savedAt },
-                token => db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, token),
+                // The plan belongs to the trip's owner, even when a friend saves it first
+                new VacationPlan { EventId = eventId, UserId = ev.UserId, Content = content, UpdatedAtUtc = savedAt },
+                token => db.VacationPlans.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.EventId == eventId, token),
                 Apply,
                 ct);
         }

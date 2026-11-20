@@ -6,9 +6,16 @@
 <div class="vacations-page">
     <header class="vacations-header">
         <h1>My vacations</h1>
-        @if (_vacations is { Count: > 0 })
+        @* The working days are only for my own vacations (not the trips friends added me to) *@
+        @if (Mine.Count > 0)
         {
-            <p class="muted">@Display.Workdays(_vacations.Sum(v => v.Workdays)) in @(_vacations.Count == 1 ? "1 period" : $"{_vacations.Count} periods")</p>
+            <p class="muted">
+                @Display.Workdays(Mine.Sum(v => v.Workdays)) in @(Mine.Count == 1 ? "1 period" : $"{Mine.Count} periods")
+                @if (Mine.Count < _vacations!.Count)
+                {
+                    <span> · @(_vacations.Count - Mine.Count) shared with you</span>
+                }
+            </p>
         }
     </header>
 
@@ -72,6 +79,14 @@
     private List<VacationSummaryDto> Upcoming =>
         _vacations?.Where(v => v.EndDate >= _today).OrderBy(v => v.StartDate).ToList() ?? [];
 
+    private List<VacationSummaryDto> Mine => _vacations?.Where(v => v.Role == TripRole.Owner).ToList() ?? [];
+
+    /// <summary>Who can edit opens the plan; who can only view opens the summary.</summary>
+    private static string Href(VacationSummaryDto v) =>
+        v.CanEdit ? $"vacations/{v.Id}?from=vacations" : $"vacations/{v.Id}/share?from=vacations";
+
+    private static string People(int count) => count == 1 ? "+1 person" : $"+{count} people";
+
     private List<VacationSummaryDto> Past =>
         _vacations?.Where(v => v.EndDate < _today).OrderByDescending(v => v.StartDate).ToList() ?? [];
 
@@ -107,7 +122,7 @@
     private RenderFragment VacationCard(VacationSummaryDto v) => __builder =>
     {
         var status = Status(v);
-        <a class="card vacation-card @(status == "Ongoing" ? "current" : null)" href="@($"vacations/{v.Id}?from=vacations")">
+        <a class="card vacation-card @(status == "Ongoing" ? "current" : null)" href="@Href(v)">
             <div class="vacation-top">
                 <div class="vacation-title">
                     <strong>@v.Title</strong>
@@ -120,6 +135,23 @@
             {
                 <p class="vacation-destination">@v.Destination</p>
             }
+
+            @* Whose trip and who sees it *@
+            <div class="vacation-sharing">
+                @if (v.IsShared)
+                {
+                    <span class="tag shared-tag">@(v.Owner?.Name ?? "Someone")'s trip</span>
+                    <span class="muted small">@(v.CanEdit ? "you can edit" : "view only")</span>
+                }
+                else
+                {
+                    <span class="@(v.IsPublic ? "tag" : "tag muted-tag")">@(v.IsPublic ? "Public" : "Private")</span>
+                    @if (v.People > 0)
+                    {
+                        <span class="muted small">@People(v.People)</span>
+                    }
+                }
+            </div>
 
             <dl class="vacation-stats">
                 @* Total vacation days (with weekends and holidays) and, below, the working days used *@
@@ -151,7 +183,7 @@
                 </div>
             </dl>
 
-            <span class="vacation-open">Plan →</span>
+            <span class="vacation-open">@(v.CanEdit ? "Plan →" : "See trip →")</span>
         </a>
     };
 }

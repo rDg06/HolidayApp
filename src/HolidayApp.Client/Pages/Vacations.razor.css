@@ -51,3 +51,7 @@
 
 .empty-state { display: grid; justify-items: start; gap: 12px; padding: 24px; }
 .empty-state p { margin: 0; }
+
+/* Private / Public, people added, or whose trip it is */
+.vacation-sharing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: -4px; }
+.tag.shared-tag { background: color-mix(in srgb, var(--c-personal) 16%, transparent); color: var(--c-personal); }

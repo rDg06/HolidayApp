@@ -15,6 +15,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<VacationPlan> VacationPlans => Set<VacationPlan>();
     public DbSet<VisitedPlace> VisitedPlaces => Set<VisitedPlace>();
 
+    /// <summary>
+    /// People added to trips. No per-user filter: the owner and the member both need to see the
+    /// row (access is checked in <see cref="Services.TripAccess"/>).
+    /// </summary>
+    public DbSet<TripMember> TripMembers => Set<TripMember>();
+
     /// <summary>Accounts (no per-user filter: sign-in needs to look up any email).</summary>
     public DbSet<UserAccount> Accounts => Set<UserAccount>();
 

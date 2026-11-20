@@ -44,6 +44,8 @@ public static class DependencyInjection
         services.AddScoped<IVacationPlanService, VacationPlanService>();
         services.AddScoped<IVisitedPlaceService, VisitedPlaceService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<TripAccess>();
+        services.AddScoped<ITripSharingService, TripSharingService>();
         services.AddSingleton(TimeProvider.System);
 
         return services;
@@ -59,6 +61,9 @@ public static class DependencyInjection
 
         await BaselineLegacyDatabaseAsync(db, ct);
         await db.Database.MigrateAsync(ct);
+
+        // Accounts from before user names get one (from the email)
+        await AccountService.GiveUsernamesAsync(db, ct);
     }
 
     /// <summary>

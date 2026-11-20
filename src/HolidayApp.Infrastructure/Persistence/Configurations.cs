@@ -19,6 +19,9 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
 
         // Typical queries: "this user's events in this date range".
         builder.HasIndex(e => new { e.UserId, e.StartDate, e.EndDate });
+
+        // "Explore": public trips of everyone
+        builder.HasIndex(e => e.IsPublic);
     }
 }
 
@@ -79,6 +82,29 @@ internal sealed class UserAccountConfiguration : IEntityTypeConfiguration<UserAc
         builder.Property(a => a.Name).IsRequired().HasMaxLength(AccountValidator.NameMaxLength);
         builder.Property(a => a.PasswordHash).IsRequired().HasMaxLength(512);
 
+        builder.Property(a => a.Username).HasMaxLength(AccountValidator.UsernameMaxLength);
+
         builder.HasIndex(a => a.Email).IsUnique();
+        builder.HasIndex(a => a.Username).IsUnique();
+    }
+}
+
+internal sealed class TripMemberConfiguration : IEntityTypeConfiguration<TripMember>
+{
+    public void Configure(EntityTypeBuilder<TripMember> builder)
+    {
+        builder.ToTable("TripMembers");
+        builder.HasKey(m => new { m.EventId, m.UserId });
+
+        builder.Property(m => m.UserId).IsRequired().HasMaxLength(128);
+
+        // "Trips I was added to"
+        builder.HasIndex(m => m.UserId);
+
+        // Deleting the trip removes the people from it
+        builder.HasOne<CalendarEvent>()
+            .WithMany()
+            .HasForeignKey(m => m.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

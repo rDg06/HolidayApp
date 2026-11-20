@@ -11,11 +11,7 @@ namespace HolidayApp.Api.Tests;
 public sealed class AccountTests : IAsyncLifetime
 {
     private const string InviteCode = "invite-2026";
-    private readonly AppFactory _factory = new("Production", new()
-    {
-        ["Auth:InviteCode"] = InviteCode,
-        ["Auth:Disabled"] = "true", // accounts win: sign-in is still required
-    });
+    private readonly AppFactory _factory = new("Production", new() { ["Auth:InviteCode"] = InviteCode });
 
     public Task InitializeAsync() => Task.CompletedTask;
 
@@ -102,7 +98,7 @@ public sealed class AccountTests : IAsyncLifetime
         var me = await client.GetFromJsonAsync<AccountDto>("api/me");
 
         Assert.Equal("/vacations", response.Headers.Location!.OriginalString);
-        Assert.Equal(new AccountDto("Ana", "ana@example.com"), me); // email stored in lower case
+        Assert.Equal(new AccountDto("Ana", "ana@example.com", "ana"), me); // email stored in lower case
     }
 
     [Theory]
@@ -185,7 +181,7 @@ public sealed class AccountTests : IAsyncLifetime
         var response = await client.PutAsJsonAsync("api/me", new RenameAccountRequest(" Ana Maria "));
         var empty = await client.PutAsJsonAsync("api/me", new RenameAccountRequest(" "));
 
-        Assert.Equal(new AccountDto("Ana Maria", "ana@example.com"), await response.Content.ReadFromJsonAsync<AccountDto>());
+        Assert.Equal(new AccountDto("Ana Maria", "ana@example.com", "ana"), await response.Content.ReadFromJsonAsync<AccountDto>());
         Assert.Equal("Ana Maria", (await client.GetFromJsonAsync<AccountDto>("api/me"))!.Name);
         Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
     }
@@ -268,7 +264,7 @@ public sealed class AccountTests : IAsyncLifetime
     [Fact]
     public async Task The_old_GroupPassword_still_works_as_the_invite_code()
     {
-        await using var factory = new AppFactory("Production", new() { ["Auth:GroupPassword"] = "old-code" });
+        await using var factory = new AppFactory("Production", new() { ["Auth:InviteCode"] = "", ["Auth:GroupPassword"] = "old-code" });
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = true });
 
         var response = await RegisterAsync(client, "ana@example.com", code: "old-code");
@@ -278,13 +274,81 @@ public sealed class AccountTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Without_accounts_api_me_says_there_is_no_account()
+    public async Task Without_an_invite_code_nobody_can_create_an_account_and_the_api_stays_closed()
     {
-        await using var factory = new AppFactory(); // development, no invite code
+        await using var factory = new AppFactory("Production", new() { ["Auth:InviteCode"] = "" });
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = true });
 
+        var page = await client.GetStringAsync("register");
+        var response = await RegisterAsync(client, "ana@example.com", code: "");
 
-        var response = await factory.CreateClient().GetAsync("api/me");
+        Assert.Contains("closed", page);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("api/settings")).StatusCode);
+        Assert.Equal(0, await factory.WithDbAsync(db => db.Accounts.CountAsync()));
+    }
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    [Fact]
+    public async Task In_development_the_api_also_needs_an_account()
+    {
+        await using var factory = new AppFactory();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().GetAsync("api/settings")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Without_a_chosen_user_name_one_is_made_from_the_email()
+    {
+        var first = Browser();
+        var second = Browser();
+        await RegisterAsync(first, "Ana.Silva+trips@example.com");
+        await RegisterAsync(second, "ana.silva@other.example", name: "Other Ana");
+
+        Assert.Equal("ana.silva", (await first.GetFromJsonAsync<AccountDto>("api/me"))!.Username);
+        Assert.Equal("ana.silva2", (await second.GetFromJsonAsync<AccountDto>("api/me"))!.Username);
+    }
+
+    [Fact]
+    public async Task Sign_in_with_the_user_name_too()
+    {
+        var client = Browser();
+        await RegisterAsync(client, "ana@example.com");
+        await client.GetAsync("logout");
+
+        var response = await LoginAsync(client, "@Ana", "password-one-1");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("api/settings")).StatusCode);
+    }
+
+    [Fact]
+    public async Task User_name_can_be_changed_but_not_to_one_that_is_taken_or_invalid()
+    {
+        var ana = Browser();
+        var rui = Browser();
+        await RegisterAsync(ana, "ana@example.com");
+        await RegisterAsync(rui, "rui@example.com", name: "Rui");
+
+        var taken = await ana.PutAsJsonAsync("api/me/username", new ChangeUsernameRequest("RUI"));
+        var invalid = await ana.PutAsJsonAsync("api/me/username", new ChangeUsernameRequest("ana silva!"));
+        var changed = await ana.PutAsJsonAsync("api/me/username", new ChangeUsernameRequest("@Ana.Travels"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, taken.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal("ana.travels", (await changed.Content.ReadFromJsonAsync<AccountDto>())!.Username);
+    }
+
+    [Fact]
+    public async Task Accounts_from_before_user_names_get_one_when_the_app_starts()
+    {
+        await _factory.WithDbAsync(async db =>
+        {
+            db.Accounts.Add(new UserAccount { Email = "old@example.com", Name = "Old", PasswordHash = "x" });
+            return await db.SaveChangesAsync();
+        });
+
+        await _factory.WithDbAsync(async db => { await HolidayApp.Infrastructure.Services.AccountService.GiveUsernamesAsync(db); return 0; });
+
+        Assert.Equal("old", await _factory.WithDbAsync(db => db.Accounts.Select(a => a.Username).SingleAsync()));
     }
 }

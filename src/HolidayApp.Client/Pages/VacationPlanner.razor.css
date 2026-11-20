@@ -66,3 +66,7 @@
 @media (max-width: 900px) {
     .plan-grid { grid-template-columns: 1fr; }
 }
+
+/* Someone else's trip that I was added to */
+.tag.shared-tag { background: color-mix(in srgb, var(--c-personal) 16%, transparent); color: var(--c-personal); }
+.plan-save .btn.selected { border-color: var(--c-primary); color: var(--c-primary); }

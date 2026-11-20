@@ -72,3 +72,23 @@ public enum ExpenseCategory
     Shopping = 4,
     Other = 5,
 }
+
+/// <summary>What the signed-in person can do with a trip.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<TripRole>))]
+public enum TripRole
+{
+    /// <summary>Cannot see it (private and not added to it).</summary>
+    None = 0,
+
+    /// <summary>Not added to it, but the trip is public: view only.</summary>
+    PublicViewer = 1,
+
+    /// <summary>Added to the trip, view only.</summary>
+    Viewer = 2,
+
+    /// <summary>Added to the trip and can change the plan.</summary>
+    Editor = 3,
+
+    /// <summary>Created the trip: everything (dates, people, public or private, delete).</summary>
+    Owner = 4,
+}

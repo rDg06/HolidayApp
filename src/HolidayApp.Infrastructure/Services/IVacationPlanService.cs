@@ -16,9 +16,12 @@ public interface IVacationPlanService
 }
 
 /// <summary>Result of saving a plan: not found, invalid or saved.</summary>
-public sealed record SavePlanResult(VacationPlanDto? Plan, IDictionary<string, string[]>? Errors, bool Conflict = false)
+public sealed record SavePlanResult(VacationPlanDto? Plan, IDictionary<string, string[]>? Errors, bool Conflict = false, bool Denied = false)
 {
     public static SavePlanResult NotFound { get; } = new(null, null);
+
+    /// <summary>Added to the trip with "view only" (or it is public): cannot change it.</summary>
+    public static SavePlanResult ViewOnly { get; } = new(null, null, Denied: true);
 
     /// <summary>Someone else saved this plan after it was opened.</summary>
     public static SavePlanResult Outdated { get; } = new(null, null, Conflict: true);

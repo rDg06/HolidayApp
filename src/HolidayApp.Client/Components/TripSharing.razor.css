@@ -1,0 +1,55 @@
+.trip-sharing { display: grid; gap: 12px; }
+.trip-sharing h2 { font-size: 1.05rem; }
+
+.sharing-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.sharing-hint { margin: 0; }
+
+/* Private | Public */
+.visibility {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-2);
+}
+
+.visibility button {
+    border: 0;
+    border-radius: 999px;
+    padding: 5px 14px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.visibility button.selected { background: var(--c-primary); color: var(--c-primary-text); }
+.visibility button:disabled { cursor: progress; }
+
+.people { display: grid; gap: 8px; }
+.people li { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--c-vacation) 18%, var(--surface));
+    color: var(--c-vacation);
+    font-weight: 700;
+}
+
+.person { display: grid; flex: 1; min-width: 0; }
+.person strong, .person span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role { flex: none; }
+.role-select { width: auto; flex: none; }
+
+.add-person { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+.add-person .field { flex: 1; min-width: 200px; }
+.add-person + p { margin: 0; }
+.private-tag { background: var(--surface-2); color: var(--muted); }

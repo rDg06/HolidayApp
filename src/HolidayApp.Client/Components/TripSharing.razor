@@ -1,0 +1,191 @@
+@* Who sees a trip: private or public, the owner and the friends added to it.
+   The owner changes everything; someone added sees the list and can leave the trip. *@
+@inject ICalendarApi Api
+
+<section class="card trip-sharing" aria-labelledby="sharing-title">
+    <div class="sharing-head">
+        <h2 id="sharing-title">Who sees this trip</h2>
+        @if (Sharing.IsOwner)
+        {
+            <div class="visibility" role="radiogroup" aria-label="Visibility">
+                <button type="button" role="radio" aria-checked="@(!Sharing.IsPublic ? "true" : "false")"
+                        class="@(!Sharing.IsPublic ? "selected" : null)" disabled="@_busy" @onclick="() => SetPublicAsync(false)">
+                    Private
+                </button>
+                <button type="button" role="radio" aria-checked="@(Sharing.IsPublic ? "true" : "false")"
+                        class="@(Sharing.IsPublic ? "selected" : null)" disabled="@_busy" @onclick="() => SetPublicAsync(true)">
+                    Public
+                </button>
+            </div>
+        }
+        else
+        {
+            <span class="@(Sharing.IsPublic ? "tag" : "tag private-tag")">@(Sharing.IsPublic ? "Public" : "Private")</span>
+        }
+    </div>
+
+    <p class="muted small sharing-hint">
+        @if (Sharing.IsPublic)
+        {
+            <text>Public: everyone with an account can see it (without editing) on <a href="explore">Explore</a>, plus the people below.</text>
+        }
+        else
+        {
+            <text>Private: only @(Sharing.IsOwner ? "you" : Sharing.Owner.Name) and the people below can see it.</text>
+        }
+    </p>
+
+    <ul class="plain-list people" aria-label="People in this trip">
+        <li>
+            <span class="avatar" aria-hidden="true">@Initial(Sharing.Owner.Name)</span>
+            <span class="person">
+                <strong>@Sharing.Owner.Name@(Sharing.IsOwner ? " (you)" : null)</strong>
+                @if (Sharing.Owner.Username.Length > 0)
+                {
+                    <span class="muted small">@@@Sharing.Owner.Username</span>
+                }
+            </span>
+            <span class="muted small role">Created the trip</span>
+        </li>
+        @foreach (var member in Sharing.Members)
+        {
+            var m = member;
+            var isMe = m.Username == MyUsername;
+            <li>
+                <span class="avatar" aria-hidden="true">@Initial(m.Name)</span>
+                <span class="person">
+                    <strong>@m.Name@(isMe ? " (you)" : null)</strong>
+                    <span class="muted small">@@@m.Username</span>
+                </span>
+                @if (Sharing.IsOwner)
+                {
+                    <select class="input role-select" aria-label="@($"What {m.Name} can do")" disabled="@_busy"
+                            value="@(m.CanEdit ? "edit" : "view")" @onchange="e => OnRoleChangedAsync(m, e)">
+                        <option value="edit">Can edit</option>
+                        <option value="view">View only</option>
+                    </select>
+                    <button type="button" class="btn ghost small" disabled="@_busy" aria-label="@($"Remove {m.Name}")"
+                            title="Remove from the trip" @onclick="() => RemoveAsync(m)">✕</button>
+                }
+                else
+                {
+                    <span class="muted small role">@(m.CanEdit ? "Can edit" : "View only")</span>
+                }
+            </li>
+        }
+    </ul>
+
+    @if (Sharing.IsOwner)
+    {
+        <form class="add-person" @onsubmit="AddAsync">
+            <label class="field">
+                <span>Add someone who travels with you</span>
+                <input class="input" placeholder="Email or user name" autocomplete="off" autocapitalize="none" spellcheck="false"
+                       @bind="_person" @bind:event="oninput" />
+            </label>
+            <select class="input role-select" aria-label="What they can do" @bind="_newRole">
+                <option value="edit">Can edit</option>
+                <option value="view">View only</option>
+            </select>
+            <button type="submit" class="btn primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_person))">Add</button>
+        </form>
+        <p class="muted small">They see the trip even while it is private. They need an account in the app.</p>
+    }
+    else if (Sharing.Members.Any(m => m.Username == MyUsername))
+    {
+        <div>
+            <button type="button" class="btn danger small" disabled="@_busy" @onclick="LeaveAsync">Leave this trip</button>
+        </div>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="form-errors" role="alert">@_error</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Guid EventId { get; set; }
+    [Parameter, EditorRequired] public TripSharingDto Sharing { get; set; } = default!;
+
+    /// <summary>My user name (to mark "you" and to leave the trip).</summary>
+    [Parameter] public string? MyUsername { get; set; }
+
+    [Parameter] public EventCallback<TripSharingDto> SharingChanged { get; set; }
+
+    /// <summary>I left the trip (I may no longer see it).</summary>
+    [Parameter] public EventCallback OnLeft { get; set; }
+
+    private string _person = "";
+    private string _newRole = "edit";
+    private bool _busy;
+    private string? _error;
+
+    private static string Initial(string name) => name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
+
+    private Task SetPublicAsync(bool isPublic) =>
+        isPublic == Sharing.IsPublic ? Task.CompletedTask : RunAsync(() => Api.SetTripPublicAsync(EventId, isPublic));
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_person))
+            return;
+
+        if (await RunAsync(() => Api.AddTripMemberAsync(EventId, _person.Trim(), _newRole == "edit")))
+            _person = "";
+    }
+
+    private Task OnRoleChangedAsync(TripMemberDto member, ChangeEventArgs e) =>
+        RunAsync(() => Api.SetTripMemberAsync(EventId, member.Username, e.Value as string == "edit"));
+
+    private Task RemoveAsync(TripMemberDto member) =>
+        RunAsync(async () =>
+        {
+            await Api.RemoveTripMemberAsync(EventId, member.Username);
+            return await Api.GetSharingAsync(EventId);
+        });
+
+    private async Task LeaveAsync()
+    {
+        if (MyUsername is null)
+            return;
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Api.RemoveTripMemberAsync(EventId, MyUsername);
+            await OnLeft.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Runs a change and passes the new state up. Returns whether it worked.</summary>
+    private async Task<bool> RunAsync(Func<Task<TripSharingDto>> change)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            Sharing = await change();
+            await SharingChanged.InvokeAsync(Sharing);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
