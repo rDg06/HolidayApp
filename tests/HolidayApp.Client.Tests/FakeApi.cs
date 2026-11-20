@@ -37,13 +37,61 @@ public sealed class FakeApi(Guid tripId) : ICalendarApi
         [
             // 2–6 Nov 2026: 5 days, 4 working (holiday or bridge aside); 3 places to visit, 1 visited
             new VacationSummaryDto(tripId, "Roma", Nov(2), Nov(6), 4, "Roma", 2, 3, 1, 2, 1, 500m, 557.90m),
+            .. MoreVacations,
         ]);
     public Task<VacationPlanDto> SavePlanAsync(Guid eventId, VacationPlanDto plan, CancellationToken ct = default) => throw new NotSupportedException();
     public Task<UserSettingsDto> GetSettingsAsync(CancellationToken ct = default) => throw new NotSupportedException();
     public Task<UserSettingsDto> SaveSettingsAsync(UserSettingsDto settings, CancellationToken ct = default) => throw new NotSupportedException();
 
-    /// <summary>Signed-in account (null = home mode, no accounts).</summary>
+    /// <summary>Signed-in account.</summary>
     public AccountDto? Me { get; set; }
+
+    public Task<AccountDto> ChangeUsernameAsync(string username, CancellationToken ct = default)
+    {
+        Me = Me! with { Username = username.Trim().TrimStart('@').ToLowerInvariant() };
+        return Task.FromResult(Me);
+    }
+
+    /// <summary>Who sees the trip: by default mine, private, nobody added (tests can change it).</summary>
+    public TripSharingDto Sharing { get; set; } = new(TripRole.Owner, false, new PersonDto("ana", "Ana"), []);
+
+    /// <summary>Trips on "Explore" (tests can change the list).</summary>
+    public List<PublicTripDto> PublicTrips { get; } = [];
+
+    /// <summary>Extra trips on "Vacations" (e.g. ones friends added me to).</summary>
+    public List<VacationSummaryDto> MoreVacations { get; } = [];
+
+    public Task<TripSharingDto> GetSharingAsync(Guid eventId, CancellationToken ct = default) => Task.FromResult(Sharing);
+
+    public Task<TripSharingDto> SetTripPublicAsync(Guid eventId, bool isPublic, CancellationToken ct = default)
+    {
+        Sharing = Sharing with { IsPublic = isPublic };
+        return Task.FromResult(Sharing);
+    }
+
+    public Task<TripSharingDto> AddTripMemberAsync(Guid eventId, string person, bool canEdit, CancellationToken ct = default)
+    {
+        if (person.Contains("nobody"))
+            throw new ApiException("There is no account with that email or user name.");
+        var username = person.Split('@')[0].TrimStart('@');
+        Sharing = Sharing with { Members = [.. Sharing.Members, new TripMemberDto(username, username.ToUpperInvariant()[..1] + username[1..], canEdit)] };
+        return Task.FromResult(Sharing);
+    }
+
+    public Task<TripSharingDto> SetTripMemberAsync(Guid eventId, string username, bool canEdit, CancellationToken ct = default)
+    {
+        Sharing = Sharing with { Members = Sharing.Members.Select(m => m.Username == username ? m with { CanEdit = canEdit } : m).ToList() };
+        return Task.FromResult(Sharing);
+    }
+
+    public Task RemoveTripMemberAsync(Guid eventId, string username, CancellationToken ct = default)
+    {
+        Sharing = Sharing with { Members = Sharing.Members.Where(m => m.Username != username).ToList() };
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<PublicTripDto>>(PublicTrips.ToList());
     public bool MeDeleted { get; private set; }
 
     public Task<AccountDto?> GetMeAsync(CancellationToken ct = default) => Task.FromResult(Me);

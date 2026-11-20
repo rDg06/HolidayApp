@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using HolidayApp.Infrastructure.Persistence;
 using HolidayApp.Shared;
-using HolidayApp.Web.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -40,7 +39,8 @@ public sealed class LegacyDatabaseTests
         }
         SqliteConnection.ClearAllPools();
 
-        var client = factory.CreateClient(); // starts the app: applies the missing migrations
+        // Starts the app (applies the missing migrations); the first account gets the old data
+        var client = await factory.SignedInAsync();
 
         var events = await client.GetFromJsonAsync<List<CalendarEventDto>>("api/events?year=2026");
         var algarve = Assert.Single(events!);
@@ -72,7 +72,7 @@ public sealed class LegacyDatabaseTests
         }
         SqliteConnection.ClearAllPools();
 
-        var client = factory.CreateClient(); // applies EnglishEnumValues
+        var client = await factory.SignedInAsync(); // applies EnglishEnumValues; the first account gets the data
 
         var entry = await client.GetFromJsonAsync<CalendarEventDto>($"api/events/{eventId}");
         var plan = await client.GetFromJsonAsync<VacationPlanDto>($"api/events/{eventId}/plan");
@@ -90,6 +90,6 @@ public sealed class LegacyDatabaseTests
 
     private sealed class FixedUser : Domain.Abstractions.ICurrentUser
     {
-        public string UserId => HttpCurrentUser.LocalUserId;
+        public string UserId => "local";
     }
 }

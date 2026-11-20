@@ -1,5 +1,5 @@
-@* Profile (Profile and settings page): name, email, password, sign out, download the data and
-   delete the account. Not shown in home mode (no accounts). *@
+@* Profile (Profile and settings page): name, user name, email, password, sign out, download the
+   data and delete the account. *@
 @inject ICalendarApi Api
 @inject NavigationManager Navigation
 
@@ -22,6 +22,23 @@
         @if (_nameError is not null)
         {
             <p class="form-errors" role="alert">@_nameError</p>
+        }
+
+        <form class="account-name" @onsubmit="ChangeUsernameAsync">
+            <label class="field">
+                <span>User name <span class="muted small">(friends use it to add you to a trip)</span></span>
+                <input class="input" maxlength="@AccountValidator.UsernameMaxLength" autocomplete="off" autocapitalize="none" spellcheck="false"
+                       aria-label="User name" @bind="_username" @bind:event="oninput" />
+            </label>
+            <button type="submit" class="btn small" disabled="@(!UsernameChanged || _savingUsername)">@(_savingUsername ? "Saving…" : "Save user name")</button>
+            @if (_usernameSaved && !UsernameChanged)
+            {
+                <span class="saved" role="status">Saved ✓</span>
+            }
+        </form>
+        @if (_usernameError is not null)
+        {
+            <p class="form-errors" role="alert">@_usernameError</p>
         }
 
         <p class="account-email"><span class="muted small">Email</span> @_account.Email</p>
@@ -113,6 +130,15 @@
 
     private bool NameChanged => _account is not null && _name.Trim() != _account.Name && _name.Trim().Length > 0;
 
+    // User name
+    private string _username = "";
+    private bool _savingUsername;
+    private bool _usernameSaved;
+    private string? _usernameError;
+
+    private bool UsernameChanged =>
+        _account is not null && AccountValidator.NormaliseUsername(_username) is { Length: > 0 } clean && clean != _account.Username;
+
     // Password
     private bool _changingPassword;
     private bool _savingPassword;
@@ -128,6 +154,7 @@
         {
             _account = await Api.GetMeAsync();
             _name = _account?.Name ?? "";
+            _username = _account?.Username ?? "";
         }
         catch (Exception)
         {
@@ -159,6 +186,33 @@
         finally
         {
             _renaming = false;
+        }
+    }
+
+    private async Task ChangeUsernameAsync()
+    {
+        if (!UsernameChanged)
+            return;
+
+        _usernameError = AccountValidator.ValidateUsername(_username).FirstOrDefault();
+        if (_usernameError is not null)
+            return;
+
+        _savingUsername = true;
+        _usernameSaved = false;
+        try
+        {
+            _account = await Api.ChangeUsernameAsync(_username);
+            _username = _account.Username ?? "";
+            _usernameSaved = true;
+        }
+        catch (Exception ex)
+        {
+            _usernameError = ex.Message;
+        }
+        finally
+        {
+            _savingUsername = false;
         }
     }
 

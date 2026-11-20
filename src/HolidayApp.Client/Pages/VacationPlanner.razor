@@ -34,6 +34,10 @@
                     {
                         <span class="tag travelling">Travelling · day @(_today.DayNumber - _event.StartDate.DayNumber + 1)</span>
                     }
+                    @if (_sharing is { IsOwner: false })
+                    {
+                        <span class="tag shared-tag">@_sharing.Owner.Name's trip · you can edit</span>
+                    }
                 </p>
             </div>
             <div class="plan-save">
@@ -46,6 +50,13 @@
                 {
                     <span class="muted small" role="status">Unsaved changes</span>
                 }
+                @if (_sharing is not null)
+                {
+                    <button type="button" class="@(_showSharing ? "btn selected" : "btn")" aria-expanded="@(_showSharing ? "true" : "false")"
+                            aria-controls="trip-sharing" @onclick="() => _showSharing = !_showSharing">
+                        @(_sharing.IsPublic ? "Public" : "Private") · @PeopleLabel
+                    </button>
+                }
                 <button type="button" class="btn" disabled="@_saving" title="Summary to share with friends (saves first, if needed)"
                         @onclick="ShareAsync">Share (PDF)</button>
                 <button type="button" class="btn primary" disabled="@_saving" @onclick="SaveAsync">
@@ -53,6 +64,13 @@
                 </button>
             </div>
         </header>
+
+        @if (_showSharing && _sharing is not null)
+        {
+            <div id="trip-sharing">
+                <TripSharing EventId="Id" @bind-Sharing="_sharing" MyUsername="@_myUsername" OnLeft="Left" />
+            </div>
+        }
 
         @Errors
 
@@ -146,6 +164,7 @@
     {
         "vacations" => ("vacations", "← Vacations"),
         "map" => ("", "← Map"),
+        "explore" => ("explore", "← Explore"),
         _ => ("calendar", "← Calendar"),
     };
 
@@ -155,6 +174,19 @@
     private CalendarEventDto? _event;
     private VacationPlanDto? _plan;
     private PlaceMap? _placeMap;
+
+    /// <summary>Who sees the trip (people added, public or private) and what I can do.</summary>
+    private TripSharingDto? _sharing;
+    private Guid? _loadedId;
+    private string? _myUsername;
+    private bool _showSharing;
+
+    private string PeopleLabel => _sharing!.Members.Count switch
+    {
+        0 => "only you",
+        1 => "1 person",
+        var n => $"{n} people",
+    };
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
     private List<PlanDayDto> _days = [];
     private string? _loadError;
@@ -188,9 +220,10 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // Only reloads when the entry changes (not when "?from=" changes)
-        if (_event?.Id == Id)
+        // Only reloads when the entry changes (not when "?from=" changes, nor after going to the summary)
+        if (_loadedId == Id)
             return;
+        _loadedId = Id;
 
         _event = null;
         _plan = null;
@@ -198,10 +231,25 @@
         _saved = false;
         _errors = [];
 
+        _sharing = null;
+        _showSharing = false;
+
         try
         {
             var eventTask = Api.GetEventAsync(Id);
             var planTask = Api.GetPlanAsync(Id);
+            var sharingTask = Api.GetSharingAsync(Id);
+            var meTask = Api.GetMeAsync();
+            _sharing = await sharingTask;
+
+            // View only (added as "view only", or a public trip): the read-only summary
+            if (!_sharing.CanEdit)
+            {
+                Navigation.NavigateTo($"vacations/{Id}/share?from={Uri.EscapeDataString(From ?? "vacations")}", replace: true);
+                return;
+            }
+
+            _myUsername = (await meTask)?.Username;
             _event = await eventTask;
             _plan = await planTask;
             BuildDays();
@@ -255,6 +303,13 @@
         {
             _saving = false;
         }
+    }
+
+    /// <summary>I left the trip: back to my vacations.</summary>
+    private void Left()
+    {
+        _savedState = CurrentState(); // nothing to save: no "unsaved changes" question
+        Navigation.NavigateTo("vacations");
     }
 
     private async Task ConfirmLeaveAsync(LocationChangingContext context)

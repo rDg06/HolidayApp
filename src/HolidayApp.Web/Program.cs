@@ -10,10 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
-// Current user: the signed-in account, the App Service login, or "local" (see README)
+// Current user: the signed-in account (accounts with email and password, see README)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
-builder.Services.AddAppServiceAuthentication(builder.Configuration);
+builder.Services.AddAccounts();
 
 // Database + application services
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -39,26 +39,24 @@ else
 app.UseHttpsRedirection();
 app.UseAuthentication();
 
-// Accounts (with an invite code): without a session only the sign-in and register pages open
-if (Accounts.IsEnabled(app.Configuration))
-{
-    app.UseRateLimiter();
-    app.UseAccountGate();
-    app.MapAccountPages();
-}
+// Without a session only the sign-in and register pages open
+app.UseRateLimiter();
+app.UseAccountGate();
+app.MapAccountPages();
 
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets();
 
-// REST API at /api/... (only for allowed users, outside development)
-var api = app.MapGroup("/api").RequireAllowedUser(app.Environment, app.Configuration);
+// REST API at /api/... (signed-in accounts only)
+var api = app.MapGroup("/api").RequireAuthorization();
 api.MapEventEndpoints();
 api.MapPlanEndpoints();
 api.MapCalendarEndpoints();
 api.MapSettingsEndpoints();
 api.MapVisitedPlaceEndpoints();
 api.MapAccountEndpoints();
+api.MapSharingEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()

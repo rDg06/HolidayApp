@@ -59,11 +59,36 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
     public async Task<AccountDto?> GetMeAsync(CancellationToken ct = default)
     {
         using var response = await http.GetAsync("api/me", ct);
+        if (response.StatusCode is System.Net.HttpStatusCode.NoContent or System.Net.HttpStatusCode.NotFound)
+            return null;
         await EnsureSuccessAsync(response, ct);
-        return response.StatusCode == System.Net.HttpStatusCode.NoContent
-            ? null
-            : await response.Content.ReadFromJsonAsync<AccountDto>(ct);
+        return await response.Content.ReadFromJsonAsync<AccountDto>(ct);
     }
+
+    public Task<AccountDto> ChangeUsernameAsync(string username, CancellationToken ct = default) =>
+        SendAsync<ChangeUsernameRequest, AccountDto>(HttpMethod.Put, "api/me/username", new ChangeUsernameRequest(username), ct);
+
+    public Task<TripSharingDto> GetSharingAsync(Guid eventId, CancellationToken ct = default) =>
+        GetAsync<TripSharingDto>($"api/events/{eventId}/sharing", ct);
+
+    public Task<TripSharingDto> SetTripPublicAsync(Guid eventId, bool isPublic, CancellationToken ct = default) =>
+        SendAsync<SetTripVisibilityRequest, TripSharingDto>(HttpMethod.Put, $"api/events/{eventId}/sharing", new SetTripVisibilityRequest(isPublic), ct);
+
+    public Task<TripSharingDto> AddTripMemberAsync(Guid eventId, string person, bool canEdit, CancellationToken ct = default) =>
+        SendAsync<AddTripMemberRequest, TripSharingDto>(HttpMethod.Post, $"api/events/{eventId}/sharing/members", new AddTripMemberRequest(person, canEdit), ct);
+
+    public Task<TripSharingDto> SetTripMemberAsync(Guid eventId, string username, bool canEdit, CancellationToken ct = default) =>
+        SendAsync<SetTripMemberRequest, TripSharingDto>(HttpMethod.Put,
+            $"api/events/{eventId}/sharing/members/{Uri.EscapeDataString(username)}", new SetTripMemberRequest(canEdit), ct);
+
+    public async Task RemoveTripMemberAsync(Guid eventId, string username, CancellationToken ct = default)
+    {
+        using var response = await http.DeleteAsync($"api/events/{eventId}/sharing/members/{Uri.EscapeDataString(username)}", ct);
+        await EnsureSuccessAsync(response, ct);
+    }
+
+    public async Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default) =>
+        await GetAsync<List<PublicTripDto>>("api/explore", ct);
 
     public async Task DeleteMeAsync(CancellationToken ct = default)
     {
@@ -109,8 +134,6 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         {
             case System.Net.HttpStatusCode.Unauthorized:
                 throw new ApiException("You need to sign in to use the app.");
-            case System.Net.HttpStatusCode.Forbidden:
-                throw new ApiException("Your account does not have access to this app.");
         }
 
         var message = $"Error {(int)response.StatusCode} talking to the server.";

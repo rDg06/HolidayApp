@@ -1,0 +1,99 @@
+@page "/explore"
+@inject ICalendarApi Api
+
+@* Public trips of everyone with an account (each person chooses which of their trips are public). *@
+
+<PageTitle>Explore · HolidayApp</PageTitle>
+
+<div class="explore-page">
+    <header class="explore-header">
+        <h1>Explore</h1>
+        <p class="muted">Trips people made public. Yours are private until you choose "Public" in a trip's plan.</p>
+    </header>
+
+    @if (_trips is null)
+    {
+        if (_loadError is not null)
+        {
+            <div class="alert" role="alert">
+                <span>@_loadError</span>
+                <button type="button" class="btn ghost small" @onclick="LoadAsync">Try again</button>
+            </div>
+        }
+        else
+        {
+            <p class="muted">Loading…</p>
+        }
+    }
+    else if (_trips.Count == 0)
+    {
+        <div class="card empty-state">
+            <p>No public trips yet.</p>
+            <p class="muted small">Open one of your trips, choose who sees it and set it to <strong>Public</strong> to show it here.</p>
+            <a class="btn primary" href="vacations">My vacations</a>
+        </div>
+    }
+    else
+    {
+        <ul class="plain-list explore-grid" aria-label="Public trips">
+            @foreach (var trip in _trips)
+            {
+                <li>
+                    <a class="card explore-card" href="@Href(trip)">
+                        <div class="explore-who">
+                            <span class="avatar" aria-hidden="true">@Initial(trip.Owner.Name)</span>
+                            <span class="explore-person">
+                                <strong>@(trip.IsMine ? "You" : trip.Owner.Name)</strong>
+                                @if (trip.Owner.Username.Length > 0)
+                                {
+                                    <span class="muted small">@@@trip.Owner.Username</span>
+                                }
+                            </span>
+                        </div>
+
+                        <div class="explore-trip">
+                            <strong class="explore-title">@trip.Title</strong>
+                            <span class="muted small">@Display.Range(trip.StartDate, trip.EndDate) @trip.StartDate.Year · @Display.Days(trip.EndDate.DayNumber - trip.StartDate.DayNumber + 1)</span>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(trip.Destination))
+                        {
+                            <p class="explore-destination">@trip.Destination</p>
+                        }
+
+                        <span class="explore-foot">
+                            <span class="muted small">@(trip.Places == 1 ? "1 place" : $"{trip.Places} places")</span>
+                            <span class="explore-open">See trip →</span>
+                        </span>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private List<PublicTripDto>? _trips;
+    private string? _loadError;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loadError = null;
+        try
+        {
+            _trips = (await Api.GetPublicTripsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Could not load the public trips. {ex.Message}";
+        }
+    }
+
+    /// <summary>My own trips open the plan; other people's open the read-only summary.</summary>
+    private static string Href(PublicTripDto trip) =>
+        trip.IsMine ? $"vacations/{trip.Id}?from=explore" : $"vacations/{trip.Id}/share?from=explore";
+
+    private static string Initial(string name) => name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
+}

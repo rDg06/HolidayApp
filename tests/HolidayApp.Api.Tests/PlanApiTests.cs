@@ -10,11 +10,7 @@ public sealed class PlanApiTests : IAsyncLifetime
     private readonly AppFactory _factory = new();
     private HttpClient _client = default!;
 
-    public Task InitializeAsync()
-    {
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
+    public async Task InitializeAsync() => _client = await _factory.SignedInAsync();
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 

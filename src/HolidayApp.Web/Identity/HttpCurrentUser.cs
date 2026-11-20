@@ -4,13 +4,11 @@ using HolidayApp.Domain.Abstractions;
 namespace HolidayApp.Web.Identity;
 
 /// <summary>
-/// Reads the user from the authentication claims. Without a sign-in,
-/// every request belongs to the "local" user.
+/// Reads the signed-in account from the session. Without a session (only the sign-in pages
+/// get that far) it is nobody: an id that matches no data.
 /// </summary>
 public sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 {
-    public const string LocalUserId = "local";
-
     public string UserId =>
-        accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? LocalUserId;
+        accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
 }

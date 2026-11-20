@@ -204,10 +204,64 @@ public sealed record VacationSummaryDto(
     int TasksDone,
     decimal Planned,
     decimal Spent,
-    IReadOnlyList<MapPointDto>? Points = null);
+    IReadOnlyList<MapPointDto>? Points = null,
+    TripRole Role = TripRole.Owner,
+    PersonDto? Owner = null,
+    int People = 0,
+    bool IsPublic = false)
+{
+    /// <summary>Someone else's trip that I was added to.</summary>
+    public bool IsShared => Role is TripRole.Editor or TripRole.Viewer;
+
+    /// <summary>Can change the plan (owner or added with "can edit").</summary>
+    public bool CanEdit => Role is TripRole.Owner or TripRole.Editor;
+}
 
 /// <summary>The signed-in account.</summary>
-public sealed record AccountDto(string Name, string Email);
+public sealed record AccountDto(string Name, string Email, string? Username = null);
+
+/// <summary>Change the user name (how other people find you to add you to a trip).</summary>
+public sealed record ChangeUsernameRequest(string Username);
+
+/// <summary>Another person, as others see them: user name and display name (never the email).</summary>
+public sealed record PersonDto(string Username, string Name);
+
+/// <summary>A person added to a trip.</summary>
+public sealed record TripMemberDto(string Username, string Name, bool CanEdit);
+
+/// <summary>
+/// Who sees a trip: public or private, the owner and the people added to it, and what I can do.
+/// People who only see it because it is public do not get the list of people.
+/// </summary>
+public sealed record TripSharingDto(
+    TripRole MyRole,
+    bool IsPublic,
+    PersonDto Owner,
+    IReadOnlyList<TripMemberDto> Members)
+{
+    public bool IsOwner => MyRole == TripRole.Owner;
+    public bool CanEdit => MyRole is TripRole.Owner or TripRole.Editor;
+}
+
+/// <summary>Make a trip public or private.</summary>
+public sealed record SetTripVisibilityRequest(bool IsPublic);
+
+/// <summary>Add someone to a trip, by email or user name.</summary>
+public sealed record AddTripMemberRequest(string Person, bool CanEdit);
+
+/// <summary>Change what someone added to a trip can do.</summary>
+public sealed record SetTripMemberRequest(bool CanEdit);
+
+/// <summary>A public trip on the "Explore" page.</summary>
+public sealed record PublicTripDto(
+    Guid Id,
+    string Title,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    string? Destination,
+    int Places,
+    PersonDto Owner,
+    bool IsMine);
 
 /// <summary>Change the display name.</summary>
 public sealed record RenameAccountRequest(string Name);

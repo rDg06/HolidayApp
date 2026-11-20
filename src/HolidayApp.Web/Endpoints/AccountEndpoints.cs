@@ -13,11 +13,11 @@ public static class AccountEndpoints
     {
         var group = api.MapGroup("/me").WithTags("Account");
 
-        // GET /api/me — 204 when there are no accounts (home mode, no sign-in)
+        // GET /api/me
         group.MapGet("/", async (ClaimsPrincipal user, IAccountService accounts, CancellationToken ct) =>
             AccountId(user) is { } id && await accounts.FindAsync(id, ct) is { } account
-                ? Results.Ok(new AccountDto(account.Name, account.Email))
-                : Results.NoContent());
+                ? Results.Ok(new AccountDto(account.Name, account.Email, account.Username))
+                : Results.NotFound());
 
         // GET /api/me/export — all the account's data in a JSON file
         group.MapGet("/export", async (ClaimsPrincipal user, IAccountService accounts, CancellationToken ct) =>
@@ -45,7 +45,19 @@ public static class AccountEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["Name"] = [.. errors] });
 
             await Accounts.SignInAsync(context, account);
-            return Results.Ok(new AccountDto(account.Name, account.Email));
+            return Results.Ok(new AccountDto(account.Name, account.Email, account.Username));
+        });
+
+        // PUT /api/me/username — changes the user name (how other people add you to a trip)
+        group.MapPut("/username", async (ChangeUsernameRequest request, ClaimsPrincipal user, IAccountService accounts, CancellationToken ct) =>
+        {
+            if (AccountId(user) is not { } id)
+                return Results.NotFound();
+
+            var (account, errors) = await accounts.ChangeUsernameAsync(id, request.Username, ct);
+            return account is null
+                ? Results.ValidationProblem(new Dictionary<string, string[]> { ["Username"] = [.. errors] })
+                : Results.Ok(new AccountDto(account.Name, account.Email, account.Username));
         });
 
         // POST /api/me/password — changes the password (asks for the current one)

@@ -16,6 +16,12 @@ public sealed class CalendarEvent
     public EventType Type { get; set; } = EventType.Vacation;
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// Public trip: everyone with an account can see it (read-only). Private by default: only
+    /// the owner and the people added to it (<see cref="TripMember"/>).
+    /// </summary>
+    public bool IsPublic { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 }

@@ -29,6 +29,9 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
@@ -56,9 +59,33 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsPublic");
+
                     b.HasIndex("UserId", "StartDate", "EndDate");
 
                     b.ToTable("Events", (string)null);
+                });
+
+            modelBuilder.Entity("HolidayApp.Domain.Entities.TripMember", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AddedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("CanEdit")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("EventId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TripMembers", (string)null);
                 });
 
             modelBuilder.Entity("HolidayApp.Domain.Entities.UserAccount", b =>
@@ -85,9 +112,16 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Username")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
                         .IsUnique();
 
                     b.ToTable("Accounts", (string)null);
@@ -179,6 +213,15 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "Year");
 
                     b.ToTable("VisitedPlaces", (string)null);
+                });
+
+            modelBuilder.Entity("HolidayApp.Domain.Entities.TripMember", b =>
+                {
+                    b.HasOne("HolidayApp.Domain.Entities.CalendarEvent", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HolidayApp.Domain.Entities.VacationPlan", b =>

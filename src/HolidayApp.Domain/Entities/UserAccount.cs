@@ -14,6 +14,12 @@ public sealed class UserAccount
     /// <summary>Lower-case email (it is the user name; unique).</summary>
     public required string Email { get; set; }
 
+    /// <summary>
+    /// Unique user name (e.g. "ana.silva"), lower case: how other people find you to add you
+    /// to a trip. Accounts from before user names get one when the app starts.
+    /// </summary>
+    public string? Username { get; set; }
+
     /// <summary>Display name (e.g. "Ana").</summary>
     public required string Name { get; set; }
 

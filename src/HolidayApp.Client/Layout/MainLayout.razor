@@ -1,15 +1,17 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
 <header class="app-header">
     <a class="brand" href="">
         <img src="favicon.svg" alt="" width="26" height="26" />
         <span>HolidayApp</span>
     </a>
-    @* Map, Vacations and Calendar on the left, next to the name; the account on the right *@
+    @* Map, Vacations, Calendar and Explore on the left, next to the name; the account on the right *@
     <nav class="nav nav-main" aria-label="Main navigation">
         <NavLink href="" Match="NavLinkMatch.All">Map</NavLink>
         <NavLink href="vacations">Vacations</NavLink>
         <NavLink href="calendar">Calendar</NavLink>
+        <NavLink href="explore">Explore</NavLink>
     </nav>
     <nav class="nav nav-side" aria-label="Account">
         @* Only the person icon; the name is for screen readers and the mouse tooltip *@
@@ -19,9 +21,20 @@
                 <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 20.5c1.2-3.6 4.3-5.5 8-5.5s6.8 1.9 8 5.5" />
             </svg>
         </NavLink>
+        @* Sign out: "/logout" is a server page (outside Blazor), so the page loads for real *@
+        <button type="button" class="nav-logout" title="Sign out" aria-label="Sign out" @onclick="SignOut">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                      d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 16l4-4-4-4M19 12H9" />
+            </svg>
+        </button>
     </nav>
 </header>
 
 <main class="page">
     @Body
 </main>
+
+@code {
+    private void SignOut() => Navigation.NavigateTo("logout", forceLoad: true);
+}

@@ -1,16 +1,18 @@
 @page "/vacations/{Id:guid}/share"
 @inject ICalendarApi Api
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 @* Trip summary to share with friends: "Save PDF" opens the browser's print dialog
-   (where you choose "Save as PDF"). Amounts, references and notes only show if chosen. *@
+   (where you choose "Save as PDF"). Amounts, references and notes only show if chosen.
+   It is also how people who can only view a trip (added as "view only", or a public trip) see it. *@
 
 <PageTitle>@(_event is null ? "Share vacation" : $"{_event.Title} · {Display.Range(_event.StartDate, _event.EndDate)}")</PageTitle>
 
 <div class="share-page">
     <div class="share-toolbar no-print">
-        <a class="back-link" href="@($"vacations/{Id}")">← Plan vacation</a>
+        <a class="back-link" href="@BackLink.Href">@BackLink.Label</a>
 
         @if (_event is not null && _plan is not null)
         {
@@ -37,6 +39,25 @@
     }
     else
     {
+        @if (_sharing is { IsOwner: false })
+        {
+            <p class="share-owner no-print">
+                <span class="tag">@(_sharing.IsPublic && _sharing.MyRole == TripRole.PublicViewer ? "Public trip" : "Shared with you")</span>
+                <span>by <strong>@_sharing.Owner.Name</strong> <span class="muted">@@@_sharing.Owner.Username</span></span>
+                @if (!_sharing.CanEdit)
+                {
+                    <span class="muted small">· view only</span>
+                }
+            </p>
+        }
+
+        @if (_sharing is { MyRole: TripRole.Viewer })
+        {
+            <div class="no-print">
+                <TripSharing EventId="Id" @bind-Sharing="_sharing" MyUsername="@_myUsername" OnLeft="Left" />
+            </div>
+        }
+
         <p class="share-hint muted small no-print">
             In "Save PDF" choose <strong>Save as PDF</strong> as the destination (on a phone: Share → Print).
             Booking amounts and references only show if you choose them above.
@@ -245,6 +266,24 @@
     /// <summary>Each day's street route (those not back yet stay straight-line).</summary>
     private readonly Dictionary<DateOnly, RouteResult> _routes = [];
 
+    /// <summary>Where you came from ("vacations", "map", "explore"), for the back link.</summary>
+    [SupplyParameterFromQuery(Name = "from")] public string? From { get; set; }
+
+    private TripSharingDto? _sharing;
+    private string? _myUsername;
+
+    /// <summary>Who can edit goes back to the plan; who can only view goes back to where they came from.</summary>
+    private (string Href, string Label) BackLink => _sharing is null || _sharing.CanEdit
+        ? ($"vacations/{Id}", "← Plan vacation")
+        : From switch
+        {
+            "map" => ("", "← Map"),
+            "explore" => ("explore", "← Explore"),
+            _ => ("vacations", "← Vacations"),
+        };
+
+    private void Left() => Navigation.NavigateTo(From == "explore" ? "explore" : "vacations");
+
     private int DayCount => _event is null ? 0 : _event.EndDate.DayNumber - _event.StartDate.DayNumber + 1;
 
     protected override async Task OnInitializedAsync()
@@ -253,8 +292,12 @@
         {
             var eventTask = Api.GetEventAsync(Id);
             var planTask = Api.GetPlanAsync(Id);
+            var sharingTask = Api.GetSharingAsync(Id);
+            var meTask = Api.GetMeAsync();
             _event = await eventTask;
             _plan = await planTask;
+            _sharing = await sharingTask;
+            _myUsername = (await meTask)?.Username;
         }
         catch (Exception ex)
         {

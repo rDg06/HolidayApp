@@ -9,9 +9,10 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace HolidayApp.Web.Identity;
 
 /// <summary>
-/// Accounts with email and password, turned on with "Auth:InviteCode" (the invite code needed
-/// to create an account; the older "Auth:GroupPassword" works too). Without a session only the
-/// sign-in and register pages open; each person only sees their own data. The first account
+/// Accounts with email and password (always on). Creating an account needs the invite code
+/// ("Auth:InviteCode"; the older "Auth:GroupPassword" works too); without a code configured
+/// nobody can create accounts. Without a session only the sign-in and register pages open; each
+/// person sees their own data, the trips they were added to and public trips. The first account
 /// created gets the data that already existed (see AccountService).
 /// </summary>
 public static class Accounts
@@ -35,7 +36,14 @@ public static class Accounts
         : configuration["Auth:GroupPassword"] is { Length: > 0 } old ? old
         : null;
 
-    public static bool IsEnabled(IConfiguration configuration) => InviteCode(configuration) is not null;
+    /// <summary>Sign-in with the session cookie, the limit on attempts and authorization.</summary>
+    public static IServiceCollection AddAccounts(this IServiceCollection services)
+    {
+        services.AddAuthentication(SchemeName).AddAccountCookie();
+        services.AddAccountRateLimit();
+        services.AddAuthorization();
+        return services;
+    }
 
     public static AuthenticationBuilder AddAccountCookie(this AuthenticationBuilder builder) =>
         builder.AddCookie(SchemeName, options =>
@@ -106,7 +114,7 @@ public static class Accounts
             if (account is null)
             {
                 await Task.Delay(TimeSpan.FromSeconds(1)); // slows down guessing
-                return Page(LoginForm(back, form["email"], ["Wrong email or password."]), StatusCodes.Status400BadRequest);
+                return Page(LoginForm(back, form["email"], ["Wrong email, user name or password."]), StatusCodes.Status400BadRequest);
             }
 
             await SignInAsync(context, account);
@@ -115,24 +123,30 @@ public static class Accounts
         .DisableAntiforgery() // plain forms, no Blazor
         .RequireRateLimiting(RateLimitPolicy);
 
-        app.MapGet(RegisterPath, (string? returnUrl) =>
-            Page(RegisterForm(SafeReturnUrl(returnUrl), name: null, email: null, errors: [])));
+        app.MapGet(RegisterPath, (string? returnUrl, IConfiguration configuration) =>
+            InviteCode(configuration) is null
+                ? Page(RegistrationClosed(SafeReturnUrl(returnUrl)))
+                : Page(RegisterForm(SafeReturnUrl(returnUrl), name: null, email: null, username: null, errors: [])));
 
         app.MapPost(RegisterPath, async (HttpContext context, IAccountService accounts, IConfiguration configuration) =>
         {
             var form = await context.Request.ReadFormAsync();
             var back = SafeReturnUrl(form["returnUrl"]);
-            string name = form["name"].ToString(), email = form["email"].ToString();
+            string name = form["name"].ToString(), email = form["email"].ToString(), username = form["username"].ToString();
 
-            if (!Matches(form["inviteCode"].ToString(), InviteCode(configuration)!))
+            // Without an invite code configured nobody can create accounts
+            if (InviteCode(configuration) is not { } code)
+                return Page(RegistrationClosed(back), StatusCodes.Status403Forbidden);
+
+            if (!Matches(form["inviteCode"].ToString(), code))
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
-                return Page(RegisterForm(back, name, email, ["The invite code is wrong. Ask the person who invited you."]), StatusCodes.Status400BadRequest);
+                return Page(RegisterForm(back, name, email, username, ["The invite code is wrong. Ask the person who invited you."]), StatusCodes.Status400BadRequest);
             }
 
-            var (account, errors) = await accounts.RegisterAsync(name, email, form["password"], context.RequestAborted);
+            var (account, errors) = await accounts.RegisterAsync(name, email, form["password"], username, context.RequestAborted);
             if (account is null)
-                return Page(RegisterForm(back, name, email, errors), StatusCodes.Status400BadRequest);
+                return Page(RegisterForm(back, name, email, username, errors), StatusCodes.Status400BadRequest);
 
             await SignInAsync(context, account);
             return Results.Redirect(back);
@@ -188,8 +202,8 @@ public static class Accounts
             <div class="brand"><img src="/favicon.svg" alt="" width="28" height="28" /> HolidayApp</div>
             <p>Sign in to your account.</p>
             {{Errors(errors)}}
-            <label>Email
-                <input type="email" name="email" value="{{E(email)}}" autocomplete="username" required autofocus />
+            <label>Email or user name
+                <input type="text" name="email" value="{{E(email)}}" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus />
             </label>
             <label>Password
                 <input type="password" name="password" autocomplete="current-password" required />
@@ -200,7 +214,15 @@ public static class Accounts
         </form>
         """;
 
-    private static string RegisterForm(string back, string? name, string? email, IReadOnlyList<string> errors) => $$"""
+    private static string RegistrationClosed(string back) => $$"""
+        <form>
+            <div class="brand"><img src="/favicon.svg" alt="" width="28" height="28" /> HolidayApp</div>
+            <p>Creating accounts is closed: this server has no invite code yet. Ask the person who runs it.</p>
+            <p class="switch">Already have an account? <a href="{{LoginPath}}?returnUrl={{Uri.EscapeDataString(back)}}">Sign in</a></p>
+        </form>
+        """;
+
+    private static string RegisterForm(string back, string? name, string? email, string? username, IReadOnlyList<string> errors) => $$"""
         <form method="post" action="{{RegisterPath}}">
             <div class="brand"><img src="/favicon.svg" alt="" width="28" height="28" /> HolidayApp</div>
             <p>Create your account. You need the invite code from the person who invited you.</p>
@@ -210,6 +232,10 @@ public static class Accounts
             </label>
             <label>Email
                 <input type="email" name="email" value="{{E(email)}}" maxlength="254" autocomplete="email" required />
+            </label>
+            <label>User name <span class="hint">(how friends find you to add you to a trip; empty = from your email)</span>
+                <input type="text" name="username" value="{{E(username)}}" minlength="3" maxlength="30" pattern="@?[A-Za-z0-9][A-Za-z0-9._]*"
+                       autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="e.g. ana.silva" />
             </label>
             <label>Password <span class="hint">(at least 8 characters)</span>
                 <input type="password" name="password" minlength="8" maxlength="128" autocomplete="new-password" required />

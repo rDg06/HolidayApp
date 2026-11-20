@@ -14,8 +14,10 @@ public holidays, keep track of the working-day balance and plan each trip.
 dotnet run --project src/HolidayApp.Web
 ```
 
-Open http://localhost:5180. The SQLite database (`holidayapp.db`) is created
-automatically on the first run.
+Open http://localhost:5180 and create an account (in development the invite code is
+`dev-invite`, from `appsettings.Development.json`). The SQLite database (`holidayapp.db`)
+is created automatically on the first run; the first account created gets the data that
+was there from before accounts.
 
 In Visual Studio: open `HolidayApp.slnx`, set **HolidayApp.Web** as the startup
 project and press F5.
@@ -56,13 +58,14 @@ New-NetFirewallRule -DisplayName "HolidayApp" -Direction Inbound -Protocol TCP -
 
 On the home network it opens at `http://SERVER-IP:5180`.
 
-**Accounts.** Without the file `C:\HolidayApp\dados\invite-code.txt` the app opens with
-no sign-in (home network only). With it, each person has **their own account** (email
-and password, 30-day session on each device) and only sees their own data; the file's
-content is the **invite code** needed to create an account. The first account created
-gets the data that already existed. On "Profile and settings": change name and
-password, sign out, download my data and delete the account. The older `senha.txt`
-file still works. Create or change the code (no accents; restart the app afterwards):
+**Accounts.** Accounts are always on: each person has **their own account** (email or
+user name and password, 30-day session on each device). The content of
+`C:\HolidayApp\dados\invite-code.txt` is the **invite code** needed to create an
+account; `start.bat` creates a random one there the first time if the file is missing
+(the older `senha.txt` still works). Without any code nobody can create accounts. The
+first account created gets the data that already existed. On "Profile and settings":
+change name, user name and password, sign out, download my data and delete the account.
+Create or change the code (no accents; restart the app afterwards):
 
 ```bash
 Set-Content C:\HolidayApp\dados\invite-code.txt -Value "the-invite-code" -Encoding ascii -NoNewline
@@ -80,22 +83,16 @@ whoever saves second is told to reload, instead of wiping the other person's wor
 
 ## Publish (Azure App Service)
 
-Outside development the API **only accepts allowed users**. Sign-in is done by
-App Service *Authentication* (Easy Auth), which sits in front of the app:
-
 1. Publish the app (Visual Studio → right-click **HolidayApp.Web** → **Publish**
    → **Azure App Service (Linux)**).
-2. In the Azure portal, under **Authentication**, add a provider (Microsoft or
-   Google) and choose *Require authentication*.
-3. Under **Configuration → Application settings** add the allowed emails:
-   `Auth__AllowedEmails__0` = `your@email.com` (and `__1`, `__2`… for more people).
-4. Point the database to the persistent folder:
+2. Under **Configuration → Application settings** set the invite code:
+   `Auth__InviteCode` = `a-code-only-you-share`.
+3. Point the database to the persistent folder:
    `ConnectionStrings__Default` = `Data Source=/home/data/holidayapp.db`.
 
-Without *Authentication* turned on the API rejects every request (401), and with an
-account that is not on the list it answers 403. Each allowed person only sees their
-own data. Leaflet and the Inter font are served by the app itself (`wwwroot/lib`),
-with no requests to CDNs or Google Fonts.
+Without a session the API answers 401 and the pages go to the sign-in page. Leaflet and
+the Inter font are served by the app itself (`wwwroot/lib`), with no requests to CDNs or
+Google Fonts.
 
 ## What it does
 
@@ -138,8 +135,16 @@ with no requests to CDNs or Google Fonts.
 - **Share as PDF**: in the planner, "Share (PDF)" opens a trip summary (map, day by
   day, other places, bookings) ready to save as PDF from the browser's print dialog.
   Amounts, booking references/links and notes are only included if chosen
-- **Accounts** (with an invite code): email and password, each person only sees
-  their own data; profile with name and password, data download and account deletion
+- **Accounts** (sign-up with an invite code): email or user name and password; profile
+  with name, user name and password, data download and account deletion
+- **Trips with friends**: every trip is **private** by default. In the plan,
+  "Private · only you" opens *Who sees this trip*: add people by email or user name as
+  **can edit** (they change the plan with you) or **view only** (they see the summary),
+  even while the trip stays private. Only the person who created the trip changes the
+  dates, adds or removes people, makes it public or deletes it; people added can leave.
+  Shared trips show in "Vacations" and on the map, but not in your calendar or balance
+- **Explore**: trips people made **public**, seen by everyone with an account (view only,
+  without the list of people)
 - Automatic light/dark mode and a layout adapted to phones
 - **Installable and offline** (PWA): on a phone, "Add to home screen". Offline, it
   opens the last version seen on that device (read-only: saving needs internet;
@@ -176,11 +181,12 @@ app (MAUI, React Native…) that uses the same endpoints.
 |---|---|
 | `/` (also `/map`) | Where I've been (map of every trip) |
 | `/vacations` | Every vacation |
-| `/vacations/{id}` | Plan vacation (`?from=vacations` or `?from=map` for the back link) |
-| `/vacations/{id}/share` | Share / PDF summary |
+| `/vacations/{id}` | Plan vacation (`?from=vacations`, `?from=map` or `?from=explore` for the back link) |
+| `/vacations/{id}/share` | Share / PDF summary (also the read-only view of trips you can only see) |
+| `/explore` | Public trips of everyone |
 | `/calendar` | Year calendar |
 | `/settings` | Profile and settings |
-| `/login`, `/register`, `/logout` | Sign-in pages (server pages, with accounts on) |
+| `/login`, `/register`, `/logout` | Sign-in pages (server pages) |
 
 ### API
 
@@ -196,8 +202,13 @@ app (MAUI, React Native…) that uses the same endpoints.
 | GET | `/api/calendar/{year}/holidays` | Holidays of the year |
 | GET | `/api/calendar/{year}/summary` | Vacation balance and bridges |
 | GET / PUT | `/api/settings` | User settings |
-| GET / PUT / DELETE | `/api/me` | My account (with accounts on) / rename / delete the account and data |
+| GET / PUT / DELETE | `/api/me` | My account / rename / delete the account and data |
+| PUT | `/api/me/username` | Change the user name |
 | POST | `/api/me/password` | Change the password |
+| GET / PUT | `/api/events/{id}/sharing` | Who sees the trip / make it public or private (owner) |
+| POST | `/api/events/{id}/sharing/members` | Add someone by email or user name (owner) |
+| PUT / DELETE | `/api/events/{id}/sharing/members/{username}` | Can edit or view only (owner) / remove someone or leave |
+| GET | `/api/explore` | Public trips |
 | GET | `/api/me/export` | Download my data (JSON) |
 | GET / POST | `/api/visited` | Places I've been (added by hand) |
 | DELETE | `/api/visited/{id}` | Delete one of those places |
@@ -209,12 +220,12 @@ In development, the OpenAPI document is at `/openapi/v1.json`.
 The project already has the pieces in place to grow without a rewrite:
 
 **1. Several users.** Every table has a `UserId` and `AppDbContext` applies a global
-filter so each user only sees their own data. The user comes from the account
-(`Identity/Accounts.cs`), from the App Service sign-in
-(`Identity/AppServiceAuthentication.cs`, with the `Auth:AllowedEmails` list) or, with
-neither, is `local`. For another kind of sign-in (Entra ID directly…) just swap the
-authentication scheme: `HttpCurrentUser` reads the `NameIdentifier` claim and does
-not need to change.
+filter so each user only sees their own data. Trips shared with friends and public
+trips go through `TripAccess`, which looks past the filter and checks who can see or
+change each trip (people added are in the `TripMembers` table). The user comes from the
+account (`Identity/Accounts.cs`). For another kind of sign-in (Entra ID…) just swap the
+authentication scheme: `HttpCurrentUser` reads the `NameIdentifier` claim and does not
+need to change.
 
 **2. Another database.** The provider comes from `appsettings.json`
 (`Database:Provider`). For PostgreSQL: install

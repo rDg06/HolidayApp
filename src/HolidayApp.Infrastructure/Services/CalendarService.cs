@@ -12,7 +12,8 @@ namespace HolidayApp.Infrastructure.Services;
 internal sealed class CalendarService(
     AppDbContext db,
     ICurrentUser currentUser,
-    IHolidayProvider holidayProvider) : ICalendarService
+    IHolidayProvider holidayProvider,
+    TripAccess access) : ICalendarService
 {
     // ---------- Entries ----------
 
@@ -27,7 +28,8 @@ internal sealed class CalendarService(
 
     public async Task<CalendarEventDto?> GetEventAsync(Guid id, CancellationToken ct = default)
     {
-        var entity = await db.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
+        // Also trips I was added to and public trips (to open them); changing is owner only
+        var (entity, _) = await access.FindAsync(id, ct);
         return entity?.ToDto();
     }
 
