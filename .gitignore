@@ -6,7 +6,7 @@ obj/
 *.user
 *.suo
 
-# Base de dados local (SQLite)
+# Local database (SQLite)
 *.db
 *.db-shm
 *.db-wal

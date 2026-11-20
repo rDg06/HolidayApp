@@ -1,6 +1,6 @@
 namespace HolidayApp.Shared;
 
-/// <summary>Marcação devolvida pela API.</summary>
+/// <summary>Calendar entry returned by the API.</summary>
 public sealed record CalendarEventDto(
     Guid Id,
     string Title,
@@ -9,7 +9,7 @@ public sealed record CalendarEventDto(
     EventType Type,
     string? Notes);
 
-/// <summary>Pedido para criar ou atualizar uma marcação.</summary>
+/// <summary>Request to create or update a calendar entry.</summary>
 public sealed record SaveCalendarEventRequest(
     string Title,
     DateOnly StartDate,
@@ -17,10 +17,10 @@ public sealed record SaveCalendarEventRequest(
     EventType Type,
     string? Notes);
 
-/// <summary>Feriado num determinado dia.</summary>
+/// <summary>Public holiday on a given day.</summary>
 public sealed record HolidayDto(DateOnly Date, string Name, HolidayKind Kind);
 
-/// <summary>Sugestão de "ponte": um dia de férias que, junto a um feriado, dá um fim de semana prolongado.</summary>
+/// <summary>"Bridge" suggestion: one vacation day that, next to a holiday, makes a long weekend.</summary>
 public sealed record BridgeSuggestionDto(
     DateOnly HolidayDate,
     string HolidayName,
@@ -28,7 +28,7 @@ public sealed record BridgeSuggestionDto(
     int ConsecutiveDaysOff,
     bool AlreadyBooked);
 
-/// <summary>Resumo anual do saldo de férias.</summary>
+/// <summary>Yearly vacation allowance summary.</summary>
 public sealed record YearSummaryDto(
     int Year,
     int AnnualVacationDays,
@@ -37,8 +37,8 @@ public sealed record YearSummaryDto(
     IReadOnlyList<BridgeSuggestionDto> Bridges);
 
 /// <summary>
-/// Planeamento de umas férias: destino, reservas, plano dia a dia, tarefas e orçamento.
-/// Classes mutáveis para a página poder editar os campos diretamente.
+/// Plan for a vacation: destination, bookings, day-by-day plan, tasks and budget.
+/// Mutable classes so the page can edit the fields directly.
 /// </summary>
 public sealed class VacationPlanDto
 {
@@ -49,19 +49,19 @@ public sealed class VacationPlanDto
     public List<PlanExpenseDto> Expenses { get; set; } = [];
     public List<PlanPlaceDto> Places { get; set; } = [];
 
-    /// <summary>Como se anda entre os locais (caminho e tempos no mapa): a pé por omissão.</summary>
+    /// <summary>How people get around between places (route and times on the map): walking by default.</summary>
     public RouteMode RouteMode { get; set; }
 
     /// <summary>
-    /// Versão do que está guardado (muda a cada gravação; 0 = ainda não há planeamento).
-    /// Ao guardar, se não for a versão atual, outra pessoa gravou entretanto e a gravação é
-    /// recusada em vez de apagar as alterações dela. Sem versão (null) grava sempre.
+    /// Version of what is saved (changes on every save; 0 = no plan yet).
+    /// When saving, if this is not the current version someone else saved in the meantime and
+    /// the save is rejected instead of wiping their changes. Without a version (null) it always saves.
     /// </summary>
     public long? Version { get; set; }
 
     /// <summary>
-    /// Gasto por categoria: valor real das despesas + valor das reservas (na categoria
-    /// do tipo de reserva). Pela ordem fixa das categorias; só as que têm valor.
+    /// Spent per category: actual amount of the expenses + amount of the bookings (in the
+    /// category of the booking type). In the fixed category order; only those with an amount.
     /// </summary>
     public List<CategoryAmountDto> SpentByCategory() =>
         Expenses.Select(e => (e.Category, Amount: e.Actual ?? 0))
@@ -73,7 +73,7 @@ public sealed class VacationPlanDto
             .ToList();
 }
 
-/// <summary>Local a visitar, marcado no mapa.</summary>
+/// <summary>Place to visit, pinned on the map.</summary>
 public sealed class PlanPlaceDto
 {
     public string Name { get; set; } = "";
@@ -81,60 +81,60 @@ public sealed class PlanPlaceDto
     public double Longitude { get; set; }
 
     /// <summary>
-    /// Dia em que se vai visitar (aparece no plano dia a dia). No alojamento é o
-    /// primeiro dia da estadia. Num ponto de transporte sem dia, aparece em todos os dias.
+    /// Day of the visit (shows in the day-by-day plan). For lodging it is the first day of
+    /// the stay. A transport point without a day shows on every day.
     /// </summary>
     public DateOnly? Date { get; set; }
 
-    /// <summary>Só no alojamento: último dia da estadia (inclusive). Sem valor = só um dia.</summary>
+    /// <summary>Lodging only: last day of the stay (inclusive). No value = a single day.</summary>
     public DateOnly? EndDate { get; set; }
 
-    /// <summary>Horários, preço da entrada, dicas…</summary>
+    /// <summary>Opening hours, ticket price, tips…</summary>
     public string? Notes { get; set; }
 
-    /// <summary>Ligação (site oficial, bilhetes, reserva do alojamento…).</summary>
+    /// <summary>Link (official site, tickets, lodging booking…).</summary>
     public string? Url { get; set; }
 
     public bool Visited { get; set; }
 
-    /// <summary>Visita, alojamento ou ponto de transporte (aeroporto, metro, autocarro, comboio).</summary>
+    /// <summary>Visit, lodging or transport point (airport, metro, bus, train).</summary>
     public PlaceKind Kind { get; set; }
 
     /// <summary>
-    /// Onde vamos ficar (hotel, casa…): ícone de casa, sem número nem "visitado".
-    /// Atalho para <see cref="Kind"/>; continua no JSON para ler planeamentos antigos.
+    /// Where we stay (hotel, house…): house icon, no number and no "visited".
+    /// Shortcut for <see cref="Kind"/>; still in the JSON so older plans can be read.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool IsLodging
     {
-        get => Kind == PlaceKind.Alojamento;
+        get => Kind == PlaceKind.Lodging;
         set
         {
             if (value)
-                Kind = PlaceKind.Alojamento;
-            else if (Kind == PlaceKind.Alojamento)
-                Kind = PlaceKind.Visita;
+                Kind = PlaceKind.Lodging;
+            else if (Kind == PlaceKind.Lodging)
+                Kind = PlaceKind.Visit;
         }
     }
 
-    /// <summary>Local a visitar (com número e "visitado").</summary>
+    /// <summary>Place to visit (with a number and "visited").</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsVisit => Kind == PlaceKind.Visita;
+    public bool IsVisit => Kind == PlaceKind.Visit;
 
-    /// <summary>Aeroporto ou estação (metro, autocarro, comboio).</summary>
+    /// <summary>Airport or station (metro, bus, train).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsTransport => Kind is PlaceKind.Aeroporto or PlaceKind.Metro or PlaceKind.Autocarro or PlaceKind.Comboio;
+    public bool IsTransport => Kind is PlaceKind.Airport or PlaceKind.Metro or PlaceKind.Bus or PlaceKind.Train;
 
     /// <summary>
-    /// Se é o alojamento nesse dia. No dia em que se muda de alojamento (ex.: Roma 1–3,
-    /// Paris 3–6) os dois contam.
+    /// Whether this is the lodging on that day. On the day you change lodging (e.g. Rome 1–3,
+    /// Paris 3–6) both count.
     /// </summary>
     public bool StaysOn(DateOnly day) =>
         IsLodging && Date is { } from && from <= day && day <= (EndDate ?? from);
 
     /// <summary>
-    /// Número de cada local, igual na lista, no mapa e no plano dia a dia. Só os locais a
-    /// visitar são numerados (1, 2, 3…); alojamentos e transportes ficam com <c>null</c>.
+    /// Number of each place, the same in the list, on the map and in the day-by-day plan. Only
+    /// places to visit are numbered (1, 2, 3…); lodging and transport get <c>null</c>.
     /// </summary>
     public static int?[] Numbers(IReadOnlyList<PlanPlaceDto> places)
     {
@@ -148,23 +148,23 @@ public sealed class PlanPlaceDto
 
 public sealed class PlanBookingDto
 {
-    public BookingType Type { get; set; } = BookingType.Alojamento;
+    public BookingType Type { get; set; } = BookingType.Lodging;
     public string Name { get; set; } = "";
     public DateOnly? Date { get; set; }
     public string? Reference { get; set; }
     public string? Url { get; set; }
     public string? Notes { get; set; }
 
-    /// <summary>Valor da reserva (€). Entra automaticamente no orçamento.</summary>
+    /// <summary>Booking cost (€). Counted in the budget automatically.</summary>
     public decimal? Cost { get; set; }
 
-    /// <summary>Categoria do orçamento onde o valor desta reserva é contado.</summary>
+    /// <summary>Budget category where this booking's cost is counted.</summary>
     public static ExpenseCategory BudgetCategory(BookingType type) => type switch
     {
-        BookingType.Voo or BookingType.Transporte => ExpenseCategory.Transporte,
-        BookingType.Alojamento => ExpenseCategory.Alojamento,
-        BookingType.Atividade => ExpenseCategory.Atividades,
-        _ => ExpenseCategory.Outro,
+        BookingType.Flight or BookingType.Transport => ExpenseCategory.Transport,
+        BookingType.Lodging => ExpenseCategory.Lodging,
+        BookingType.Activity => ExpenseCategory.Activities,
+        _ => ExpenseCategory.Other,
     };
 }
 
@@ -183,13 +183,13 @@ public sealed class PlanTaskDto
 
 public sealed class PlanExpenseDto
 {
-    public ExpenseCategory Category { get; set; } = ExpenseCategory.Outro;
+    public ExpenseCategory Category { get; set; } = ExpenseCategory.Other;
     public string? Description { get; set; }
     public decimal? Planned { get; set; }
     public decimal? Actual { get; set; }
 }
 
-/// <summary>Resumo de umas férias para a página "Férias" (todas as férias, de todos os anos).</summary>
+/// <summary>Summary of a vacation for the "Vacations" page (every vacation, from every year).</summary>
 public sealed record VacationSummaryDto(
     Guid Id,
     string Title,
@@ -206,16 +206,31 @@ public sealed record VacationSummaryDto(
     decimal Spent,
     IReadOnlyList<MapPointDto>? Points = null);
 
+/// <summary>The signed-in account.</summary>
+public sealed record AccountDto(string Name, string Email);
+
+/// <summary>Change the display name.</summary>
+public sealed record RenameAccountRequest(string Name);
+
+/// <summary>Change the password (asks for the current one).</summary>
+public sealed record ChangePasswordRequest(string Current, string Replacement);
+
+/// <summary>Place you have been to, added by hand on the "Where I've been" map.</summary>
+public sealed record VisitedPlaceDto(Guid Id, string Name, double Latitude, double Longitude, string? Country, int Year);
+
+/// <summary>Request to add a place you have been to.</summary>
+public sealed record SaveVisitedPlaceRequest(string Name, double Latitude, double Longitude, string? Country, int Year);
+
 /// <summary>
-/// Onde fica uma viagem no mapa "Onde já estive": um ponto por alojamento (cada cidade
-/// onde se dormiu) ou, sem alojamentos, o centro dos locais marcados.
+/// Where a trip sits on the "Where I've been" map: one point per lodging (each city where
+/// you slept) or, without lodging, the centre of the pinned places.
 /// </summary>
 public sealed record MapPointDto(string Name, double Latitude, double Longitude);
 
-/// <summary>Valor gasto numa categoria do orçamento (inclui o valor das reservas).</summary>
+/// <summary>Amount spent in a budget category (includes booking costs).</summary>
 public sealed record CategoryAmountDto(ExpenseCategory Category, decimal Amount);
 
-/// <summary>Preferências do utilizador (editáveis na página de definições).</summary>
+/// <summary>User preferences (editable on the settings page).</summary>
 public sealed class UserSettingsDto
 {
     public int AnnualVacationDays { get; set; } = 22;

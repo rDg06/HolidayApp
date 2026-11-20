@@ -7,8 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace HolidayApp.Api.Tests;
 
 /// <summary>
-/// Arranca a aplicação a sério (API + base de dados) com uma base de dados SQLite
-/// própria, num ficheiro temporário apagado no fim.
+/// Starts the real app (API + database) with its own SQLite database,
+/// in a temporary file deleted at the end.
 /// </summary>
 public sealed class AppFactory : WebApplicationFactory<Program>
 {
@@ -31,7 +31,7 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             builder.UseSetting(key, value);
     }
 
-    /// <summary>Acesso direto à base de dados para verificar o que ficou gravado.</summary>
+    /// <summary>Direct database access to check what was saved.</summary>
     public async Task<T> WithDbAsync<T>(Func<AppDbContext, Task<T>> action)
     {
         await using var scope = Services.CreateAsyncScope();

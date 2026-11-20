@@ -1,5 +1,5 @@
-# Bibliotecas de terceiros: guardar e extrair byte a byte (as hashes SRI dependem disso)
+# Third-party libraries: store and check out byte for byte (the SRI hashes depend on it)
 src/HolidayApp.Web/wwwroot/lib/** -text
 
-# Scripts do Windows: sempre com fim de linha CRLF (o cmd.exe precisa)
+# Windows scripts: always with CRLF line endings (cmd.exe needs them)
 *.bat text eol=crlf

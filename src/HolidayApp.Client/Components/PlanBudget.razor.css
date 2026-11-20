@@ -1,6 +1,6 @@
 .expense-list { display: grid; gap: 10px; }
 
-/* Duas linhas por despesa: descrição em cima, categoria e valores em baixo */
+/* Two rows per expense: description on top, category and amounts below */
 .expense-row {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 30px;
@@ -18,7 +18,7 @@
 .expense-row > :nth-child(5) { grid-area: del; }
 .booking-expense .amount { text-align: right; font-variant-numeric: tabular-nums; }
 
-/* Linhas que vêm das reservas: só leitura */
+/* Rows that come from bookings: read-only */
 .booking-expense { color: var(--muted); }
 .booking-expense .tag { justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .booking-expense-name { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -35,7 +35,7 @@
 
 .budget-totals dt { font-size: 0.8rem; color: var(--muted); }
 .budget-totals dd { margin: 2px 0 0; font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
-.budget-totals dd.under { color: var(--c-ferias); }
+.budget-totals dd.under { color: var(--c-vacation); }
 .budget-totals dd.over { color: var(--c-danger); }
 
 @media (max-width: 640px) {

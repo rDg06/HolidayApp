@@ -2,7 +2,7 @@ using HolidayApp.Shared;
 
 namespace HolidayApp.Infrastructure.Services;
 
-/// <summary>Casos de uso da aplicação. Os endpoints da API só falam com esta interface.</summary>
+/// <summary>Application use cases. The API endpoints only talk to this interface.</summary>
 public interface ICalendarService
 {
     Task<IReadOnlyList<CalendarEventDto>> GetEventsAsync(int year, CancellationToken ct = default);

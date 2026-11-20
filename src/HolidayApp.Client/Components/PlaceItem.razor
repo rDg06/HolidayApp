@@ -1,12 +1,12 @@
-@* Um local da lista do mapa: tipo, nome, dia (ou estadia, no alojamento), visitado, notas e ligação.
-   Visitas e transportes têm uma pega para arrastar e mudar a ordem (o arrastar é feito em plan-map.js). *@
+@* A place in the map list: kind, name, day (or stay, for lodging), visited, notes and link.
+   Visits and transport have a handle to drag and change the order (dragging is done in plan-map.js). *@
 
 <li class="@Css" data-index="@Index" data-visit="@(Place.IsLodging ? null : "true")">
     @if (!Place.IsLodging)
     {
-        <button type="button" class="drag-handle" title="Arrasta para mudar a ordem (ou usa as setas ↑ ↓ do teclado)"
-                aria-label="Mudar a ordem de @Place.Name: arrasta, ou usa as setas para cima e para baixo"
-                aria-roledescription="pega para arrastar">
+        <button type="button" class="drag-handle" title="Drag to change the order (or use the ↑ ↓ keys)"
+                aria-label="Change the order of @Place.Name: drag, or use the up and down arrow keys"
+                aria-roledescription="drag handle">
             <svg viewBox="0 0 10 16" aria-hidden="true" focusable="false"><circle cx="2.5" cy="3" r="1.5" /><circle cx="7.5" cy="3" r="1.5" /><circle cx="2.5" cy="8" r="1.5" /><circle cx="7.5" cy="8" r="1.5" /><circle cx="2.5" cy="13" r="1.5" /><circle cx="7.5" cy="13" r="1.5" /></svg>
         </button>
     }
@@ -14,84 +14,84 @@
     {
         <span class="drag-spacer" aria-hidden="true"></span>
     }
-    <button type="button" class="@NumberCss" title="@(Place.IsVisit ? "Ver no mapa" : $"{Pt.Label(Place.Kind)} · ver no mapa")"
-            aria-label="Ver @Place.Name no mapa" @onclick="OnFocus">
+    <button type="button" class="@NumberCss" title="@(Place.IsVisit ? "Show on map" : $"{Display.Label(Place.Kind)} · show on map")"
+            aria-label="Show @Place.Name on the map" @onclick="OnFocus">
         @if (Place.IsVisit) { @Number } else { <PlaceIcon Kind="Place.Kind" /> }
     </button>
 
     <div class="place-fields">
         <div class="place-row">
-            <input class="input" aria-label="Nome do local" maxlength="@VacationPlanValidator.ShortTextMaxLength"
+            <input class="input" aria-label="Place name" maxlength="@VacationPlanValidator.ShortTextMaxLength"
                    @bind="Place.Name" @bind:after="ChangedAsync" />
-            <button type="button" class="btn icon ghost small" aria-label="Remover @Place.Name" @onclick="OnRemove">✕</button>
+            <button type="button" class="btn icon ghost small" aria-label="Remove @Place.Name" @onclick="OnRemove">✕</button>
         </div>
 
         <div class="place-row">
             @if (Place.IsLodging)
             {
-                @* Estadia: do primeiro ao último dia (podem ser vários alojamentos, um por cidade ou país) *@
-                <select class="input" aria-label="Primeiro dia no alojamento" title="Primeiro dia"
+                @* Stay: from the first to the last day (there can be several lodgings, one per city or country) *@
+                <select class="input" aria-label="First day at the lodging" title="First day"
                         @bind="Place.Date" @bind:format="yyyy-MM-dd" @bind:after="StayStartChangedAsync">
-                    <option value="">Sem datas</option>
+                    <option value="">No dates</option>
                     @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
                     {
-                        <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                        <option value="@day.ToString("yyyy-MM-dd")">@Display.Long(day)</option>
                     }
                 </select>
                 @if (Place.Date is { } stayStart)
                 {
-                    <span class="small muted">até</span>
-                    <select class="input" aria-label="Último dia no alojamento" title="Último dia"
+                    <span class="small muted">to</span>
+                    <select class="input" aria-label="Last day at the lodging" title="Last day"
                             @bind="Place.EndDate" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
                         @for (var day = stayStart; day <= TripEnd; day = day.AddDays(1))
                         {
-                            <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                            <option value="@day.ToString("yyyy-MM-dd")">@Display.Long(day)</option>
                         }
                     </select>
                 }
             }
             else
             {
-                @* Só os dias das férias podem ser escolhidos. Um transporte sem dia aparece em todos os dias. *@
-                <select class="input" aria-label="@(Place.IsVisit ? "Dia da visita" : "Dia")" @bind="Place.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
-                    <option value="">@(Place.IsVisit ? "Sem dia" : "Todos os dias")</option>
+                @* Only vacation days can be chosen. Transport without a day shows on every day. *@
+                <select class="input" aria-label="@(Place.IsVisit ? "Day of the visit" : "Day")" @bind="Place.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync">
+                    <option value="">@(Place.IsVisit ? "No day" : "Every day")</option>
                     @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
                     {
-                        <option value="@day.ToString("yyyy-MM-dd")">@Pt.Long(day)</option>
+                        <option value="@day.ToString("yyyy-MM-dd")">@Display.Long(day)</option>
                     }
                 </select>
                 @if (Place.IsVisit)
                 {
-                    <label class="check small" title="Já visitei">
+                    <label class="check small" title="I've been here">
                         <input type="checkbox" @bind="Place.Visited" @bind:after="ChangedAsync" />
-                        <span>Visitado</span>
+                        <span>Visited</span>
                     </label>
                 }
             }
             <div class="kind-picker">
-                @* Mostra o tipo atual (alfinete numa visita) e a seta indica que abre um menu *@
-                <button type="button" class="@KindButtonCss" title="Tipo: @Pt.Label(Place.Kind) · carrega para mudar"
-                        aria-label="Tipo de @Place.Name: @Pt.Label(Place.Kind)"
+                @* Shows the current kind (a pin for a visit) and the arrow says it opens a menu *@
+                <button type="button" class="@KindButtonCss" title="Type: @Display.Label(Place.Kind) · click to change"
+                        aria-label="Type of @Place.Name: @Display.Label(Place.Kind)"
                         aria-haspopup="menu" aria-expanded="@(KindMenuOpen ? "true" : "false")" @onclick="OnToggleKindMenu">
                     <PlaceIcon Kind="Place.Kind" />
                     <svg class="kind-caret" viewBox="0 0 10 6" aria-hidden="true" focusable="false"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </button>
             </div>
             <button type="button" class="@(HasDetails ? "btn icon ghost small details-toggle has-details" : "btn icon ghost small details-toggle")"
-                    title="Notas e ligação" aria-label="Notas e ligação de @Place.Name" aria-expanded="@(_open ? "true" : "false")"
+                    title="Notes and link" aria-label="Notes and link for @Place.Name" aria-expanded="@(_open ? "true" : "false")"
                     @onclick="() => _open = !_open">✎</button>
         </div>
 
         @if (KindMenuOpen)
         {
-            <ul class="kind-menu" role="menu" aria-label="Tipo de @Place.Name">
+            <ul class="kind-menu" role="menu" aria-label="Type of @Place.Name">
                 @foreach (var kind in PlaceIcons.All)
                 {
                     var k = kind;
                     <li role="none">
                         <button type="button" role="menuitemradio" aria-checked="@(Place.Kind == k ? "true" : "false")"
                                 class="@(Place.Kind == k ? "kind-option selected" : "kind-option")" @onclick="() => SetKindAsync(k)">
-                            @if (k == PlaceKind.Visita)
+                            @if (k == PlaceKind.Visit)
                             {
                                 <span class="place-number kind-swatch">@(Number ?? 1)</span>
                             }
@@ -99,7 +99,7 @@
                             {
                                 <span class="place-number kind-swatch @PlaceIcons.Css(k)"><PlaceIcon Kind="k" /></span>
                             }
-                            @Pt.Label(k)
+                            @Display.Label(k)
                         </button>
                     </li>
                 }
@@ -109,14 +109,14 @@
         @if (_open)
         {
             <div class="place-details">
-                <textarea class="input" rows="2" placeholder="Horários, preço da entrada, dicas…" aria-label="Notas de @Place.Name"
+                <textarea class="input" rows="2" placeholder="Opening hours, ticket price, tips…" aria-label="Notes for @Place.Name"
                           maxlength="@VacationPlanValidator.NotesMaxLength" @bind="Place.Notes" @bind:after="ChangedAsync"></textarea>
                 <div class="place-row">
-                    <input class="input" type="url" placeholder="https://… (site, bilhetes, reserva)" aria-label="Ligação de @Place.Name"
+                    <input class="input" type="url" placeholder="https://… (site, tickets, booking)" aria-label="Link for @Place.Name"
                            maxlength="@VacationPlanValidator.UrlMaxLength" @bind="Place.Url" @bind:after="ChangedAsync" />
                     @if (VacationPlanValidator.IsSafeUrl(Place.Url))
                     {
-                        <a class="btn small" href="@Place.Url!.Trim()" target="_blank" rel="noopener noreferrer">Abrir</a>
+                        <a class="btn small" href="@Place.Url!.Trim()" target="_blank" rel="noopener noreferrer">Open</a>
                     }
                 </div>
             </div>
@@ -136,19 +136,19 @@
 @code {
     [Parameter, EditorRequired] public PlanPlaceDto Place { get; set; } = default!;
 
-    /// <summary>Número no mapa (os alojamentos não têm).</summary>
+    /// <summary>Number on the map (lodgings have none).</summary>
     [Parameter] public int? Number { get; set; }
 
     [Parameter] public DateOnly TripStart { get; set; }
     [Parameter] public DateOnly TripEnd { get; set; }
 
-    /// <summary>Dia escolhido no filtro: primeiro dia por omissão ao passar a alojamento.</summary>
+    /// <summary>Day chosen in the filter: first day by default when turning into lodging.</summary>
     [Parameter] public DateOnly? FilterDay { get; set; }
 
-    /// <summary>No percurso do dia: distância (km, em linha reta) desde a paragem anterior.</summary>
+    /// <summary>On the day's route: distance (km, straight-line) from the previous stop.</summary>
     [Parameter] public string? Leg { get; set; }
 
-    /// <summary>Posição na lista completa (usada pelo arrastar, em plan-map.js).</summary>
+    /// <summary>Position in the full list (used by dragging, in plan-map.js).</summary>
     [Parameter] public int Index { get; set; }
 
     [Parameter] public EventCallback OnFocus { get; set; }
@@ -157,10 +157,10 @@
 
     private bool _open;
 
-    /// <summary>Menu do tipo aberto. Quem decide é a lista: só um local de cada vez tem o menu aberto.</summary>
+    /// <summary>Kind menu open. The list decides: only one place at a time has its menu open.</summary>
     [Parameter] public bool KindMenuOpen { get; set; }
 
-    /// <summary>Carregou no botão do tipo (abre este menu e fecha o de outro local, ou fecha-o).</summary>
+    /// <summary>The kind button was clicked (opens this menu and closes another place's, or closes it).</summary>
     [Parameter] public EventCallback OnToggleKindMenu { get; set; }
 
     private bool HasDetails => !string.IsNullOrWhiteSpace(Place.Notes) || !string.IsNullOrWhiteSpace(Place.Url);
@@ -171,14 +171,14 @@
 
     private string NumberCss => Place.IsVisit ? "place-number" : "place-number " + PlaceIcons.Css(Place.Kind);
 
-    /// <summary>Botão do tipo: com a cor do tipo (a cor dos números nas visitas).</summary>
+    /// <summary>Kind button: with the kind's colour (the number colour for visits).</summary>
     private string KindButtonCss => "btn ghost small kind-button" + (Place.IsVisit ? "" : " " + PlaceIcons.Css(Place.Kind));
 
-    /// <summary>Muda o tipo: o alojamento ganha uma estadia, e só as visitas têm "visitado".</summary>
+    /// <summary>Changes the kind: lodging gets a stay, and only visits have "visited".</summary>
     private async Task SetKindAsync(PlaceKind kind)
     {
         if (KindMenuOpen)
-            await OnToggleKindMenu.InvokeAsync(); // escolheu: fecha o menu
+            await OnToggleKindMenu.InvokeAsync(); // chosen: close the menu
         if (Place.Kind == kind)
             return;
 
@@ -189,20 +189,20 @@
 
         if (Place.IsLodging)
         {
-            // Estadia por omissão: do dia do local (ou do dia filtrado) até ao fim da viagem
+            // Default stay: from the place's day (or the filtered day) to the end of the trip
             Place.Date ??= FilterDay ?? TripStart;
             Place.EndDate = TripEnd;
         }
         else if (wasLodging)
         {
-            // Deixa de ser alojamento: fica com o primeiro dia da estadia
+            // No longer lodging: keeps the first day of the stay
             Place.EndDate = null;
         }
 
         await ChangedAsync();
     }
 
-    /// <summary>Mudou o primeiro dia: o último nunca fica antes dele (e sem datas fica sem nenhuma).</summary>
+    /// <summary>The first day changed: the last one is never before it (and no dates means none at all).</summary>
     private async Task StayStartChangedAsync()
     {
         if (Place.Date is not { } start)

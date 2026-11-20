@@ -13,9 +13,9 @@ namespace HolidayApp.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Regista base de dados e serviços. O fornecedor da base de dados vem da
-    /// configuração ("Database:Provider"), por isso mudar de SQLite para
-    /// PostgreSQL/SQL Server não mexe no código da aplicação.
+    /// Registers the database and services. The database provider comes from
+    /// configuration ("Database:Provider"), so moving from SQLite to
+    /// PostgreSQL/SQL Server does not touch the application code.
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
@@ -30,24 +30,27 @@ public static class DependencyInjection
                     options.UseSqlite(connectionString);
                     break;
 
-                // Quando precisares de escalar:
+                // When you need to scale:
                 // case "postgres": options.UseNpgsql(connectionString); break;
                 // case "sqlserver": options.UseSqlServer(connectionString); break;
 
                 default:
-                    throw new InvalidOperationException($"Fornecedor de base de dados não suportado: '{provider}'.");
+                    throw new InvalidOperationException($"Unsupported database provider: '{provider}'.");
             }
         });
 
         services.AddSingleton<IHolidayProvider, PortugueseHolidayProvider>();
         services.AddScoped<ICalendarService, CalendarService>();
         services.AddScoped<IVacationPlanService, VacationPlanService>();
+        services.AddScoped<IVisitedPlaceService, VisitedPlaceService>();
+        services.AddScoped<IAccountService, AccountService>();
+        services.AddSingleton(TimeProvider.System);
 
         return services;
     }
 
     /// <summary>
-    /// Cria a base de dados ou atualiza-a para a versão mais recente (migrações).
+    /// Creates the database or updates it to the latest version (migrations).
     /// </summary>
     public static async Task InitialiseDatabaseAsync(this IServiceProvider services, CancellationToken ct = default)
     {
@@ -59,10 +62,11 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Bases de dados criadas antes das migrações (com EnsureCreated) já têm as
-    /// tabelas da primeira migração mas não o histórico. Regista essa migração
-    /// como aplicada para o MigrateAsync não tentar criar as tabelas outra vez
-    /// e os dados existentes serem mantidos.
+    /// Databases created before migrations (with EnsureCreated) already have the
+    /// tables of the first migration but not the history. Records that migration
+    /// as applied so MigrateAsync does not try to create the tables again
+    /// and the existing data is kept.
+
     /// </summary>
     private static async Task BaselineLegacyDatabaseAsync(AppDbContext db, CancellationToken ct)
     {

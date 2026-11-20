@@ -1,4 +1,4 @@
-/* Calendário anual: barra de ferramentas, grelha dos meses e barra lateral. */
+/* Year calendar: toolbar, month grid and sidebar. */
 .toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -22,7 +22,7 @@
 .toolbar-actions { display: flex; align-items: center; gap: 14px; }
 .hint { color: var(--muted); font-size: 0.85rem; }
 
-/* ---------- Layout principal ---------- */
+/* ---------- Main layout ---------- */
 
 .layout {
     display: grid;

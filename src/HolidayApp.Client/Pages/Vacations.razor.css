@@ -20,7 +20,7 @@
 
 .vacation-card:hover { border-color: color-mix(in srgb, var(--c-primary) 50%, var(--border)); }
 .vacation-card:active { transform: translateY(1px); }
-.vacation-card.current { border-color: color-mix(in srgb, var(--c-ferias) 60%, var(--border)); }
+.vacation-card.current { border-color: color-mix(in srgb, var(--c-vacation) 60%, var(--border)); }
 
 .vacation-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .vacation-title { display: grid; gap: 2px; min-width: 0; }
@@ -28,7 +28,7 @@
 .vacation-top .tag { flex: none; white-space: nowrap; }
 .tag.muted-tag { background: var(--surface-2); color: var(--muted); }
 
-.vacation-destination { margin: 0; font-weight: 600; color: var(--c-ferias); }
+.vacation-destination { margin: 0; font-weight: 600; color: var(--c-vacation); }
 
 .vacation-stats {
     display: grid;
@@ -39,7 +39,7 @@
     border-top: 1px solid var(--border);
 }
 
-/* Rótulo e número em linhas partilhadas (subgrid): um rótulo em duas linhas não desalinha os números */
+/* Label and number in shared rows (subgrid): a two-line label does not misalign the numbers */
 .vacation-stats > div { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 0; }
 .vacation-stats dt { align-self: end; font-size: 0.75rem; line-height: 1.25; color: var(--muted); }
 .vacation-stats dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }

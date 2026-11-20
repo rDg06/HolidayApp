@@ -1,20 +1,20 @@
-@* Reservas da viagem: tipo, nome, dia, código, valor, ligação e notas. *@
+@* The trip's bookings: type, name, day, reference, cost, link and notes. *@
 
-<PlanSection Id="bookings" Title="Reservas" Wide="true">
+<PlanSection Id="bookings" Title="Bookings" Wide="true">
     <Info>
         @if (Bookings.Count > 0)
         {
-            <span class="muted small">@(Bookings.Count == 1 ? "1 reserva" : $"{Bookings.Count} reservas")</span>
+            <span class="muted small">@(Bookings.Count == 1 ? "1 booking" : $"{Bookings.Count} bookings")</span>
         }
     </Info>
     <Actions>
-        <button type="button" class="btn small" @onclick="AddAsync">+ Reserva</button>
+        <button type="button" class="btn small" @onclick="AddAsync">+ Booking</button>
     </Actions>
     <ChildContent>
 
     @if (Bookings.Count == 0)
     {
-        <p class="muted small">Voos, alojamento, aluguer de carro, bilhetes… Guarda aqui os códigos e as ligações.</p>
+        <p class="muted small">Flights, lodging, car hire, tickets… Keep the references and links here.</p>
     }
     else
     {
@@ -23,43 +23,43 @@
             {
                 var b = booking;
                 <div class="booking-row">
-                    <select class="input" aria-label="Tipo" @bind="b.Type" @bind:after="ChangedAsync">
+                    <select class="input" aria-label="Type" @bind="b.Type" @bind:after="ChangedAsync">
                         @foreach (var type in Enum.GetValues<BookingType>())
                         {
-                            <option value="@type">@Pt.Label(type)</option>
+                            <option value="@type">@Display.Label(type)</option>
                         }
                     </select>
-                    <input class="input" placeholder="Nome (ex.: Hotel Mar Azul)" aria-label="Nome"
+                    <input class="input" placeholder="Name (e.g. Blue Sea Hotel)" aria-label="Name"
                            maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="b.Name" @bind:after="ChangedAsync" />
-                    @* Só os dias das férias podem ser escolhidos *@
-                    <input class="@(IsOutsideTrip(b.Date) ? "input out-of-range" : "input")" type="date" aria-label="Dia"
+                    @* Only vacation days can be chosen *@
+                    <input class="@(IsOutsideTrip(b.Date) ? "input out-of-range" : "input")" type="date" aria-label="Day"
                            min="@TripStart.ToString("yyyy-MM-dd")" max="@TripEnd.ToString("yyyy-MM-dd")"
-                           title="@(IsOutsideTrip(b.Date) ? "Escolhe um dia das férias" : "Dia da reserva: aparece no plano dia a dia")"
+                           title="@(IsOutsideTrip(b.Date) ? "Choose a day of the vacation" : "Booking day: shows in the day-by-day plan")"
                            @bind="b.Date" @bind:format="yyyy-MM-dd" @bind:after="ChangedAsync" />
-                    <input class="input" placeholder="Código" aria-label="Código de reserva"
+                    <input class="input" placeholder="Reference" aria-label="Booking reference"
                            maxlength="@VacationPlanValidator.ReferenceMaxLength" @bind="b.Reference" @bind:after="ChangedAsync" />
                     <span class="money-field">
-                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Valor" aria-label="Valor (€)"
-                               title="Valor (€) — entra no orçamento" @bind="b.Cost" @bind:after="ChangedAsync" />
+                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Cost" aria-label="Cost (€)"
+                               title="Cost (€) — counted in the budget" @bind="b.Cost" @bind:after="ChangedAsync" />
                     </span>
                     <div class="link-field">
-                        <input class="input" type="url" placeholder="https://…" aria-label="Ligação"
+                        <input class="input" type="url" placeholder="https://…" aria-label="Link"
                                maxlength="@VacationPlanValidator.UrlMaxLength" @bind="b.Url" @bind:after="ChangedAsync" />
                         @if (VacationPlanValidator.IsSafeUrl(b.Url))
                         {
-                            <a class="btn small" href="@b.Url!.Trim()" target="_blank" rel="noopener noreferrer">Abrir</a>
+                            <a class="btn small" href="@b.Url!.Trim()" target="_blank" rel="noopener noreferrer">Open</a>
                         }
                     </div>
                     <div class="notes-field">
-                        <input class="input booking-notes" placeholder="Notas" aria-label="Notas"
+                        <input class="input booking-notes" placeholder="Notes" aria-label="Notes"
                                maxlength="@VacationPlanValidator.NotesMaxLength" @bind="b.Notes" @bind:after="ChangedAsync" />
                         @if (CanPutOnMap(b))
                         {
-                            <button type="button" class="btn small put-on-map" title="Procurar o alojamento e marcá-lo no mapa"
-                                    @onclick="() => OnPutOnMap.InvokeAsync(b)"><PlaceIcon /> Pôr no mapa</button>
+                            <button type="button" class="btn small put-on-map" title="Find the lodging and pin it on the map"
+                                    @onclick="() => OnPutOnMap.InvokeAsync(b)"><PlaceIcon /> Put on map</button>
                         }
                     </div>
-                    <button type="button" class="btn icon ghost" aria-label="Remover reserva" @onclick="() => RemoveAsync(b)">✕</button>
+                    <button type="button" class="btn icon ghost" aria-label="Remove booking" @onclick="() => RemoveAsync(b)">✕</button>
                 </div>
             }
         </div>
@@ -72,19 +72,19 @@
     [Parameter] public DateOnly TripStart { get; set; }
     [Parameter] public DateOnly TripEnd { get; set; }
 
-    /// <summary>Avisa a página de que algo mudou (aviso de "por guardar", orçamento e plano).</summary>
+    /// <summary>Tells the page something changed ("unsaved" notice, budget and plan).</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
-    /// <summary>Locais do mapa: para saber se o alojamento da reserva já lá está.</summary>
+    /// <summary>Map places: to know whether the booking's lodging is already there.</summary>
     [Parameter] public List<PlanPlaceDto> Places { get; set; } = [];
 
-    /// <summary>"Pôr no mapa" numa reserva de alojamento.</summary>
+    /// <summary>"Put on map" on a lodging booking.</summary>
     [Parameter] public EventCallback<PlanBookingDto> OnPutOnMap { get; set; }
 
-    /// <summary>Reserva de alojamento com nome que ainda não está no mapa como alojamento.</summary>
+    /// <summary>Lodging booking with a name that is not on the map as lodging yet.</summary>
     private bool CanPutOnMap(PlanBookingDto b) =>
         OnPutOnMap.HasDelegate
-        && b.Type == BookingType.Alojamento
+        && b.Type == BookingType.Lodging
         && !string.IsNullOrWhiteSpace(b.Name)
         && !Places.Any(p => p.IsLodging && string.Equals(p.Name.Trim(), b.Name.Trim(), StringComparison.OrdinalIgnoreCase));
 

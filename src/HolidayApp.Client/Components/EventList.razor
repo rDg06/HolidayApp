@@ -1,10 +1,10 @@
-@* Marcações do ano; clicar abre o editor. *@
+@* The year's entries; clicking opens the editor. *@
 
 <div class="card">
-    <h3>Marcações</h3>
+    <h3>Entries</h3>
     @if (Events.Count == 0)
     {
-        <p class="muted small">Ainda não tens nada marcado em @Year.</p>
+        <p class="muted small">Nothing booked in @Year yet.</p>
     }
     else
     {
@@ -14,10 +14,10 @@
                 var item = ev;
                 <li>
                     <button type="button" class="event-item" @onclick="() => OnSelect.InvokeAsync(item)">
-                        <span class="@($"swatch {Pt.Css(item.Type)}")"></span>
+                        <span class="@($"swatch {Display.Css(item.Type)}")"></span>
                         <span class="event-text">
                             <strong>@item.Title</strong>
-                            <span class="muted small">@Pt.Range(item.StartDate, item.EndDate)@WorkdaysSuffix(item)</span>
+                            <span class="muted small">@Display.Range(item.StartDate, item.EndDate)@WorkdaysSuffix(item)</span>
                         </span>
                     </button>
                 </li>
@@ -33,7 +33,7 @@
     [Parameter] public EventCallback<CalendarEventDto> OnSelect { get; set; }
 
     private string WorkdaysSuffix(CalendarEventDto ev) =>
-        ev.Type == EventType.Ferias
-            ? $" · {Pt.Workdays(WorkdayCalculator.CountWorkdays(ev.StartDate, ev.EndDate, HolidayDates))}"
+        ev.Type == EventType.Vacation
+            ? $" · {Display.Workdays(WorkdayCalculator.CountWorkdays(ev.StartDate, ev.EndDate, HolidayDates))}"
             : "";
 }

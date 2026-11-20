@@ -7,7 +7,7 @@ public static class CalendarEndpoints
 {
     public static RouteGroupBuilder MapCalendarEndpoints(this RouteGroupBuilder api)
     {
-        var group = api.MapGroup("/calendar/{year:int}").WithTags("Calendário");
+        var group = api.MapGroup("/calendar/{year:int}").WithTags("Calendar");
 
         // GET /api/calendar/2026/holidays
         group.MapGet("/holidays", async (int year, ICalendarService service, CancellationToken ct) =>

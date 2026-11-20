@@ -14,7 +14,7 @@ internal sealed class CalendarService(
     ICurrentUser currentUser,
     IHolidayProvider holidayProvider) : ICalendarService
 {
-    // ---------- Marcações ----------
+    // ---------- Entries ----------
 
     public async Task<IReadOnlyList<CalendarEventDto>> GetEventsAsync(int year, CancellationToken ct = default)
     {
@@ -69,7 +69,7 @@ internal sealed class CalendarService(
         return true;
     }
 
-    // ---------- Feriados e resumo ----------
+    // ---------- Holidays and summary ----------
 
     public async Task<IReadOnlyList<HolidayDto>> GetHolidaysAsync(int year, CancellationToken ct = default)
     {
@@ -87,10 +87,10 @@ internal sealed class CalendarService(
         var holidayDates = holidays.Select(h => h.Date).ToHashSet();
 
         var vacations = await EventsOverlappingYear(year)
-            .Where(e => e.Type == EventType.Ferias)
+            .Where(e => e.Type == EventType.Vacation)
             .ToListAsync(ct);
 
-        // Conjunto de dias úteis de férias (marcações sobrepostas não contam a dobrar).
+        // Set of working vacation days (overlapping entries do not count twice).
         var yearStart = new DateOnly(year, 1, 1);
         var yearEnd = new DateOnly(year, 12, 31);
         var vacationDays = new HashSet<DateOnly>();
@@ -120,7 +120,7 @@ internal sealed class CalendarService(
         return new YearSummaryDto(year, settings.AnnualVacationDays, used, settings.AnnualVacationDays - used, bridges);
     }
 
-    // ---------- Definições ----------
+    // ---------- Settings ----------
 
     public async Task<UserSettingsDto> GetSettingsAsync(CancellationToken ct = default) =>
         (await db.GetSettingsOrDefaultAsync(ct)).ToDto();
@@ -150,7 +150,7 @@ internal sealed class CalendarService(
         return (await db.GetSettingsOrDefaultAsync(ct)).ToDto();
     }
 
-    // ---------- Auxiliares ----------
+    // ---------- Helpers ----------
 
     private IQueryable<CalendarEvent> EventsOverlappingYear(int year)
     {

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace HolidayApp.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class PlaneamentoFerias : Migration
+    public partial class VacationPlans : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

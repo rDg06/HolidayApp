@@ -1,4 +1,4 @@
-@* "Onde já estive" (página Mapa): mapa com todas as viagens (feitas e próximas), países e números. *@
+@* "Where I've been" (Map page): map with every trip (past and upcoming), countries and numbers. *@
 @using System.Text.Json
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
@@ -6,26 +6,30 @@
 
 <section class="card travel-map" aria-labelledby="travel-map-title">
     <div class="section-head">
-        <h2 id="travel-map-title" class="visually-hidden">Mapa das viagens</h2>
+        <h2 id="travel-map-title" class="visually-hidden">Trips map</h2>
         <div class="travel-legend small">
-            <span><span class="legend-dot trip-past"></span>Feitas</span>
-            <span><span class="legend-dot trip-next"></span>Próximas</span>
+            <span><span class="legend-dot trip-past"></span>Past</span>
+            <span><span class="legend-dot trip-next"></span>Upcoming</span>
+            @if (VisitedPlaces.Count > 0)
+            {
+                <span><span class="legend-dot trip-manual"></span>Other places</span>
+            }
         </div>
     </div>
 
     <dl class="travel-stats">
-        <div><dt>Viagens feitas</dt><dd>@PastTrips.Count</dd></div>
-        <div><dt>Dias em viagem</dt><dd>@PastTrips.Sum(DaysOf)</dd></div>
+        <div><dt>Trips taken</dt><dd>@PastTrips.Count</dd></div>
+        <div><dt>Days travelling</dt><dd>@PastTrips.Sum(DaysOf)</dd></div>
         <div>
-            <dt>Países</dt>
+            <dt>Countries</dt>
             <dd>@(_locating && Countries.Count == 0 ? "…" : Countries.Count.ToString())</dd>
         </div>
-        <div><dt>Próximas</dt><dd>@(Vacations.Count - PastTrips.Count)</dd></div>
+        <div><dt>Upcoming</dt><dd>@(Vacations.Count - PastTrips.Count)</dd></div>
     </dl>
 
     @if (Countries.Count > 0)
     {
-        <ul class="plain-list travel-countries" aria-label="Países visitados">
+        <ul class="plain-list travel-countries" aria-label="Countries visited">
             @foreach (var country in Countries)
             {
                 <li class="tag">@country</li>
@@ -33,30 +37,33 @@
         </ul>
     }
 
-    <div class="travel-canvas" @ref="_mapElement" aria-label="Mapa das viagens"></div>
+    <div class="travel-canvas" @ref="_mapElement" aria-label="Trips map"></div>
 
     @{ var unplaced = Vacations.Count(v => !_points.ContainsKey(v.Id)); }
     @if (!_locating && unplaced > 0)
     {
         <p class="muted small travel-note">
-            @(unplaced == 1 ? "1 viagem ainda não aparece" : $"{unplaced} viagens ainda não aparecem") no mapa:
-            junta o destino ou locais em "Organizar".
+            @(unplaced == 1 ? "1 trip is not on the map yet" : $"{unplaced} trips are not on the map yet"):
+            add the destination or places in "Plan".
         </p>
     }
 </section>
 
 @code {
-    private const string CacheKey = "holidayapp.geo.v1";
+    private const string CacheKey = "holidayapp.geo.v2"; // v2: country names in English
 
     [Parameter, EditorRequired] public IReadOnlyList<VacationSummaryDto> Vacations { get; set; } = [];
 
-    /// <summary>Dia de hoje (pode ser trocado nos testes): separa viagens feitas de próximas.</summary>
+    /// <summary>Places added by hand (they count for the countries and show on the map).</summary>
+    [Parameter] public IReadOnlyList<VisitedPlaceDto> VisitedPlaces { get; set; } = [];
+
+    /// <summary>Today (can be swapped in tests): separates past trips from upcoming ones.</summary>
     [Parameter] public DateOnly Today { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 
-    /// <summary>Um ponto da viagem no mapa e o país dele (quando já se sabe).</summary>
+    /// <summary>A point of the trip on the map and its country (when known).</summary>
     private sealed record TripPoint(string Name, double Lat, double Lng, string? Country);
 
-    /// <summary>Lugar já procurado: guardado no navegador para não perguntar outra vez.</summary>
+    /// <summary>Place already looked up: stored in the browser so it is not asked again.</summary>
     public sealed class GeoEntry
     {
         public double? Lat { get; set; }
@@ -64,7 +71,7 @@
         public string? Country { get; set; }
     }
 
-    /// <summary>Resultado da pesquisa de um destino (vem do plan-map.js).</summary>
+    /// <summary>Result of a destination search (comes from plan-map.js).</summary>
     public sealed class SearchResult
     {
         public double Lat { get; set; }
@@ -85,14 +92,28 @@
 
     private static int DaysOf(VacationSummaryDto v) => v.EndDate.DayNumber - v.StartDate.DayNumber + 1;
 
-    /// <summary>Países das viagens feitas (por ordem alfabética).</summary>
+    /// <summary>Countries of past trips and of the places added by hand (in alphabetical order).</summary>
     private List<string> Countries => PastTrips
         .SelectMany(v => _points.GetValueOrDefault(v.Id) ?? [])
         .Select(p => p.Country)
+        .Concat(VisitedPlaces.Select(p => p.Country))
         .OfType<string>()
         .Distinct()
-        .Order(StringComparer.Create(new System.Globalization.CultureInfo("pt-PT"), ignoreCase: true))
+        .Order(StringComparer.Create(new System.Globalization.CultureInfo("en-GB"), ignoreCase: true))
         .ToList();
+
+    private string? _drawnVisited;
+
+    /// <summary>Places added or deleted: redraws the points.</summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        var signature = string.Join(";", VisitedPlaces.Select(p => p.Id));
+        if (_map is not null && signature != _drawnVisited)
+        {
+            _drawnVisited = signature;
+            await RedrawAsync();
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -105,15 +126,16 @@
             _self = DotNetObjectReference.Create(this);
             _cache = await ReadCacheAsync();
 
-            // Primeiro o que já se sabe (pontos do planeamento e destinos procurados antes)
+            // First what is already known (plan points and destinations looked up before)
             foreach (var v in Vacations)
                 AddKnownPoints(v);
 
+            _drawnVisited = string.Join(";", VisitedPlaces.Select(p => p.Id));
             _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, _self, MarkerData(), null,
                 new { readOnly = true, fitMaxZoom = 6 });
             StateHasChanged();
 
-            // Depois o que falta perguntar ao OpenStreetMap (destinos sem locais e países)
+            // Then what is still to ask OpenStreetMap (destinations without places, and countries)
             await LocateMissingAsync();
         }
         catch (JSDisconnectedException)
@@ -122,14 +144,14 @@
         }
         catch (Exception)
         {
-            // Sem mapa (ex.: sem internet): ficam os números
+            // No map (e.g. no internet): the numbers stay
         }
 
         _locating = false;
         StateHasChanged();
     }
 
-    /// <summary>Pontos que não precisam de perguntas: os do planeamento, ou o destino já procurado.</summary>
+    /// <summary>Points that need no lookups: the plan's, or the destination already looked up.</summary>
     private void AddKnownPoints(VacationSummaryDto v)
     {
         if (v.Points is { Count: > 0 } points)
@@ -145,8 +167,8 @@
     }
 
     /// <summary>
-    /// Pergunta ao Nominatim o que falta: onde fica o destino (viagens sem locais) e o país de
-    /// cada ponto. Uma pergunta por segundo, como pede o OpenStreetMap; as respostas ficam guardadas.
+    /// Asks Nominatim what is missing: where the destination is (trips without places) and the
+    /// country of each point. One request per second, as OpenStreetMap asks; the answers are stored.
     /// </summary>
     private async Task LocateMissingAsync()
     {
@@ -201,28 +223,47 @@
     private static string? DestinationKey(VacationSummaryDto v) =>
         string.IsNullOrWhiteSpace(v.Destination) ? null : "q:" + v.Destination.Trim().ToLowerInvariant();
 
-    /// <summary>Coordenadas arredondadas (~1 km): pontos da mesma cidade partilham a resposta.</summary>
+    /// <summary>Rounded coordinates (~1 km): points in the same city share the answer.</summary>
     private static string CoordinateKey(double lat, double lng) =>
         FormattableString.Invariant($"c:{lat:0.00},{lng:0.00}");
 
-    /// <summary>Um marcador por ponto; o índice é a posição da viagem na lista (para a abrir).</summary>
-    private object[] MarkerData() => Vacations
+    /// <summary>
+    /// One marker per trip point (the index is the trip's position in the list, to open it)
+    /// and one per place added by hand (indices after the trips; they only show the name).
+    /// </summary>
+    private object[] MarkerData() => TripMarkers().Concat(VisitedMarkers()).ToArray();
+
+    private IEnumerable<object> VisitedMarkers() => VisitedPlaces.Select((p, i) => (object)new
+    {
+        index = Vacations.Count + i,
+        number = (int?)null,
+        name = $"{p.Name} · {p.Year}",
+        lat = p.Latitude,
+        lng = p.Longitude,
+        visited = false,
+        kind = "trip-manual",
+        icon = PlaceIcons.Svg(PlaceKind.Visit),
+        label = p.Name,
+        front = false,
+        reference = false,
+    });
+
+    private IEnumerable<object> TripMarkers() => Vacations
         .Select((v, index) => (v, index))
         .SelectMany(x => (_points.GetValueOrDefault(x.v.Id) ?? []).Select(p => (object)new
         {
             index = x.index,
             number = (int?)null,
-            name = $"{x.v.Title} · {Pt.Range(x.v.StartDate, x.v.EndDate)}",
+            name = $"{x.v.Title} · {Display.Range(x.v.StartDate, x.v.EndDate)}",
             lat = p.Lat,
             lng = p.Lng,
             visited = false,
             kind = x.v.EndDate < Today ? "trip-past" : "trip-next",
-            icon = PlaceIcons.Svg(PlaceKind.Visita),
+            icon = PlaceIcons.Svg(PlaceKind.Visit),
             label = p.Name,
             front = x.v.EndDate >= Today,
             reference = false,
-        }))
-        .ToArray();
+        }));
 
     private async Task RedrawAsync()
     {
@@ -231,12 +272,12 @@
         StateHasChanged();
     }
 
-    /// <summary>Carregar num ponto abre essa viagem.</summary>
+    /// <summary>Clicking a point opens that trip.</summary>
     [JSInvokable]
     public void OnPlaceClick(int index)
     {
         if (index >= 0 && index < Vacations.Count)
-            Navigation.NavigateTo($"ferias/{Vacations[index].Id}?de=mapa");
+            Navigation.NavigateTo($"vacations/{Vacations[index].Id}?from=map");
     }
 
     private async Task<Dictionary<string, GeoEntry>> ReadCacheAsync()
@@ -250,7 +291,7 @@
         }
         catch (Exception)
         {
-            return []; // sem localStorage ou conteúdo estragado: pergunta outra vez
+            return []; // no localStorage or broken content: ask again
         }
     }
 
@@ -262,7 +303,7 @@
         }
         catch (Exception)
         {
-            // Sem localStorage: na próxima visita volta a perguntar
+            // No localStorage: ask again on the next visit
         }
     }
 

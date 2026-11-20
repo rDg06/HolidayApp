@@ -1,4 +1,4 @@
-@* Mapa com os locais a visitar: clicar no mapa ou procurar pelo nome para marcar. *@
+@* Map with the places to visit: click the map or search by name to pin one. *@
 @using System.Text.Json
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -6,10 +6,10 @@
 <div class="place-map-root" @ref="_root">
 @if (Places.Count > 0)
 {
-    @* Filtro por dia: mostra só os locais desse dia e o alojamento dessa noite, no mapa e na lista *@
-    <div class="day-filter" role="group" aria-label="Filtrar locais por dia">
+    @* Day filter: shows only that day's places and that night's lodging, on the map and in the list *@
+    <div class="day-filter" role="group" aria-label="Filter places by day">
         <button type="button" class="chip" aria-pressed="@(_filter.All ? "true" : "false")" @onclick="() => SetFilterAsync(DayFilter.Everything)">
-            Todos <span class="chip-count">@ToVisit.Count()</span>
+            All <span class="chip-count">@ToVisit.Count()</span>
         </button>
         @for (var day = TripStart; day <= TripEnd; day = day.AddDays(1))
         {
@@ -17,14 +17,14 @@
             var count = ToVisit.Count(p => p.Date == d);
             <button type="button" class="@ChipCss(d, count)" aria-pressed="@(_filter == DayFilter.On(d) ? "true" : "false")"
                     @onclick="() => SetFilterAsync(DayFilter.On(d))">
-                @(d == Today ? $"Hoje · {Pt.Long(d)}" : Pt.Long(d)) <span class="chip-count">@count</span>
+                @(d == Today ? $"Today · {Display.Long(d)}" : Display.Long(d)) <span class="chip-count">@count</span>
             </button>
         }
         @{ var noDay = ToVisit.Count(p => p.Date is null); }
         @if (Places.Any(p => p.Date is null) || _filter == DayFilter.NoDay)
         {
             <button type="button" class="chip" aria-pressed="@(_filter == DayFilter.NoDay ? "true" : "false")" @onclick="() => SetFilterAsync(DayFilter.NoDay)">
-                Sem dia <span class="chip-count">@noDay</span>
+                No day <span class="chip-count">@noDay</span>
             </button>
         }
     </div>
@@ -32,7 +32,7 @@
 
 <div class="place-map">
     <div class="map-area">
-        <div class="map-canvas" @ref="_mapElement" aria-label="Mapa dos locais a visitar"></div>
+        <div class="map-canvas" @ref="_mapElement" aria-label="Map of the places to visit"></div>
         @if (_mapError is not null)
         {
             <div class="map-error" role="alert">@_mapError</div>
@@ -41,18 +41,18 @@
 
     <div class="place-side">
         <div class="place-search">
-            <input class="input" placeholder="Procurar local (ex.: Coliseu, Roma)" aria-label="Procurar local"
+            <input class="input" placeholder="Search for a place (e.g. Colosseum, Rome)" aria-label="Search for a place"
                    @bind="_query" @bind:event="oninput" @onkeydown="OnSearchKeyDown" />
             <button type="button" class="btn small" disabled="@_searching" @onclick="SearchAsync">
-                @(_searching ? "…" : "Procurar")
+                @(_searching ? "…" : "Search")
             </button>
         </div>
 
         @if (_lodgingSearch is not null)
         {
             <p class="small lodging-search" role="status">
-                <PlaceIcon /> Escolhe o resultado certo para o alojamento <strong>@_lodgingSearch.Name</strong>.
-                <button type="button" class="btn ghost small" @onclick="CancelLodgingSearch">Cancelar</button>
+                <PlaceIcon /> Choose the right result for the lodging <strong>@_lodgingSearch.Name</strong>.
+                <button type="button" class="btn ghost small" @onclick="CancelLodgingSearch">Cancel</button>
             </p>
         }
 
@@ -63,7 +63,7 @@
 
         @if (_results.Count > 0)
         {
-            <ul class="plain-list search-results" aria-label="Resultados da pesquisa">
+            <ul class="plain-list search-results" aria-label="Search results">
                 @foreach (var result in _results)
                 {
                     var r = result;
@@ -80,8 +80,8 @@
         @if (Places.Count == 0)
         {
             <p class="muted small">
-                Clica no mapa ou procura um local para o marcar. Podes arrastar os marcadores para os acertar.
-                No botão do tipo (<span class="inline-icon"><PlaceIcon Kind="PlaceKind.Visita" /> ▾</span>) marcas o alojamento, aeroportos e estações de metro, autocarro ou comboio.
+                Click the map or search for a place to pin it. You can drag the markers to adjust them.
+                With the type button (<span class="inline-icon"><PlaceIcon Kind="PlaceKind.Visit" /> ▾</span>) you mark the lodging, airports and metro, bus or train stations.
             </p>
         }
         else
@@ -92,33 +92,33 @@
             var legs = route.Skip(1).Select((s, i) => (s.Place, Text: LegText(route, routed, i))).ToList();
             @if (!_filter.All && !Places.Any(p => !p.IsLodging && Visible(p) && !IsReference(p)))
             {
-                <p class="muted small">Nenhum local @(_filter.Day is { } fd ? $"para {Pt.Long(fd)}" : "sem dia"). Clica no mapa para juntar um.</p>
+                <p class="muted small">No places @(_filter.Day is { } fd ? $"for {Display.Long(fd)}" : "without a day"). Click the map to add one.</p>
             }
 
             @if (route.Count > 1)
             {
                 <div class="route-total small">
                     <p>
-                        Percurso do dia:
+                        Day's route:
                         @if (routed is not null)
                         {
-                            <strong>@Pt.Km(routed.Distance / 1000) · @Pt.Duration(routed.Duration) @Pt.Label(RouteMode)</strong>
+                            <strong>@Display.Km(routed.Distance / 1000) · @Display.Duration(routed.Duration) @Display.Label(RouteMode)</strong>
                         }
                         else
                         {
-                            <strong>@Pt.Km(PlaceRoute.TotalKm(route))</strong>
+                            <strong>@Display.Km(PlaceRoute.TotalKm(route))</strong>
                             <span class="muted">
-                                em linha reta@(_routeState switch
+                                straight-line@(_routeState switch
                                 {
-                                    RouteState.Loading => " · a calcular o caminho…",
-                                    RouteState.Failed => " · sem caminho por ruas (sem internet ou sem caminho possível)",
+                                    RouteState.Loading => " · working out the route…",
+                                    RouteState.Failed => " · no street route (no internet or no possible route)",
                                     _ => "",
                                 })
                             </span>
                         }
-                        <span class="muted"> · arrasta os locais para mudar a ordem</span>
+                        <span class="muted"> · drag the places to change the order</span>
                     </p>
-                    <div class="route-modes" role="group" aria-label="Como te deslocas">
+                    <div class="route-modes" role="group" aria-label="How you get around">
                         @foreach (var mode in Enum.GetValues<RouteMode>())
                         {
                             var m = mode;
@@ -137,7 +137,7 @@
                     if (!Visible(p))
                         continue;
 
-                    // Distância desde a paragem anterior (o alojamento de chegada aparece no fim do percurso)
+                    // Distance from the previous stop (the lodging you arrive at shows at the end of the route)
                     var leg = legs.FirstOrDefault(l => ReferenceEquals(l.Place, p));
 
                     <PlaceItem @key="p"
@@ -165,20 +165,20 @@
     [Parameter] public DateOnly TripStart { get; set; }
     [Parameter] public DateOnly TripEnd { get; set; }
 
-    /// <summary>Destino das férias: centra o mapa quando ainda não há locais e ajuda a procurar alojamentos.</summary>
+    /// <summary>Vacation destination: centres the map when there are no places yet and helps find lodgings.</summary>
     [Parameter] public string? Destination { get; set; }
 
-    /// <summary>Dia de hoje (pode ser trocado nos testes). Durante a viagem, o mapa abre neste dia.</summary>
+    /// <summary>Today (can be swapped in tests). During the trip, the map opens on this day.</summary>
     [Parameter] public DateOnly Today { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 
-    /// <summary>Avisa a página de que os locais mudaram (para o aviso de "por guardar").</summary>
+    /// <summary>Tells the page the places changed (for the "unsaved" notice).</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
-    /// <summary>Como se anda entre os locais (caminho e tempos). Guardado na viagem.</summary>
+    /// <summary>How you get around between places (route and times). Saved with the trip.</summary>
     [Parameter] public RouteMode RouteMode { get; set; }
     [Parameter] public EventCallback<RouteMode> RouteModeChanged { get; set; }
 
-    /// <summary>Filtro da lista e do mapa: todos, um dia das férias, ou os locais sem dia.</summary>
+    /// <summary>List and map filter: everything, one vacation day, or the places without a day.</summary>
     private readonly record struct DayFilter(bool All, DateOnly? Day)
     {
         public static DayFilter Everything => new(true, null);
@@ -188,19 +188,19 @@
 
     private DayFilter _filter = DayFilter.Everything;
 
-    /// <summary>Local com o menu do tipo aberto (só um de cada vez).</summary>
+    /// <summary>Place with the kind menu open (only one at a time).</summary>
     private PlanPlaceDto? _kindMenuFor;
 
     private void ToggleKindMenu(PlanPlaceDto place) =>
         _kindMenuFor = ReferenceEquals(_kindMenuFor, place) ? null : place;
 
-    /// <summary>Locais a visitar (os que contam nos números dos filtros).</summary>
+    /// <summary>Places to visit (those counted in the filter numbers).</summary>
     private IEnumerable<PlanPlaceDto> ToVisit => Places.Where(p => p.IsVisit);
 
     /// <summary>
-    /// Se o local aparece com o filtro atual: num dia, os locais e transportes desse dia, o
-    /// alojamento dessa noite e os transportes sem dia (servem todos os dias); em "Sem dia",
-    /// tudo o que não tem data.
+    /// Whether the place shows with the current filter: on a day, that day's places and transport,
+    /// that night's lodging and transport without a day (it serves every day); in "No day",
+    /// everything without a date.
     /// </summary>
     private bool Visible(PlanPlaceDto p) => _filter switch
     {
@@ -209,14 +209,14 @@
         _ => p.Date is null,
     };
 
-    /// <summary>Num dia: transporte sem dia, mostrado só como referência (fora do percurso e do zoom).</summary>
+    /// <summary>On a day: transport without a day, shown only as a reference (outside the route and the zoom).</summary>
     private bool IsReference(PlanPlaceDto p) => _filter.Day is not null && p.IsTransport && p.Date is null;
 
-    /// <summary>Posições (na lista completa) dos locais que se podem arrastar e estão à vista, pela ordem.</summary>
+    /// <summary>Positions (in the full list) of the draggable places in view, in order.</summary>
     private List<int> VisibleVisits =>
         Places.Select((p, i) => (p, i)).Where(x => !x.p.IsLodging && Visible(x.p)).Select(x => x.i).ToList();
 
-    /// <summary>Percurso do dia filtrado (vazio em "Todos" e "Sem dia").</summary>
+    /// <summary>Route of the filtered day (empty in "All" and "No day").</summary>
     private List<RouteStop> Route => _filter.Day is { } day ? PlaceRoute.ForDay(Places, day) : [];
 
     private string ChipCss(DateOnly day, int count) =>
@@ -235,11 +235,11 @@
     private string? _searchError;
     private List<SearchResult> _results = [];
 
-    /// <summary>Reserva de alojamento à espera que se escolha o resultado certo da pesquisa.</summary>
+    /// <summary>Lodging booking waiting for the right search result to be chosen.</summary>
     private sealed record LodgingSearch(string Name, DateOnly? From);
     private LodgingSearch? _lodgingSearch;
 
-    /// <summary>Resultado da pesquisa de locais (vem do JavaScript).</summary>
+    /// <summary>Place search result (comes from JavaScript).</summary>
     public sealed class SearchResult
     {
         public string Name { get; set; } = "";
@@ -250,7 +250,7 @@
 
     protected override void OnInitialized()
     {
-        // Em viagem: abre no dia de hoje
+        // Travelling: open on today
         if (Today >= TripStart && Today <= TripEnd)
             _filter = DayFilter.On(Today);
     }
@@ -260,7 +260,7 @@
         if (firstRender)
         {
             await CreateMapAsync();
-            await UpdateRouteAsync(); // em viagem abre já num dia
+            await UpdateRouteAsync(); // travelling: it opens on a day already
             return;
         }
 
@@ -278,14 +278,14 @@
             _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, _self, MarkerData(), RouteData());
             await _module.InvokeVoidAsync("attachSortable", _root, _self);
 
-            // "Pôr no mapa" pedido antes de o mapa estar pronto: procura agora
+            // "Put on map" asked before the map was ready: search now
             if (_lodgingSearch is not null && _results.Count == 0)
             {
                 await SearchAsync();
                 StateHasChanged();
             }
 
-            // Sem locais: centra no destino, se houver
+            // No places: centre on the destination, if there is one
             if (_map is not null && Places.Count == 0 && !string.IsNullOrWhiteSpace(Destination))
             {
                 var found = await _module.InvokeAsync<List<SearchResult>>("search", Destination.Trim());
@@ -295,16 +295,16 @@
         }
         catch (JSDisconnectedException)
         {
-            // A página foi fechada entretanto
+            // The page was closed in the meantime
         }
         catch (Exception ex)
         {
-            _mapError = ex is JSException ? ex.Message : $"Não foi possível mostrar o mapa. {ex.Message}";
+            _mapError = ex is JSException ? ex.Message : $"Could not show the map. {ex.Message}";
             StateHasChanged();
         }
     }
 
-    /// <summary>Só redesenha os marcadores quando os nomes, posições, estado ou percurso mudaram.</summary>
+    /// <summary>Only redraws the markers when the names, positions, state or route changed.</summary>
     private async Task RedrawIfChangedAsync(bool fit)
     {
         if (_map is null)
@@ -318,10 +318,10 @@
         await _map.InvokeVoidAsync("setPlaces", MarkerData(), fit, RouteData());
     }
 
-    /// <summary>Marcadores dos locais visíveis com o filtro atual (o índice é a posição na lista completa).</summary>
+    /// <summary>Markers of the places visible with the current filter (the index is the position in the full list).</summary>
     private object[] MarkerData() => MapMarkers.Build(Places, Visible, IsReference);
 
-    /// <summary>Pontos da linha do percurso do dia ([lat, lng], pela ordem).</summary>
+    /// <summary>Points of the day's route line ([lat, lng], in order).</summary>
     private object RouteData()
     {
         var route = Route;
@@ -330,7 +330,7 @@
             : new { points = route.Select(s => new[] { s.Place.Latitude, s.Place.Longitude }).ToArray(), exact = false };
     }
 
-    // ---------- Caminho por ruas (serviço de rotas do OpenStreetMap) ----------
+    // ---------- Street route (OpenStreetMap routing service) ----------
 
     private enum RouteState { None, Loading, Done, Failed }
 
@@ -338,7 +338,7 @@
     private RouteResult? _routeResult;
     private RouteState _routeState;
 
-    /// <summary>O caminho calculado, se for deste percurso e deste modo (senão, linha reta).</summary>
+    /// <summary>The computed route, if it is for this route and this mode (otherwise, a straight line).</summary>
     private RouteResult? RoutedFor(List<RouteStop> route) =>
         route.Count > 1 && _routeState == RouteState.Done && _routeKey == Routing.Key(route.Select(s => s.Place), RouteMode)
             ? _routeResult
@@ -350,17 +350,17 @@
         if (routed is not null)
         {
             var leg = routed.Legs[index];
-            return $"{Pt.Km(leg.Distance / 1000)} · {Pt.Duration(leg.Duration)} desde {previous}";
+            return $"{Display.Km(leg.Distance / 1000)} · {Display.Duration(leg.Duration)} from {previous}";
         }
 
-        return $"{Pt.Km(route[index + 1].KmFromPrevious ?? 0)} em linha reta desde {previous}";
+        return $"{Display.Km(route[index + 1].KmFromPrevious ?? 0)} straight-line from {previous}";
     }
 
     private static string ModeName(RouteMode mode) => mode switch
     {
-        RouteMode.Carro => "Carro",
-        RouteMode.Bicicleta => "Bicicleta",
-        _ => "A pé",
+        RouteMode.Car => "Car",
+        RouteMode.Bike => "Bike",
+        _ => "Walk",
     };
 
     private async Task SetRouteModeAsync(RouteMode mode)
@@ -373,7 +373,7 @@
         await ChangedAsync();
     }
 
-    /// <summary>Pede o caminho quando o percurso do dia (ou o modo) muda. Corre depois de cada desenho.</summary>
+    /// <summary>Asks for the route when the day's route (or the mode) changes. Runs after each render.</summary>
     private async Task UpdateRouteAsync()
     {
         var route = Route;
@@ -402,11 +402,11 @@
         }
         catch (Exception)
         {
-            // Sem internet ou serviço em baixo: fica a linha reta
+            // No internet or service down: keep the straight line
         }
 
         if (_routeKey != key)
-            return; // entretanto mudou o dia, a ordem ou o modo
+            return; // the day, the order or the mode changed in the meantime
 
         _routeResult = result;
         _routeState = state;
@@ -415,13 +415,13 @@
 
     private string Signature() => JsonSerializer.Serialize(new { m = MarkerData(), r = RouteData() });
 
-    // ---------- Chamadas vindas do mapa ----------
+    // ---------- Calls from the map ----------
 
     [JSInvokable]
     public async Task OnMapClick(double lat, double lng)
     {
         var number = Places.Count(p => p.IsVisit) + 1;
-        Places.Add(new PlanPlaceDto { Name = $"Local {number}", Latitude = lat, Longitude = lng, Date = FilterDate });
+        Places.Add(new PlanPlaceDto { Name = $"Place {number}", Latitude = lat, Longitude = lng, Date = FilterDate });
         await ChangedAsync();
     }
 
@@ -434,10 +434,10 @@
         Places[index].Latitude = lat;
         Places[index].Longitude = lng;
         await ChangedAsync();
-        await RedrawIfChangedAsync(fit: false); // o percurso do dia muda com o marcador
+        await RedrawIfChangedAsync(fit: false); // the day's route changes with the marker
     }
 
-    // ---------- Pesquisa ----------
+    // ---------- Search ----------
 
     private async Task OnSearchKeyDown(KeyboardEventArgs e)
     {
@@ -456,7 +456,7 @@
         {
             _results = await _module.InvokeAsync<List<SearchResult>>("search", _query.Trim()) ?? [];
 
-            // Alojamento com o destino não encontrado: tenta só pelo nome
+            // Lodging not found with the destination: try with the name only
             if (_results.Count == 0 && _lodgingSearch is not null && _query.Trim() != _lodgingSearch.Name)
             {
                 _query = _lodgingSearch.Name;
@@ -465,13 +465,13 @@
 
             if (_results.Count == 0)
                 _searchError = _lodgingSearch is null
-                    ? "Nenhum local encontrado."
-                    : "Não encontrei o alojamento. Muda o texto da pesquisa ou clica no mapa e usa o botão da casa.";
+                    ? "No place found."
+                    : "Could not find the lodging. Change the search text or click the map and use the house button.";
         }
         catch (Exception ex)
         {
             _results = [];
-            _searchError = $"Não foi possível procurar. {ex.Message}";
+            _searchError = $"Could not search. {ex.Message}";
         }
         finally
         {
@@ -489,7 +489,7 @@
         var place = new PlanPlaceDto { Name = name, Latitude = result.Lat, Longitude = result.Lng, Date = FilterDate };
         if (lodging is not null)
         {
-            // Da reserva: entra no dia da reserva e fica até ao fim da viagem
+            // From the booking: starts on the booking day and lasts until the end of the trip
             place.IsLodging = true;
             place.Date = lodging.From ?? TripStart;
             place.EndDate = TripEnd;
@@ -507,8 +507,8 @@
     }
 
     /// <summary>
-    /// Põe uma reserva de alojamento no mapa: procura pelo nome (e destino) e deixa escolher o
-    /// resultado certo. Chamado pela página a partir da lista de reservas.
+    /// Puts a lodging booking on the map: searches by name (and destination) and lets you choose the
+    /// right result. Called by the page from the booking list.
     /// </summary>
     public async Task FindLodgingAsync(string name, DateOnly? from)
     {
@@ -524,7 +524,7 @@
         }
         catch (JSException)
         {
-            // Sem deslocação: a pesquisa continua
+            // No scrolling: the search goes on
         }
 
         await SearchAsync();
@@ -539,9 +539,9 @@
         _query = "";
     }
 
-    // ---------- Filtro ----------
+    // ---------- Filter ----------
 
-    /// <summary>Com um dia escolhido no filtro, os locais novos ficam nesse dia.</summary>
+    /// <summary>With a day chosen in the filter, new places go on that day.</summary>
     private DateOnly? FilterDate => _filter.All ? null : _filter.Day;
 
     private async Task SetFilterAsync(DayFilter filter)
@@ -551,7 +551,7 @@
         await RedrawIfChangedAsync(fit: true);
     }
 
-    // ---------- Lista ----------
+    // ---------- List ----------
 
     private async Task FocusAsync(int index)
     {
@@ -559,11 +559,11 @@
             await _map.InvokeVoidAsync("focus", index);
     }
 
-    // ---------- Arrastar para mudar a ordem (vem de plan-map.js) ----------
+    // ---------- Drag to change the order (comes from plan-map.js) ----------
 
     /// <summary>
-    /// Largou o local <paramref name="from"/> antes (ou depois) do local <paramref name="target"/>.
-    /// Os índices são posições na lista completa; muda a ordem do percurso e os números.
+    /// Dropped the place <paramref name="from"/> before (or after) the place <paramref name="target"/>.
+    /// The indices are positions in the full list; changes the route order and the numbers.
     /// </summary>
     [JSInvokable]
     public async Task OnReorder(int from, int target, bool after)
@@ -582,8 +582,8 @@
     }
 
     /// <summary>
-    /// Teclado (setas na pega): troca com o anterior/seguinte dos locais à vista.
-    /// Devolve a nova posição, para a pega continuar com o foco.
+    /// Keyboard (arrows on the handle): swaps with the previous/next place in view.
+    /// Returns the new position, so the handle keeps the focus.
     /// </summary>
     [JSInvokable]
     public async Task<int> OnReorderStep(int index, int direction)
@@ -624,7 +624,7 @@
         }
         catch (JSDisconnectedException)
         {
-            // Nada a limpar: o navegador já fechou a página
+            // Nothing to clean up: the browser has already closed the page
         }
 
         _self?.Dispose();

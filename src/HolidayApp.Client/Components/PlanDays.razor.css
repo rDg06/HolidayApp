@@ -17,10 +17,10 @@
     background: var(--surface-2);
 }
 
-.day-card.weekend { background: color-mix(in srgb, var(--c-ferias) 7%, var(--surface-2)); }
+.day-card.weekend { background: color-mix(in srgb, var(--c-vacation) 7%, var(--surface-2)); }
 .day-date { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 
-/* Reservas e locais marcados para o dia */
+/* Bookings and places for the day */
 .day-items { gap: 4px; }
 .day-items li { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.85rem; }
 .day-items .tag { flex: none; }

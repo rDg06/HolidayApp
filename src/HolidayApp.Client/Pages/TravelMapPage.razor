@@ -1,43 +1,41 @@
-@page "/mapa"
+@* The map is the home page ("/"); "/map" also works *@
+@page "/"
+@page "/map"
 @inject ICalendarApi Api
 
-<PageTitle>Mapa · HolidayApp</PageTitle>
+<PageTitle>Map · HolidayApp</PageTitle>
 
 <div class="map-page">
     <header>
-        <h1>Onde já estive</h1>
-        <p class="muted">Todas as viagens no mapa. Carrega num ponto para abrir a viagem.</p>
+        <h1>Where I've been</h1>
+        <p class="muted">Every trip on the map. Click a point to open the trip.</p>
     </header>
 
-    @if (_vacations is null)
+    @if (_loadError is not null)
     {
-        if (_loadError is not null)
-        {
-            <div class="alert" role="alert">
-                <span>@_loadError</span>
-                <button type="button" class="btn ghost small" @onclick="LoadAsync">Tentar de novo</button>
-            </div>
-        }
-        else
-        {
-            <p class="muted">A carregar…</p>
-        }
-    }
-    else if (_vacations.Count == 0)
-    {
-        <div class="card empty-state">
-            <p>Ainda não tens férias marcadas.</p>
-            <a class="btn primary" href="">Ir ao calendário</a>
+        <div class="alert" role="alert">
+            <span>@_loadError</span>
+            <button type="button" class="btn ghost small" @onclick="LoadAsync">Try again</button>
         </div>
+    }
+
+    @if (_vacations is null || _visited is null)
+    {
+        if (_loadError is null)
+        {
+            <p class="muted">Loading…</p>
+        }
     }
     else
     {
-        <TravelMap Vacations="_vacations" />
+        <TravelMap Vacations="_vacations" VisitedPlaces="_visited" />
+        <VisitedPlaces Places="_visited" OnAdd="AddAsync" OnDelete="DeleteAsync" />
     }
 </div>
 
 @code {
     private List<VacationSummaryDto>? _vacations;
+    private List<VisitedPlaceDto>? _visited;
     private string? _loadError;
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -47,11 +45,34 @@
         _loadError = null;
         try
         {
-            _vacations = (await Api.GetVacationsAsync()).ToList();
+            var vacations = Api.GetVacationsAsync();
+            var visited = Api.GetVisitedPlacesAsync();
+            _vacations = (await vacations).ToList();
+            _visited = (await visited).ToList();
         }
         catch (Exception ex)
         {
-            _loadError = $"Não foi possível carregar as férias. {ex.Message}";
+            _loadError = $"Could not load the vacations. {ex.Message}";
+        }
+    }
+
+    private async Task AddAsync(SaveVisitedPlaceRequest request)
+    {
+        var added = await Api.AddVisitedPlaceAsync(request); // errors show in the form
+        _visited = [.. _visited!, added];
+        StateHasChanged(); // called by the form (Func, not EventCallback): the page does not re-render on its own
+    }
+
+    private async Task DeleteAsync(VisitedPlaceDto place)
+    {
+        try
+        {
+            await Api.DeleteVisitedPlaceAsync(place.Id);
+            _visited = _visited!.Where(p => p.Id != place.Id).ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Could not delete. {ex.Message}";
         }
     }
 }

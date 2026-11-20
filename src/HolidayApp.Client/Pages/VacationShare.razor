@@ -1,26 +1,26 @@
-@page "/ferias/{Id:guid}/partilhar"
+@page "/vacations/{Id:guid}/share"
 @inject ICalendarApi Api
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-@* Resumo da viagem para partilhar com amigos: "Guardar PDF" abre a impressão do navegador
-   (onde se escolhe "Guardar como PDF"). Valores, códigos e notas só aparecem se se escolher. *@
+@* Trip summary to share with friends: "Save PDF" opens the browser's print dialog
+   (where you choose "Save as PDF"). Amounts, references and notes only show if chosen. *@
 
-<PageTitle>@(_event is null ? "Partilhar férias" : $"{_event.Title} · {Pt.Range(_event.StartDate, _event.EndDate)}")</PageTitle>
+<PageTitle>@(_event is null ? "Share vacation" : $"{_event.Title} · {Display.Range(_event.StartDate, _event.EndDate)}")</PageTitle>
 
 <div class="share-page">
     <div class="share-toolbar no-print">
-        <a class="back-link" href="@($"ferias/{Id}")">← Organizar férias</a>
+        <a class="back-link" href="@($"vacations/{Id}")">← Plan vacation</a>
 
         @if (_event is not null && _plan is not null)
         {
             <fieldset class="share-options">
-                <legend class="visually-hidden">O que mostrar no PDF</legend>
-                <label class="check small"><input type="checkbox" @bind="_showNotes" /> Notas</label>
-                <label class="check small"><input type="checkbox" @bind="_showMoney" /> Valores (€)</label>
-                <label class="check small"><input type="checkbox" @bind="_showCodes" /> Códigos e ligações das reservas</label>
+                <legend class="visually-hidden">What to show in the PDF</legend>
+                <label class="check small"><input type="checkbox" @bind="_showNotes" /> Notes</label>
+                <label class="check small"><input type="checkbox" @bind="_showMoney" /> Amounts (€)</label>
+                <label class="check small"><input type="checkbox" @bind="_showCodes" /> Booking references and links</label>
             </fieldset>
-            <button type="button" class="btn primary" @onclick="PrintAsync">Guardar PDF</button>
+            <button type="button" class="btn primary" @onclick="PrintAsync">Save PDF</button>
         }
     </div>
 
@@ -32,21 +32,21 @@
         }
         else
         {
-            <p class="muted">A carregar…</p>
+            <p class="muted">Loading…</p>
         }
     }
     else
     {
         <p class="share-hint muted small no-print">
-            No "Guardar PDF" escolhe <strong>Guardar como PDF</strong> como destino (no telemóvel: Partilhar → Imprimir).
-            Os valores e os códigos das reservas só aparecem se os escolheres acima.
+            In "Save PDF" choose <strong>Save as PDF</strong> as the destination (on a phone: Share → Print).
+            Booking amounts and references only show if you choose them above.
         </p>
 
         <article class="share-doc">
             <header class="share-header">
                 <h1>@_event.Title</h1>
                 <p>
-                    @Pt.Range(_event.StartDate, _event.EndDate) · @Pt.Days(DayCount)
+                    @Display.Range(_event.StartDate, _event.EndDate) · @Display.Days(DayCount)
                     @if (!string.IsNullOrWhiteSpace(_plan.Destination))
                     {
                         <span> · @_plan.Destination</span>
@@ -57,8 +57,8 @@
             @if (_plan.Places.Count > 0)
             {
                 <section class="share-section">
-                    <div class="share-map" @ref="_mapElement" aria-label="Mapa da viagem"></div>
-                    <ul class="plain-list share-legend" aria-label="Legenda do mapa">
+                    <div class="share-map" @ref="_mapElement" aria-label="Trip map"></div>
+                    <ul class="plain-list share-legend" aria-label="Map legend">
                         @foreach (var (place, number) in _plan.Places.Zip(PlanPlaceDto.Numbers(_plan.Places)))
                         {
                             <li>
@@ -71,7 +71,7 @@
             }
 
             <section class="share-section">
-                <h2>Dia a dia</h2>
+                <h2>Day by day</h2>
                 <ol class="plain-list share-days">
                     @for (var day = _event.StartDate; day <= _event.EndDate; day = day.AddDays(1))
                     {
@@ -83,15 +83,15 @@
 
                         <li class="share-day">
                             <h3>
-                                <span>Dia @(d.DayNumber - _event.StartDate.DayNumber + 1)</span>
-                                <span class="muted">@Pt.Long(d)</span>
+                                <span>Day @(d.DayNumber - _event.StartDate.DayNumber + 1)</span>
+                                <span class="muted">@Display.Long(d)</span>
                                 @if (routed is not null)
                                 {
-                                    <span class="share-km muted">@Pt.Km(routed.Distance / 1000) · @Pt.Duration(routed.Duration) @Pt.Label(_plan.RouteMode)</span>
+                                    <span class="share-km muted">@Display.Km(routed.Distance / 1000) · @Display.Duration(routed.Duration) @Display.Label(_plan.RouteMode)</span>
                                 }
                                 else if (route.Count > 1)
                                 {
-                                    <span class="share-km muted">@Pt.Km(PlaceRoute.TotalKm(route)) em linha reta</span>
+                                    <span class="share-km muted">@Display.Km(PlaceRoute.TotalKm(route)) straight-line</span>
                                 }
                             </h3>
 
@@ -105,7 +105,7 @@
                                 <ul class="plain-list share-items">
                                     @foreach (var b in bookings)
                                     {
-                                        <li><span class="tag">@Pt.Label(b.Type)</span> @b.Name @BookingExtras(b)</li>
+                                        <li><span class="tag">@Display.Label(b.Type)</span> @b.Name @BookingExtras(b)</li>
                                     }
                                 </ul>
                             }
@@ -123,11 +123,11 @@
                                                 @stop.Place.Name
                                                 @if (leg is not null)
                                                 {
-                                                    <span class="muted small"> · @Pt.Km(leg.Distance / 1000) · @Pt.Duration(leg.Duration)</span>
+                                                    <span class="muted small"> · @Display.Km(leg.Distance / 1000) · @Display.Duration(leg.Duration)</span>
                                                 }
                                                 else if (stop.KmFromPrevious is { } km)
                                                 {
-                                                    <span class="muted small"> · @Pt.Km(km)</span>
+                                                    <span class="muted small"> · @Display.Km(km)</span>
                                                 }
                                                 @if (_showNotes && !string.IsNullOrWhiteSpace(stop.Place.Notes))
                                                 {
@@ -146,7 +146,7 @@
 
                             @if (route.Count == 0 && bookings.Count == 0 && string.IsNullOrWhiteSpace(notes?.Place) && string.IsNullOrWhiteSpace(notes?.Activities))
                             {
-                                <p class="muted small">Dia livre.</p>
+                                <p class="muted small">Free day.</p>
                             }
                         </li>
                     }
@@ -157,7 +157,7 @@
             @if (noDay.Count > 0)
             {
                 <section class="share-section">
-                    <h2>Outros locais</h2>
+                    <h2>Other places</h2>
                     <ul class="plain-list share-items">
                         @foreach (var place in noDay)
                         {
@@ -165,7 +165,7 @@
                                 <Pin Place="place" Number="NumberOf(place)" />
                                 <span>
                                     @place.Name
-                                    <span class="muted small"> · @(place.IsTransport ? $"{Pt.Label(place.Kind)} (todos os dias)" : Pt.Label(place.Kind))</span>
+                                    <span class="muted small"> · @(place.IsTransport ? $"{Display.Label(place.Kind)} (every day)" : Display.Label(place.Kind))</span>
                                     @if (_showNotes && !string.IsNullOrWhiteSpace(place.Notes))
                                     {
                                         <span class="share-note">@place.Notes</span>
@@ -180,16 +180,16 @@
             @if (_plan.Bookings.Any(b => !string.IsNullOrWhiteSpace(b.Name)))
             {
                 <section class="share-section">
-                    <h2>Reservas</h2>
+                    <h2>Bookings</h2>
                     <ul class="plain-list share-items">
                         @foreach (var b in _plan.Bookings.Where(b => !string.IsNullOrWhiteSpace(b.Name)).OrderBy(b => b.Date ?? DateOnly.MaxValue))
                         {
                             <li>
-                                <span class="tag">@Pt.Label(b.Type)</span>
+                                <span class="tag">@Display.Label(b.Type)</span>
                                 @b.Name
                                 @if (b.Date is { } date)
                                 {
-                                    <span class="muted small"> · @Pt.Long(date)</span>
+                                    <span class="muted small"> · @Display.Long(date)</span>
                                 }
                                 @BookingExtras(b)
                                 @if (_showNotes && !string.IsNullOrWhiteSpace(b.Notes))
@@ -205,22 +205,22 @@
             @if (_showMoney && _plan.SpentByCategory() is { Count: > 0 } spent)
             {
                 <section class="share-section">
-                    <h2>Gastos</h2>
+                    <h2>Spending</h2>
                     <table class="share-money">
                         <tbody>
                             @foreach (var c in spent.OrderByDescending(c => c.Amount))
                             {
-                                <tr><th scope="row">@Pt.Label(c.Category)</th><td>@Pt.Money(c.Amount)</td></tr>
+                                <tr><th scope="row">@Display.Label(c.Category)</th><td>@Display.Money(c.Amount)</td></tr>
                             }
                         </tbody>
                         <tfoot>
-                            <tr><th scope="row">Total</th><td>@Pt.Money(spent.Sum(c => c.Amount))</td></tr>
+                            <tr><th scope="row">Total</th><td>@Display.Money(spent.Sum(c => c.Amount))</td></tr>
                         </tfoot>
                     </table>
                 </section>
             }
 
-            <footer class="share-footer muted small">Feito com HolidayApp · mapas © OpenStreetMap</footer>
+            <footer class="share-footer muted small">Made with HolidayApp · maps © OpenStreetMap</footer>
         </article>
     }
 </div>
@@ -232,7 +232,7 @@
     private VacationPlanDto? _plan;
     private string? _loadError;
 
-    // O que entra no PDF: por omissão, nada de dinheiro nem códigos (é para partilhar)
+    // What goes into the PDF: by default, no money and no references (it is for sharing)
     private bool _showNotes = true;
     private bool _showMoney;
     private bool _showCodes;
@@ -242,7 +242,7 @@
     private IJSObjectReference? _map;
     private bool _mapCreated;
 
-    /// <summary>Caminho por ruas de cada dia (os que ainda não chegaram ficam em linha reta).</summary>
+    /// <summary>Each day's street route (those not back yet stay straight-line).</summary>
     private readonly Dictionary<DateOnly, RouteResult> _routes = [];
 
     private int DayCount => _event is null ? 0 : _event.EndDate.DayNumber - _event.StartDate.DayNumber + 1;
@@ -258,7 +258,7 @@
         }
         catch (Exception ex)
         {
-            _loadError = $"Não foi possível carregar as férias. {ex.Message}";
+            _loadError = $"Could not load the vacation. {ex.Message}";
         }
     }
 
@@ -270,7 +270,7 @@
         _mapCreated = true;
         try
         {
-            // Mapa só de leitura com todos os locais (transportes de todos os dias não puxam o zoom)
+            // Read-only map with every place (everyday transport does not pull the zoom)
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/plan-map.js");
             var markers = MapMarkers.Build(_plan.Places, _ => true, p => p.IsTransport && p.Date is null);
             _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, null, markers, null, new { readOnly = true });
@@ -281,13 +281,13 @@
         }
         catch (Exception)
         {
-            // Sem mapa (ex.: sem internet): o resto do resumo continua a servir
+            // No map (e.g. no internet): the rest of the summary still works
         }
 
         await LoadRoutesAsync();
     }
 
-    /// <summary>Pede o caminho por ruas de cada dia com dois ou mais locais (um dia de cada vez).</summary>
+    /// <summary>Asks for the street route of each day with two or more places (one day at a time).</summary>
     private async Task LoadRoutesAsync()
     {
         if (_module is null || _event is null || _plan is null)
@@ -309,23 +309,23 @@
             }
             catch (Exception)
             {
-                return; // sem serviço: os dias ficam em linha reta
+                return; // no service: the days stay straight-line
             }
         }
     }
 
     private int? NumberOf(PlanPlaceDto place) => PlanPlaceDto.Numbers(_plan!.Places)[_plan.Places.IndexOf(place)];
 
-    /// <summary>Código, ligação e valor de uma reserva, só se escolhidos.</summary>
+    /// <summary>A booking's reference, link and cost, only if chosen.</summary>
     private RenderFragment BookingExtras(PlanBookingDto b) => __builder =>
     {
         if (_showCodes && !string.IsNullOrWhiteSpace(b.Reference))
         {
-            <span class="muted small"> · código @b.Reference</span>
+            <span class="muted small"> · ref. @b.Reference</span>
         }
         if (_showMoney && b.Cost is > 0)
         {
-            <span class="muted small"> · @Pt.Money(b.Cost.Value)</span>
+            <span class="muted small"> · @Display.Money(b.Cost.Value)</span>
         }
         if (_showCodes && VacationPlanValidator.IsSafeUrl(b.Url))
         {
@@ -341,7 +341,7 @@
         }
         catch (JSException)
         {
-            // Navegador sem impressão: nada a fazer
+            // Browser without printing: nothing to do
         }
     }
 

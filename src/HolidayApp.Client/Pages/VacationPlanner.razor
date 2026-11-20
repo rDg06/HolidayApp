@@ -1,15 +1,15 @@
-@page "/ferias/{Id:guid}"
+@page "/vacations/{Id:guid}"
 @inject ICalendarApi Api
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @using System.Text.Json
 
-<PageTitle>Organizar férias · HolidayApp</PageTitle>
+<PageTitle>Plan vacation · HolidayApp</PageTitle>
 
 <NavigationLock ConfirmExternalNavigation="IsDirty" OnBeforeInternalNavigation="ConfirmLeaveAsync" />
 
 <div class="plan-page">
-    @* Volta para onde se veio: a lista de férias ou o calendário *@
+    @* Goes back to where you came from: the vacation list, the map or the calendar *@
     <a class="back-link" href="@BackLink.Href">@BackLink.Label</a>
 
     @if (_event is null || _plan is null)
@@ -20,7 +20,7 @@
         }
         else
         {
-            <p class="muted">A carregar…</p>
+            <p class="muted">Loading…</p>
         }
     }
     else
@@ -29,10 +29,10 @@
             <div class="plan-title">
                 <h1>@_event.Title</h1>
                 <p class="muted">
-                    @Pt.Range(_event.StartDate, _event.EndDate) · @Pt.Days(_days.Count)
+                    @Display.Range(_event.StartDate, _event.EndDate) · @Display.Days(_days.Count)
                     @if (_today >= _event.StartDate && _today <= _event.EndDate)
                     {
-                        <span class="tag travelling">Em viagem · dia @(_today.DayNumber - _event.StartDate.DayNumber + 1)</span>
+                        <span class="tag travelling">Travelling · day @(_today.DayNumber - _event.StartDate.DayNumber + 1)</span>
                     }
                 </p>
             </div>
@@ -40,24 +40,24 @@
                 @{ var dirty = IsDirty; }
                 @if (_saved && !dirty)
                 {
-                    <span class="saved" role="status">Guardado ✓</span>
+                    <span class="saved" role="status">Saved ✓</span>
                 }
                 else if (dirty)
                 {
-                    <span class="muted small" role="status">Alterações por guardar</span>
+                    <span class="muted small" role="status">Unsaved changes</span>
                 }
-                <button type="button" class="btn" disabled="@_saving" title="Resumo para partilhar com amigos (guarda primeiro, se for preciso)"
-                        @onclick="ShareAsync">Partilhar (PDF)</button>
+                <button type="button" class="btn" disabled="@_saving" title="Summary to share with friends (saves first, if needed)"
+                        @onclick="ShareAsync">Share (PDF)</button>
                 <button type="button" class="btn primary" disabled="@_saving" @onclick="SaveAsync">
-                    @(_saving ? "A guardar…" : "Guardar")
+                    @(_saving ? "Saving…" : "Save")
                 </button>
             </div>
         </header>
 
         @Errors
 
-        @* Separadores: só o separador escolhido é desenhado (os dados ficam em _plan, nada se perde) *@
-        <div class="plan-tabs" role="tablist" aria-label="Partes do planeamento" @onkeydown="OnTabKeyDown">
+        @* Tabs: only the chosen tab is rendered (the data stays in _plan, nothing is lost) *@
+        <div class="plan-tabs" role="tablist" aria-label="Parts of the plan" @onkeydown="OnTabKeyDown">
             @foreach (var tab in Tabs)
             {
                 var t = tab;
@@ -77,21 +77,21 @@
         <div class="plan-grid" role="tabpanel" id="@($"panel-{_tab}")" aria-labelledby="@($"tab-{_tab}")">
             @switch (_tab)
             {
-                case PlanTab.Locais:
+                case PlanTab.Places:
                     <section class="card plan-section plan-wide">
                         <label class="field">
-                            <span>Destino</span>
-                            <input class="input" placeholder="ex.: Algarve, Roma, Açores…" maxlength="@VacationPlanValidator.DestinationMaxLength"
+                            <span>Destination</span>
+                            <input class="input" placeholder="e.g. Algarve, Rome, Azores…" maxlength="@VacationPlanValidator.DestinationMaxLength"
                                    @bind="_plan.Destination" />
                         </label>
                     </section>
 
-                    <PlanSection Id="places" Title="Locais a visitar" Wide="true">
+                    <PlanSection Id="places" Title="Places to visit" Wide="true">
                         <Info>
                             @{ var toVisit = _plan.Places.Where(p => p.IsVisit).ToList(); }
                             @if (toVisit.Count > 0)
                             {
-                                <span class="muted small">@toVisit.Count(p => p.Visited) de @toVisit.Count visitados</span>
+                                <span class="muted small">@toVisit.Count(p => p.Visited) of @toVisit.Count visited</span>
                             }
                         </Info>
                         <ChildContent>
@@ -106,18 +106,18 @@
                     </PlanSection>
                     break;
 
-                case PlanTab.Reservas:
+                case PlanTab.Bookings:
                     <PlanBookings Bookings="_plan.Bookings" Places="_plan.Places" TripStart="_event.StartDate" TripEnd="_event.EndDate"
                                   OnChanged="StateHasChanged" OnPutOnMap="PutLodgingOnMapAsync" />
                     break;
 
-                case PlanTab.Tarefas:
+                case PlanTab.Tasks:
                     <PlanTasks Tasks="_plan.Tasks" OnChanged="StateHasChanged" />
                     break;
 
-                case PlanTab.Orcamento:
+                case PlanTab.Budget:
                     <PlanBudget Expenses="_plan.Expenses" Bookings="_plan.Bookings" OnChanged="StateHasChanged" />
-                    @* Atualiza enquanto se edita o orçamento *@
+                    @* Updates while the budget is edited *@
                     <SpendingChart Amounts="_plan.SpentByCategory()" />
                     break;
 
@@ -127,12 +127,12 @@
             }
         </div>
 
-        @* Os erros também aparecem aqui, junto ao segundo botão "Guardar" *@
+        @* Errors also show here, next to the second "Save" button *@
         @Errors
 
         <div class="plan-footer">
             <button type="button" class="btn primary" disabled="@_saving" @onclick="SaveAsync">
-                @(_saving ? "A guardar…" : "Guardar")
+                @(_saving ? "Saving…" : "Save")
             </button>
         </div>
     }
@@ -141,16 +141,16 @@
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    /// <summary>Link de voltar: para a página de onde se veio (Férias, Mapa) ou o calendário.</summary>
+    /// <summary>Back link: to the page you came from (Vacations, Map) or the calendar.</summary>
     private (string Href, string Label) BackLink => From switch
     {
-        "ferias" => ("ferias", "← Férias"),
-        "mapa" => ("mapa", "← Mapa"),
-        _ => ("", "← Calendário"),
+        "vacations" => ("vacations", "← Vacations"),
+        "map" => ("", "← Map"),
+        _ => ("calendar", "← Calendar"),
     };
 
-    /// <summary>De onde se veio ("ferias" = lista de férias, "mapa" = mapa das viagens), para o link de voltar.</summary>
-    [SupplyParameterFromQuery(Name = "de")] public string? From { get; set; }
+    /// <summary>Where you came from ("vacations" = vacation list, "map" = trips map), for the back link.</summary>
+    [SupplyParameterFromQuery(Name = "from")] public string? From { get; set; }
 
     private CalendarEventDto? _event;
     private VacationPlanDto? _plan;
@@ -164,9 +164,9 @@
     private bool _saved;
 
     /// <summary>
-    /// Há alterações por guardar quando o conteúdo atual difere do último que
-    /// foi carregado ou guardado. Comparar o estado apanha qualquer campo, sem
-    /// depender de eventos (o "change" não sobe aos elementos pai no Blazor).
+    /// There are unsaved changes when the current content differs from the last one
+    /// loaded or saved. Comparing the state catches any field, without
+    /// relying on events ("change" does not bubble up to parent elements in Blazor).
     /// </summary>
     private bool IsDirty => _plan is not null && CurrentState() != _savedState;
 
@@ -188,7 +188,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // Só volta a carregar quando muda a marcação (não quando muda o "?de=")
+        // Only reloads when the entry changes (not when "?from=" changes)
         if (_event?.Id == Id)
             return;
 
@@ -209,11 +209,11 @@
         }
         catch (Exception ex)
         {
-            _loadError = $"Não foi possível carregar o planeamento. {ex.Message}";
+            _loadError = $"Could not load the plan. {ex.Message}";
         }
     }
 
-    /// <summary>Um bloco por cada dia das férias, com o que já estava guardado.</summary>
+    /// <summary>One block per vacation day, with what was already saved.</summary>
     private void BuildDays()
     {
         var saved = _plan!.Days.ToDictionary(d => d.Date);
@@ -227,7 +227,7 @@
         if (_plan is null)
             return;
 
-        // Linhas deixadas em branco não contam como erro: são simplesmente ignoradas
+        // Rows left blank are not an error: they are simply ignored
         _plan.Tasks.RemoveAll(t => string.IsNullOrWhiteSpace(t.Text));
         _plan.Bookings.RemoveAll(b => string.IsNullOrWhiteSpace(b.Name) && string.IsNullOrWhiteSpace(b.Reference)
                                       && string.IsNullOrWhiteSpace(b.Url) && string.IsNullOrWhiteSpace(b.Notes)
@@ -259,45 +259,45 @@
 
     private async Task ConfirmLeaveAsync(LocationChangingContext context)
     {
-        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Tens alterações por guardar. Sair sem guardar?"))
+        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "You have unsaved changes. Leave without saving?"))
             context.PreventNavigation();
     }
 
     /// <summary>
-    /// Reserva de alojamento → vai para o separador Locais e procura-a no mapa (fica como
-    /// alojamento a partir do dia da reserva). A procura corre quando o mapa aparecer.
+    /// Lodging booking → goes to the Places tab and looks it up on the map (it becomes
+    /// lodging from the booking day). The search runs when the map shows up.
     /// </summary>
     private Task PutLodgingOnMapAsync(PlanBookingDto booking)
     {
         _pendingLodging = booking;
-        _tab = PlanTab.Locais;
+        _tab = PlanTab.Places;
         return Task.CompletedTask;
     }
 
-    /// <summary>Abre o resumo para partilhar/PDF. Guarda antes, porque o resumo mostra o que está guardado.</summary>
+    /// <summary>Opens the share/PDF summary. Saves first, because the summary shows what is saved.</summary>
     private async Task ShareAsync()
     {
         if (IsDirty)
         {
             await SaveAsync();
             if (IsDirty)
-                return; // não guardou (erros à vista)
+                return; // not saved (errors on screen)
         }
 
-        Navigation.NavigateTo($"ferias/{Id}/partilhar");
+        Navigation.NavigateTo($"vacations/{Id}/share");
     }
 
-    // ---------- Separadores ----------
+    // ---------- Tabs ----------
 
-    private enum PlanTab { Locais, Reservas, Tarefas, Orcamento, DiaADia }
+    private enum PlanTab { Places, Bookings, Tasks, Budget, DayByDay }
 
     private sealed record TabInfo(PlanTab Key, string Label, string? Count);
 
-    private PlanTab _tab = PlanTab.Locais;
+    private PlanTab _tab = PlanTab.Places;
 
     private readonly Dictionary<PlanTab, ElementReference> _tabButtons = [];
 
-    /// <summary>Reserva de alojamento à espera que o mapa apareça para ser procurada.</summary>
+    /// <summary>Lodging booking waiting for the map to show up to be looked up.</summary>
     private PlanBookingDto? _pendingLodging;
 
     private IEnumerable<TabInfo> Tabs
@@ -307,17 +307,17 @@
             var visits = _plan!.Places.Count(p => p.IsVisit);
             var bookings = _plan.Bookings.Count;
             var tasks = _plan.Tasks.Count;
-            yield return new(PlanTab.Locais, "Locais", visits > 0 ? visits.ToString() : null);
-            yield return new(PlanTab.Reservas, "Reservas", bookings > 0 ? bookings.ToString() : null);
-            yield return new(PlanTab.Tarefas, "Tarefas", tasks > 0 ? $"{_plan.Tasks.Count(t => t.Done)}/{tasks}" : null);
-            yield return new(PlanTab.Orcamento, "Orçamento", null);
-            yield return new(PlanTab.DiaADia, "Dia a dia", null);
+            yield return new(PlanTab.Places, "Places", visits > 0 ? visits.ToString() : null);
+            yield return new(PlanTab.Bookings, "Bookings", bookings > 0 ? bookings.ToString() : null);
+            yield return new(PlanTab.Tasks, "Tasks", tasks > 0 ? $"{_plan.Tasks.Count(t => t.Done)}/{tasks}" : null);
+            yield return new(PlanTab.Budget, "Budget", null);
+            yield return new(PlanTab.DayByDay, "Day by day", null);
         }
     }
 
     private void SelectTab(PlanTab tab) => _tab = tab;
 
-    /// <summary>Setas ← → (e Início/Fim) mudam de separador, como nos separadores normais.</summary>
+    /// <summary>← → arrows (and Home/End) change tab, like normal tabs.</summary>
     private async Task OnTabKeyDown(KeyboardEventArgs e)
     {
         var all = Enum.GetValues<PlanTab>();
@@ -341,13 +341,13 @@
         }
         catch (Exception)
         {
-            // Sem foco (ex.: nos testes): o separador mudou na mesma
+            // No focus (e.g. in tests): the tab changed anyway
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // "Pôr no mapa" numa reserva: abriu o separador Locais, agora já há mapa
+        // "Put on map" on a booking: the Places tab opened, now there is a map
         if (_pendingLodging is { } booking && _placeMap is not null)
         {
             _pendingLodging = null;

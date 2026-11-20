@@ -1,8 +1,8 @@
 {
-  "name": "HolidayApp — planeador de férias",
+  "name": "HolidayApp — vacation planner",
   "short_name": "HolidayApp",
-  "description": "Calendário de férias, feriados portugueses e planeamento de viagens.",
-  "lang": "pt-PT",
+  "description": "Vacation calendar, Portuguese public holidays and trip planning.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

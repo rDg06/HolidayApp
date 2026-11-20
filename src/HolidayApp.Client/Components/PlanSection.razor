@@ -1,4 +1,4 @@
-@* Cartão de uma parte do planeador: título, informação ao lado (ex.: "3 reservas") e botões. *@
+@* Card of one part of the planner: title, info next to it (e.g. "3 bookings") and buttons. *@
 
 <section class="@Css" aria-labelledby="@($"{Id}-title")">
     <div class="section-head">
@@ -13,21 +13,21 @@
 </section>
 
 @code {
-    /// <summary>Identificador da secção (único na página).</summary>
+    /// <summary>Section identifier (unique on the page).</summary>
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
     [Parameter, EditorRequired] public string Title { get; set; } = "";
 
-    /// <summary>Ocupa a largura toda da grelha.</summary>
+    /// <summary>Takes the full width of the grid.</summary>
     [Parameter] public bool Wide { get; set; }
 
-    /// <summary>Classes extra da secção.</summary>
+    /// <summary>Extra classes for the section.</summary>
     [Parameter] public string? Class { get; set; }
 
-    /// <summary>Informação ao lado do título (ex.: "3 reservas", "1 de 4 feitas").</summary>
+    /// <summary>Info next to the title (e.g. "3 bookings", "1 of 4 done").</summary>
     [Parameter] public RenderFragment? Info { get; set; }
 
-    /// <summary>Botões do cabeçalho (ex.: "+ Reserva").</summary>
+    /// <summary>Header buttons (e.g. "+ Booking").</summary>
     [Parameter] public RenderFragment? Actions { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }

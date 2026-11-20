@@ -1,32 +1,32 @@
-@* Orçamento: despesas previstas e reais, mais o valor das reservas. *@
+@* Budget: planned and actual expenses, plus the booking costs. *@
 
-<PlanSection Id="budget" Title="Orçamento">
+<PlanSection Id="budget" Title="Budget">
     <Info>
         @if (TotalActual > 0 || TotalPlanned > 0)
         {
-            <span class="muted small">@Pt.Money(TotalActual) gastos</span>
+            <span class="muted small">@Display.Money(TotalActual) spent</span>
         }
     </Info>
     <Actions>
-        <button type="button" class="btn small" @onclick="AddAsync">+ Despesa</button>
+        <button type="button" class="btn small" @onclick="AddAsync">+ Expense</button>
     </Actions>
     <ChildContent>
 
     @if (Expenses.Count == 0 && PricedBookings.Count == 0)
     {
-        <p class="muted small">Junta as despesas previstas e, depois, o que gastaste mesmo. O valor das reservas entra aqui sozinho.</p>
+        <p class="muted small">Add the planned expenses and, later, what you actually spent. Booking costs show up here on their own.</p>
     }
     else
     {
         <div class="expense-list">
-            @* Reservas com valor: contam como previsto e gasto; editam-se nas Reservas *@
+            @* Bookings with a cost: count as planned and spent; edited in Bookings *@
             @foreach (var booking in PricedBookings)
             {
-                <div class="expense-row booking-expense" title="Valor da reserva: altera-o em Reservas">
-                    <span class="tag">Reserva · @Pt.Label(PlanBookingDto.BudgetCategory(booking.Type))</span>
+                <div class="expense-row booking-expense" title="Booking cost: change it in Bookings">
+                    <span class="tag">Booking · @Display.Label(PlanBookingDto.BudgetCategory(booking.Type))</span>
                     <span class="booking-expense-name">@booking.Name</span>
-                    <span class="amount">@Pt.Money(booking.Cost!.Value)</span>
-                    <span class="amount">@Pt.Money(booking.Cost!.Value)</span>
+                    <span class="amount">@Display.Money(booking.Cost!.Value)</span>
+                    <span class="amount">@Display.Money(booking.Cost!.Value)</span>
                     <span></span>
                 </div>
             }
@@ -34,33 +34,33 @@
             {
                 var e = expense;
                 <div class="expense-row">
-                    <select class="input" aria-label="Categoria" @bind="e.Category" @bind:after="ChangedAsync">
+                    <select class="input" aria-label="Category" @bind="e.Category" @bind:after="ChangedAsync">
                         @foreach (var category in Enum.GetValues<ExpenseCategory>())
                         {
-                            <option value="@category">@Pt.Label(category)</option>
+                            <option value="@category">@Display.Label(category)</option>
                         }
                     </select>
-                    <input class="input" placeholder="Descrição (ex.: hotel, jantar…)" aria-label="Descrição"
+                    <input class="input" placeholder="Description (e.g. hotel, dinner…)" aria-label="Description"
                            maxlength="@VacationPlanValidator.ShortTextMaxLength" @bind="e.Description" @bind:after="ChangedAsync" />
                     <span class="money-field">
-                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Previsto" aria-label="Previsto (€)"
-                               title="Previsto (€)" @bind="e.Planned" @bind:after="ChangedAsync" />
+                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Planned" aria-label="Planned (€)"
+                               title="Planned (€)" @bind="e.Planned" @bind:after="ChangedAsync" />
                     </span>
                     <span class="money-field">
-                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Real" aria-label="Real (€)"
-                               title="Real (€)" @bind="e.Actual" @bind:after="ChangedAsync" />
+                        <input class="input amount" type="number" min="0" step="0.01" placeholder="Actual" aria-label="Actual (€)"
+                               title="Actual (€)" @bind="e.Actual" @bind:after="ChangedAsync" />
                     </span>
-                    <button type="button" class="btn icon ghost small" aria-label="Remover despesa" @onclick="() => RemoveAsync(e)">✕</button>
+                    <button type="button" class="btn icon ghost small" aria-label="Remove expense" @onclick="() => RemoveAsync(e)">✕</button>
                 </div>
             }
         </div>
 
         <dl class="budget-totals">
-            <div><dt>Previsto</dt><dd>@Pt.Money(TotalPlanned)</dd></div>
-            <div><dt>Gasto</dt><dd>@Pt.Money(TotalActual)</dd></div>
+            <div><dt>Planned</dt><dd>@Display.Money(TotalPlanned)</dd></div>
+            <div><dt>Spent</dt><dd>@Display.Money(TotalActual)</dd></div>
             <div>
-                <dt>@(TotalActual > TotalPlanned ? "Acima do previsto" : "Disponível")</dt>
-                <dd class="@(TotalActual > TotalPlanned ? "over" : "under")">@Pt.Money(Math.Abs(TotalPlanned - TotalActual))</dd>
+                <dt>@(TotalActual > TotalPlanned ? "Over budget" : "Left")</dt>
+                <dd class="@(TotalActual > TotalPlanned ? "over" : "under")">@Display.Money(Math.Abs(TotalPlanned - TotalActual))</dd>
             </div>
         </dl>
     }
@@ -70,7 +70,7 @@
 @code {
     [Parameter, EditorRequired] public List<PlanExpenseDto> Expenses { get; set; } = [];
 
-    /// <summary>As reservas com valor entram no orçamento (só leitura aqui).</summary>
+    /// <summary>Bookings with a cost are counted in the budget (read-only here).</summary>
     [Parameter, EditorRequired] public List<PlanBookingDto> Bookings { get; set; } = [];
 
     [Parameter] public EventCallback OnChanged { get; set; }
@@ -79,7 +79,7 @@
 
     private decimal BookingsTotal => PricedBookings.Sum(b => b.Cost ?? 0);
 
-    // As reservas já estão pagas/comprometidas: contam no previsto e no gasto
+    // Bookings are already paid/committed: they count as planned and spent
     private decimal TotalPlanned => Expenses.Sum(e => e.Planned ?? 0) + BookingsTotal;
     private decimal TotalActual => Expenses.Sum(e => e.Actual ?? 0) + BookingsTotal;
 

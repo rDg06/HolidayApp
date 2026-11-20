@@ -1,24 +1,24 @@
-@* Saldo de férias do ano e legenda das cores do calendário. *@
+@* The year's vacation balance and the calendar colour legend. *@
 
 <div class="card summary">
-    <span class="label">Férias por gozar</span>
+    <span class="label">Vacation days left</span>
     <div class="summary-figure">
         <span class="@(Remaining < 0 ? "big negative" : "big")">@Remaining</span>
-        <span class="muted">de @AnnualDays dias úteis</span>
+        <span class="muted">of @AnnualDays working days</span>
     </div>
-    <div class="progress" role="progressbar" aria-label="Dias de férias usados"
+    <div class="progress" role="progressbar" aria-label="Vacation days used"
          aria-valuemin="0" aria-valuemax="@AnnualDays" aria-valuenow="@UsedDays">
         <div class="progress-bar" style="width: @(ProgressPercent)%"></div>
     </div>
-    <p class="muted small">@Pt.Workdays(UsedDays) marcados em @Year</p>
+    <p class="muted small">@Display.Workdays(UsedDays) booked in @Year</p>
 </div>
 
 <div class="card legend">
-    <span class="legend-item"><span class="swatch ev-ferias"></span>Férias</span>
-    <span class="legend-item"><span class="swatch ev-pessoal"></span>Pessoal</span>
-    <span class="legend-item"><span class="swatch ev-outro"></span>Outro</span>
-    <span class="legend-item"><span class="swatch holiday"></span>Feriado</span>
-    <span class="legend-item"><span class="swatch today"></span>Hoje</span>
+    <span class="legend-item"><span class="swatch ev-vacation"></span>Vacation</span>
+    <span class="legend-item"><span class="swatch ev-personal"></span>Personal</span>
+    <span class="legend-item"><span class="swatch ev-other"></span>Other</span>
+    <span class="legend-item"><span class="swatch holiday"></span>Holiday</span>
+    <span class="legend-item"><span class="swatch today"></span>Today</span>
 </div>
 
 @code {

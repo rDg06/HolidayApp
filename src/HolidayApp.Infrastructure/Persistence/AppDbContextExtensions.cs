@@ -6,16 +6,16 @@ namespace HolidayApp.Infrastructure.Persistence;
 internal static class AppDbContextExtensions
 {
     /// <summary>
-    /// Devolve as definições guardadas ou valores por omissão (sem gravar,
-    /// para evitar conflitos quando vários pedidos chegam em paralelo).
+    /// Returns the saved settings or the defaults (without saving,
+    /// to avoid conflicts when several requests arrive in parallel).
     /// </summary>
     public static async Task<UserSettings> GetSettingsOrDefaultAsync(this AppDbContext db, CancellationToken ct) =>
         await db.UserSettings.AsNoTracking().FirstOrDefaultAsync(ct)
         ?? new UserSettings { UserId = db.CurrentUserId };
 
     /// <summary>
-    /// Grava uma linha nova; se outro pedido a criou entretanto (ex.: duplo clique em
-    /// "Guardar"), aplica as alterações sobre essa linha em vez de dar erro.
+    /// Saves a new row; if another request created it in the meantime (e.g. a double click on
+    /// "Save"), applies the changes to that row instead of failing.
     /// </summary>
     public static async Task InsertOrUpdateAsync<TEntity>(
         this AppDbContext db,
@@ -36,7 +36,7 @@ internal static class AppDbContextExtensions
 
             var existing = await findExisting(ct);
             if (existing is null)
-                throw; // não foi uma corrida: o erro é outro
+                throw; // not a race: the error is something else
 
             applyChanges(existing);
             await db.SaveChangesAsync(ct);

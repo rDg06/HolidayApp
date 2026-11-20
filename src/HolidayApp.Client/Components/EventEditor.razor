@@ -1,66 +1,66 @@
-@* Janela para criar, editar ou apagar uma marcação. *@
+@* Dialog to create, edit or delete an entry. *@
 
 <div class="modal-backdrop" @onclick="CloseAsync">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editor-title"
          @onclick:stopPropagation="true" @onkeydown="OnKeyDownAsync">
         <form @onsubmit="SubmitAsync">
             <header class="modal-header">
-                <h2 id="editor-title">@(Existing is null ? "Nova marcação" : "Editar marcação")</h2>
-                <button type="button" class="btn icon" aria-label="Fechar" @onclick="CloseAsync">✕</button>
+                <h2 id="editor-title">@(Existing is null ? "New entry" : "Edit entry")</h2>
+                <button type="button" class="btn icon" aria-label="Close" @onclick="CloseAsync">✕</button>
             </header>
 
             <div class="modal-body">
                 <label class="field">
-                    <span>Título</span>
+                    <span>Title</span>
                     <input class="input" @ref="_titleInput" @bind="_title" @bind:event="oninput"
                            maxlength="@CalendarEventValidator.TitleMaxLength" />
                 </label>
 
-                <div class="type-picker" role="radiogroup" aria-label="Tipo">
+                <div class="type-picker" role="radiogroup" aria-label="Type">
                     @foreach (var type in Enum.GetValues<EventType>())
                     {
                         var t = type;
                         <button type="button" role="radio" aria-checked="@(_type == t ? "true" : "false")"
                                 class="@ChipCss(t)"
                                 @onclick="() => SelectType(t)">
-                            <span class="swatch"></span>@Pt.Label(t)
+                            <span class="swatch"></span>@Display.Label(t)
                         </button>
                     }
                 </div>
 
                 <div class="field-row">
                     <label class="field">
-                        <span>De</span>
+                        <span>From</span>
                         <input class="input" type="date" @bind="_start" @bind:format="yyyy-MM-dd" @bind:after="OnStartChanged" />
                     </label>
                     <label class="field">
-                        <span>Até</span>
+                        <span>To</span>
                         <input class="input" type="date" @bind="_end" @bind:format="yyyy-MM-dd" />
                     </label>
                 </div>
 
-                @if (_type == EventType.Ferias)
+                @if (_type == EventType.Vacation)
                 {
                     <p class="workdays">
-                        Conta como <strong>@Pt.Workdays(Workdays)</strong> de férias
-                        <span class="muted">(fins de semana e feriados não contam)</span>
+                        Counts as <strong>@Display.Workdays(Workdays)</strong> of vacation
+                        <span class="muted">(weekends and holidays do not count)</span>
                     </p>
                 }
 
-                @* Guarda a marcação (nova ou alterada) e abre a página de planeamento *@
-                @if (_type == EventType.Ferias)
+                @* Saves the entry (new or changed) and opens the planning page *@
+                @if (_type == EventType.Vacation)
                 {
                     <button type="button" class="organize-link" disabled="@Busy" @onclick="OrganizeAsync">
                         <span>
-                            <strong>@(Existing is null ? "Guardar e organizar férias" : "Organizar férias")</strong>
-                            <span class="muted small">Reservas, mapa, plano dia a dia, tarefas e orçamento</span>
+                            <strong>@(Existing is null ? "Save and plan vacation" : "Plan vacation")</strong>
+                            <span class="muted small">Bookings, map, day-by-day plan, tasks and budget</span>
                         </span>
                         <span aria-hidden="true">→</span>
                     </button>
                 }
 
                 <label class="field">
-                    <span>Notas <span class="muted">(opcional)</span></span>
+                    <span>Notes <span class="muted">(optional)</span></span>
                     <textarea class="input" rows="2" @bind="_notes" maxlength="@CalendarEventValidator.NotesMaxLength"></textarea>
                 </label>
 
@@ -83,12 +83,12 @@
                 @if (Existing is not null)
                 {
                     <button type="button" class="btn danger" disabled="@Busy" @onclick="DeleteClickedAsync">
-                        @(_confirmDelete ? "Confirmar: apagar" : "Apagar")
+                        @(_confirmDelete ? "Confirm: delete" : "Delete")
                     </button>
                 }
                 <span class="spacer"></span>
-                <button type="button" class="btn ghost" @onclick="CloseAsync">Cancelar</button>
-                <button type="submit" class="btn primary" disabled="@Busy">@(Busy ? "A guardar…" : "Guardar")</button>
+                <button type="button" class="btn ghost" @onclick="CloseAsync">Cancel</button>
+                <button type="submit" class="btn primary" disabled="@Busy">@(Busy ? "Saving…" : "Save")</button>
             </footer>
         </form>
     </div>
@@ -104,14 +104,14 @@
 
     [Parameter] public EventCallback<SaveCalendarEventRequest> OnSave { get; set; }
 
-    /// <summary>Guardar e depois abrir a página "Organizar férias".</summary>
+    /// <summary>Save and then open the "Plan vacation" page.</summary>
     [Parameter] public EventCallback<SaveCalendarEventRequest> OnSaveAndOrganize { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
     private ElementReference _titleInput;
     private string _title = "";
-    private EventType _type = EventType.Ferias;
+    private EventType _type = EventType.Vacation;
     private DateOnly _start;
     private DateOnly _end;
     private string? _notes;
@@ -120,7 +120,7 @@
 
     private int Workdays => WorkdayCalculator.CountWorkdays(_start, _end, HolidayDates);
 
-    private string ChipCss(EventType type) => $"chip {Pt.Css(type)}{(_type == type ? " active" : "")}";
+    private string ChipCss(EventType type) => $"chip {Display.Css(type)}{(_type == type ? " active" : "")}";
 
     protected override void OnInitialized()
     {
@@ -134,7 +134,7 @@
         }
         else
         {
-            _title = Pt.Label(EventType.Ferias);
+            _title = Display.Label(EventType.Vacation);
             _start = InitialStart;
             _end = InitialEnd < InitialStart ? InitialStart : InitialEnd;
         }
@@ -148,12 +148,12 @@
 
     private void SelectType(EventType type)
     {
-        // Se o título ainda é o texto por omissão, acompanha o tipo escolhido
+        // If the title is still the default text, it follows the chosen type
         var isDefaultTitle = string.IsNullOrWhiteSpace(_title)
-                             || Enum.GetValues<EventType>().Any(t => Pt.Label(t) == _title);
+                             || Enum.GetValues<EventType>().Any(t => Display.Label(t) == _title);
         _type = type;
         if (isDefaultTitle)
-            _title = Pt.Label(type);
+            _title = Display.Label(type);
     }
 
     private void OnStartChanged()
@@ -174,7 +174,7 @@
             await OnSaveAndOrganize.InvokeAsync(request);
     }
 
-    /// <summary>Monta o pedido a partir do formulário; null (e erros visíveis) se for inválido.</summary>
+    /// <summary>Builds the request from the form; null (and visible errors) if it is invalid.</summary>
     private SaveCalendarEventRequest? BuildValidRequest()
     {
         var request = new SaveCalendarEventRequest(

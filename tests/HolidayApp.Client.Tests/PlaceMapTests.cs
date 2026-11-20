@@ -3,7 +3,7 @@ using HolidayApp.Client.Services;
 
 namespace HolidayApp.Client.Tests;
 
-/// <summary>Mapa dos locais: filtro por dia, alojamentos, ordem e percurso (o mapa em si é JavaScript e fica de fora).</summary>
+/// <summary>Places map: day filter, lodgings, order and route (the map itself is JavaScript and is left out).</summary>
 public sealed class PlaceMapTests : BunitContext
 {
     private static readonly DateOnly TripStart = new(2026, 11, 2);
@@ -12,7 +12,7 @@ public sealed class PlaceMapTests : BunitContext
 
     public PlaceMapTests()
     {
-        // O Leaflet não corre nos testes: as chamadas ao JavaScript devolvem valores vazios
+        // Leaflet does not run in tests: JavaScript calls return empty values
         JSInterop.Mode = JSRuntimeMode.Loose;
         _module = JSInterop.SetupModule("./js/plan-map.js");
         _module.Mode = JSRuntimeMode.Loose;
@@ -29,186 +29,186 @@ public sealed class PlaceMapTests : BunitContext
             .Add(x => x.Today, today ?? new DateOnly(2026, 1, 1)));
 
     private static List<string> Names(IRenderedComponent<PlaceMap> cut) =>
-        cut.FindAll("input[aria-label='Nome do local']").Select(i => i.GetAttribute("value") ?? "").ToList();
+        cut.FindAll("input[aria-label='Place name']").Select(i => i.GetAttribute("value") ?? "").ToList();
 
     private static void ClickChip(IRenderedComponent<PlaceMap> cut, string text) =>
         cut.FindAll(".chip").First(c => c.TextContent.Contains(text)).Click();
 
-    /// <summary>Abre o menu do tipo de um local e escolhe uma opção.</summary>
+    /// <summary>Opens a place's kind menu and picks an option.</summary>
     private static void ChooseKind(IRenderedComponent<PlaceMap> cut, string place, string option)
     {
-        cut.Find($"button[aria-label^='Tipo de {place}:']").Click();
+        cut.Find($"button[aria-label^='Type of {place}:']").Click();
         cut.FindAll(".kind-option").First(o => o.TextContent.Contains(option)).Click();
     }
 
     private static List<PlanPlaceDto> Trip() =>
     [
         new() { Name = "Hotel Roma", IsLodging = true, Date = Nov(2), EndDate = Nov(4), Latitude = 41.9, Longitude = 12.49 },
-        new() { Name = "Coliseu", Date = Nov(3), Latitude = 41.8902, Longitude = 12.4922 },
-        new() { Name = "Panteão", Date = Nov(3), Latitude = 41.8986, Longitude = 12.4769 },
+        new() { Name = "Colosseum", Date = Nov(3), Latitude = 41.8902, Longitude = 12.4922 },
+        new() { Name = "Pantheon", Date = Nov(3), Latitude = 41.8986, Longitude = 12.4769 },
         new() { Name = "Hotel Paris", IsLodging = true, Date = Nov(4), EndDate = Nov(6), Latitude = 48.86, Longitude = 2.35 },
-        new() { Name = "Torre Eiffel", Date = Nov(5), Latitude = 48.8584, Longitude = 2.2945 },
+        new() { Name = "Eiffel Tower", Date = Nov(5), Latitude = 48.8584, Longitude = 2.2945 },
         new() { Name = "Louvre" },
     ];
 
     [Fact]
-    public void Todos_mostra_tudo()
+    public void All_shows_everything()
     {
         var cut = RenderMap(Trip());
 
-        Assert.Equal(["Hotel Roma", "Coliseu", "Panteão", "Hotel Paris", "Torre Eiffel", "Louvre"], Names(cut));
+        Assert.Equal(["Hotel Roma", "Colosseum", "Pantheon", "Hotel Paris", "Eiffel Tower", "Louvre"], Names(cut));
     }
 
     [Fact]
-    public void Num_dia_mostra_os_locais_desse_dia_e_o_alojamento_dessa_noite()
+    public void A_day_shows_that_days_places_and_that_nights_lodging()
     {
         var cut = RenderMap(Trip());
 
-        ClickChip(cut, "ter, 3 nov");
-        Assert.Equal(["Hotel Roma", "Coliseu", "Panteão"], Names(cut));
+        ClickChip(cut, "Tue, 3 Nov");
+        Assert.Equal(["Hotel Roma", "Colosseum", "Pantheon"], Names(cut));
 
-        // Dia da mudança: os dois alojamentos
-        ClickChip(cut, "qua, 4 nov");
+        // Moving day: both lodgings
+        ClickChip(cut, "Wed, 4 Nov");
         Assert.Equal(["Hotel Roma", "Hotel Paris"], Names(cut));
 
-        ClickChip(cut, "Sem dia");
+        ClickChip(cut, "No day");
         Assert.Equal(["Louvre"], Names(cut));
     }
 
     [Fact]
-    public void Durante_a_viagem_abre_no_dia_de_hoje()
+    public void During_the_trip_it_opens_on_today()
     {
         var cut = RenderMap(Trip(), today: Nov(5));
 
-        Assert.Equal(["Hotel Paris", "Torre Eiffel"], Names(cut));
+        Assert.Equal(["Hotel Paris", "Eiffel Tower"], Names(cut));
         var today = cut.Find(".chip[aria-pressed='true']");
-        Assert.Contains("Hoje", today.TextContent);
+        Assert.Contains("Today", today.TextContent);
     }
 
     [Fact]
-    public void Percurso_do_dia_sai_do_alojamento_e_mostra_as_distancias()
+    public void Days_route_leaves_the_lodging_and_shows_the_distances()
     {
         var cut = RenderMap(Trip());
 
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
-        Assert.Contains("Percurso do dia", cut.Find(".route-total").TextContent);
+        Assert.Contains("Day's route", cut.Find(".route-total").TextContent);
         var legs = cut.FindAll(".leg").Select(l => l.TextContent).ToList();
         Assert.Equal(2, legs.Count);
-        Assert.Contains("desde Hotel Roma", legs[0]);
-        Assert.Contains("desde Coliseu", legs[1]);
+        Assert.Contains("from Hotel Roma", legs[0]);
+        Assert.Contains("from Colosseum", legs[1]);
     }
 
     [Fact]
-    public async Task Arrastar_muda_a_ordem_e_os_numeros()
+    public async Task Dragging_changes_the_order_and_the_numbers()
     {
         var places = Trip();
         var cut = RenderMap(places);
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
-        // Coliseu (posição 1) largado depois do Panteão (posição 2)
+        // Colosseum (position 1) dropped after the Pantheon (position 2)
         await cut.InvokeAsync(() => cut.Instance.OnReorder(1, 2, after: true));
 
-        Assert.Equal(["Hotel Roma", "Panteão", "Coliseu"], Names(cut));
-        Assert.Equal("Panteão", places[1].Name);
+        Assert.Equal(["Hotel Roma", "Pantheon", "Colosseum"], Names(cut));
+        Assert.Equal("Pantheon", places[1].Name);
         Assert.Equal("1", cut.FindAll(".place-item")[1].QuerySelector(".place-number")!.TextContent.Trim());
     }
 
     [Fact]
-    public async Task Arrastar_para_antes_de_um_local_de_outra_posicao_da_lista()
+    public async Task Dragging_before_a_place_elsewhere_in_the_list()
     {
         var places = Trip();
         var cut = RenderMap(places);
 
-        // Louvre (último) largado antes do Coliseu
+        // Louvre (last) dropped before the Colosseum
         await cut.InvokeAsync(() => cut.Instance.OnReorder(5, 1, after: false));
 
-        Assert.Equal(["Hotel Roma", "Louvre", "Coliseu", "Panteão", "Hotel Paris", "Torre Eiffel"], places.Select(p => p.Name));
+        Assert.Equal(["Hotel Roma", "Louvre", "Colosseum", "Pantheon", "Hotel Paris", "Eiffel Tower"], places.Select(p => p.Name));
     }
 
     [Fact]
-    public async Task Setas_do_teclado_na_pega_trocam_com_o_vizinho_a_vista()
+    public async Task Arrow_keys_on_the_handle_swap_with_the_visible_neighbour()
     {
         var places = Trip();
         var cut = RenderMap(places);
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
         var moved = await cut.InvokeAsync(() => cut.Instance.OnReorderStep(1, +1));
-        var stuck = await cut.InvokeAsync(() => cut.Instance.OnReorderStep(moved, +1)); // já é o último do dia
+        var stuck = await cut.InvokeAsync(() => cut.Instance.OnReorderStep(moved, +1)); // already the last one of the day
 
         Assert.Equal(2, moved);
         Assert.Equal(2, stuck);
-        Assert.Equal(["Hotel Roma", "Panteão", "Coliseu"], Names(cut));
+        Assert.Equal(["Hotel Roma", "Pantheon", "Colosseum"], Names(cut));
     }
 
     [Fact]
-    public void So_os_locais_a_visitar_tem_pega_para_arrastar()
+    public void Only_places_to_visit_have_a_drag_handle()
     {
         var cut = RenderMap(Trip());
 
         Assert.Equal(4, cut.FindAll(".drag-handle").Count);
-        Assert.Empty(cut.FindAll("button[aria-label^='Subir']"));
+        Assert.Empty(cut.FindAll("button[aria-label^='Move up']"));
     }
 
     [Fact]
-    public void Passar_a_alojamento_fica_do_dia_do_local_ate_ao_fim_da_viagem()
+    public void Turning_into_lodging_lasts_from_the_places_day_to_the_end_of_the_trip()
     {
         var places = Trip();
         var cut = RenderMap(places);
 
-        ChooseKind(cut, "Coliseu", "Alojamento");
+        ChooseKind(cut, "Colosseum", "Lodging");
 
-        var coliseu = places[1];
-        Assert.True(coliseu.IsLodging);
-        Assert.Equal((Nov(3), TripEnd), (coliseu.Date, coliseu.EndDate));
+        var colosseum = places[1];
+        Assert.True(colosseum.IsLodging);
+        Assert.Equal((Nov(3), TripEnd), (colosseum.Date, colosseum.EndDate));
     }
 
     [Fact]
-    public void Primeiro_dia_depois_do_ultimo_empurra_o_ultimo()
+    public void First_day_after_the_last_pushes_the_last()
     {
         var places = Trip();
         var cut = RenderMap(places);
 
-        cut.FindAll("select[aria-label='Primeiro dia no alojamento']")[0].Change("2026-11-05");
+        cut.FindAll("select[aria-label='First day at the lodging']")[0].Change("2026-11-05");
 
         Assert.Equal((Nov(5), Nov(5)), (places[0].Date, places[0].EndDate));
     }
 
     [Fact]
-    public async Task Clicar_no_mapa_com_um_dia_escolhido_junta_o_local_nesse_dia()
+    public async Task Clicking_the_map_with_a_day_chosen_adds_the_place_on_that_day()
     {
         var places = Trip();
         var cut = RenderMap(places);
-        ClickChip(cut, "sex, 6 nov");
+        ClickChip(cut, "Fri, 6 Nov");
 
         await cut.InvokeAsync(() => cut.Instance.OnMapClick(48.85, 2.34));
 
         Assert.Equal(Nov(6), places[^1].Date);
-        Assert.Equal("Local 5", places[^1].Name); // os alojamentos não contam para o número
+        Assert.Equal("Place 5", places[^1].Name); // lodgings do not count for the number
     }
 
     [Fact]
-    public void Notas_e_ligacao_abrem_ao_carregar_no_lapis()
+    public void Notes_and_link_open_with_the_pencil()
     {
         var places = Trip();
         var cut = RenderMap(places);
 
-        cut.Find("button[aria-label='Notas e ligação de Louvre']").Click();
-        cut.Find("textarea[aria-label='Notas de Louvre']").Change("Fecha à terça");
-        cut.Find("input[aria-label='Ligação de Louvre']").Change("https://www.louvre.fr");
+        cut.Find("button[aria-label='Notes and link for Louvre']").Click();
+        cut.Find("textarea[aria-label='Notes for Louvre']").Change("Closed on Tuesdays");
+        cut.Find("input[aria-label='Link for Louvre']").Change("https://www.louvre.fr");
 
-        Assert.Equal("Fecha à terça", places[5].Notes);
+        Assert.Equal("Closed on Tuesdays", places[5].Notes);
         Assert.Equal("https://www.louvre.fr", cut.Find("a[href='https://www.louvre.fr']").GetAttribute("href"));
     }
 
     [Fact]
-    public void Metro_sem_dia_aparece_em_todos_os_dias_mas_fora_do_percurso()
+    public void Metro_without_a_day_shows_on_every_day_but_outside_the_route()
     {
         var places = Trip();
         places.Add(new() { Name = "Metro Colosseo", Kind = PlaceKind.Metro, Latitude = 41.891, Longitude = 12.4923 });
         var cut = RenderMap(places);
 
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
         Assert.Contains("Metro Colosseo", Names(cut));
         Assert.DoesNotContain(cut.FindAll(".leg"), l => l.TextContent.Contains("Metro Colosseo"));
@@ -216,69 +216,69 @@ public sealed class PlaceMapTests : BunitContext
     }
 
     [Fact]
-    public void Aeroporto_com_dia_entra_no_percurso_desse_dia()
+    public void Airport_with_a_day_joins_that_days_route()
     {
         var places = Trip();
-        places.Insert(1, new() { Name = "Fiumicino", Kind = PlaceKind.Aeroporto, Date = Nov(3), Latitude = 41.8, Longitude = 12.25 });
+        places.Insert(1, new() { Name = "Fiumicino", Kind = PlaceKind.Airport, Date = Nov(3), Latitude = 41.8, Longitude = 12.25 });
         var cut = RenderMap(places);
 
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
         var legs = cut.FindAll(".leg").Select(l => l.TextContent).ToList();
-        Assert.Contains(legs, l => l.Contains("desde Hotel Roma")); // aeroporto logo a seguir ao hotel
-        Assert.Contains(legs, l => l.Contains("desde Fiumicino"));
+        Assert.Contains(legs, l => l.Contains("from Hotel Roma")); // airport right after the hotel
+        Assert.Contains(legs, l => l.Contains("from Fiumicino"));
     }
 
     [Fact]
-    public void Passar_a_autocarro_tira_o_numero_e_o_visitado()
+    public void Turning_into_a_bus_stop_removes_the_number_and_visited()
     {
         var places = Trip();
-        places[2].Visited = true; // Panteão
+        places[2].Visited = true; // Pantheon
         var cut = RenderMap(places);
 
-        ChooseKind(cut, "Panteão", "autocarro");
+        ChooseKind(cut, "Pantheon", "Bus stop");
 
         var item = cut.FindAll(".place-item")[2];
-        Assert.Equal(PlaceKind.Autocarro, places[2].Kind);
+        Assert.Equal(PlaceKind.Bus, places[2].Kind);
         Assert.False(places[2].Visited);
-        Assert.Contains("kind-autocarro", item.ClassName);
+        Assert.Contains("kind-bus", item.ClassName);
         Assert.Null(item.QuerySelector("input[type=checkbox]"));
-        // Torre Eiffel passa de 3 para 2: os transportes não têm número
+        // Eiffel Tower goes from 3 to 2: transport has no number
         Assert.Equal("2", cut.FindAll(".place-item")[4].QuerySelector(".place-number")!.TextContent.Trim());
     }
 
     [Fact]
-    public void Deixar_de_ser_alojamento_tira_o_ultimo_dia()
+    public void No_longer_lodging_removes_the_last_day()
     {
         var places = Trip();
         var cut = RenderMap(places);
 
-        ChooseKind(cut, "Hotel Roma", "Estação de comboio");
+        ChooseKind(cut, "Hotel Roma", "Train station");
 
-        Assert.Equal(PlaceKind.Comboio, places[0].Kind);
+        Assert.Equal(PlaceKind.Train, places[0].Kind);
         Assert.Equal(Nov(2), places[0].Date);
         Assert.Null(places[0].EndDate);
     }
 
     [Fact]
-    public void So_um_menu_de_tipo_aberto_de_cada_vez()
+    public void Only_one_kind_menu_open_at_a_time()
     {
         var cut = RenderMap(Trip());
 
-        cut.Find("button[aria-label^='Tipo de Coliseu:']").Click();
-        cut.Find("button[aria-label^='Tipo de Panteão:']").Click();
+        cut.Find("button[aria-label^='Type of Colosseum:']").Click();
+        cut.Find("button[aria-label^='Type of Pantheon:']").Click();
 
         var menu = Assert.Single(cut.FindAll(".kind-menu"));
-        Assert.Equal("Tipo de Panteão", menu.GetAttribute("aria-label"));
+        Assert.Equal("Type of Pantheon", menu.GetAttribute("aria-label"));
 
-        // Carregar outra vez no mesmo botão fecha o menu
-        cut.Find("button[aria-label^='Tipo de Panteão:']").Click();
+        // Clicking the same button again closes the menu
+        cut.Find("button[aria-label^='Type of Pantheon:']").Click();
         Assert.Empty(cut.FindAll(".kind-menu"));
     }
 
-    // ---------- Caminho por ruas ----------
+    // ---------- Street route ----------
 
-    /// <summary>Caminho falso: Hotel → Coliseu (1,2 km, 15 min) → Panteão (2,1 km, 28 min).</summary>
+    /// <summary>Fake route: Hotel → Colosseum (1.2 km, 15 min) → Pantheon (2.1 km, 28 min).</summary>
     private static RouteResult FakeRoute() => new()
     {
         Distance = 3300,
@@ -288,33 +288,33 @@ public sealed class PlaceMapTests : BunitContext
     };
 
     [Fact]
-    public void Num_dia_mostra_o_caminho_por_ruas_com_tempos()
+    public void A_day_shows_the_street_route_with_times()
     {
         _module.Setup<RouteResult?>("route", _ => true).SetResult(FakeRoute());
         var cut = RenderMap(Trip());
 
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
-        cut.WaitForAssertion(() => Assert.Contains("3,3 km · 43 min a pé", cut.Find(".route-total").TextContent));
+        cut.WaitForAssertion(() => Assert.Contains("3.3 km · 43 min on foot", cut.Find(".route-total").TextContent));
         var legs = cut.FindAll(".leg").Select(l => l.TextContent).ToList();
-        Assert.Contains("1,2 km · 15 min desde Hotel Roma", legs[0]);
-        Assert.Contains("2,1 km · 28 min desde Coliseu", legs[1]);
+        Assert.Contains("1.2 km · 15 min from Hotel Roma", legs[0]);
+        Assert.Contains("2.1 km · 28 min from Colosseum", legs[1]);
     }
 
     [Fact]
-    public void Sem_servico_de_percursos_fica_a_linha_reta()
+    public void Without_the_routing_service_the_straight_line_stays()
     {
-        _module.Setup<RouteResult?>("route", _ => true).SetException(new Microsoft.JSInterop.JSException("sem internet"));
+        _module.Setup<RouteResult?>("route", _ => true).SetException(new Microsoft.JSInterop.JSException("no internet"));
         var cut = RenderMap(Trip());
 
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
-        cut.WaitForAssertion(() => Assert.Contains("sem caminho por ruas", cut.Find(".route-total").TextContent));
-        Assert.Contains("em linha reta desde Hotel Roma", cut.FindAll(".leg")[0].TextContent);
+        cut.WaitForAssertion(() => Assert.Contains("no street route", cut.Find(".route-total").TextContent));
+        Assert.Contains("straight-line from Hotel Roma", cut.FindAll(".leg")[0].TextContent);
     }
 
     [Fact]
-    public void Mudar_para_carro_guarda_o_modo_e_pede_o_caminho_de_carro()
+    public void Switching_to_car_keeps_the_mode_and_asks_for_the_car_route()
     {
         var route = _module.Setup<RouteResult?>("route", _ => true);
         route.SetResult(FakeRoute());
@@ -325,12 +325,13 @@ public sealed class PlaceMapTests : BunitContext
             .Add(x => x.TripEnd, TripEnd)
             .Add(x => x.Today, new DateOnly(2026, 1, 1))
             .Add(x => x.RouteModeChanged, m => chosen = m));
-        ClickChip(cut, "ter, 3 nov");
+        ClickChip(cut, "Tue, 3 Nov");
 
-        cut.FindAll(".route-modes .chip").First(c => c.TextContent == "Carro").Click();
+        cut.FindAll(".route-modes .chip").First(c => c.TextContent == "Car").Click();
 
-        Assert.Equal(RouteMode.Carro, chosen);
-        cut.WaitForAssertion(() => Assert.Contains(route.Invocations, i => (string?)i.Arguments[1] == "Carro"));
-        Assert.Contains("de carro", cut.Find(".route-total").TextContent);
+        Assert.Equal(RouteMode.Car, chosen);
+        cut.WaitForAssertion(() => Assert.Contains(route.Invocations, i => (string?)i.Arguments[1] == "Car"));
+        Assert.Contains("by car", cut.Find(".route-total").TextContent);
+
     }
 }

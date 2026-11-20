@@ -2,7 +2,7 @@ using HolidayApp.Shared;
 
 namespace HolidayApp.Client.Services;
 
-/// <summary>Cliente da API. As páginas só dependem desta interface.</summary>
+/// <summary>API client. The pages only depend on this interface.</summary>
 public interface ICalendarApi
 {
     Task<IReadOnlyList<HolidayDto>> GetHolidaysAsync(int year, CancellationToken ct = default);
@@ -20,7 +20,20 @@ public interface ICalendarApi
 
     Task<UserSettingsDto> GetSettingsAsync(CancellationToken ct = default);
     Task<UserSettingsDto> SaveSettingsAsync(UserSettingsDto settings, CancellationToken ct = default);
+
+    Task<IReadOnlyList<VisitedPlaceDto>> GetVisitedPlacesAsync(CancellationToken ct = default);
+    Task<VisitedPlaceDto> AddVisitedPlaceAsync(SaveVisitedPlaceRequest request, CancellationToken ct = default);
+    Task DeleteVisitedPlaceAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>The signed-in account, or null without accounts (home mode).</summary>
+    Task<AccountDto?> GetMeAsync(CancellationToken ct = default);
+
+    /// <summary>Deletes the account and all its data.</summary>
+    Task DeleteMeAsync(CancellationToken ct = default);
+
+    Task<AccountDto> RenameMeAsync(string name, CancellationToken ct = default);
+    Task ChangePasswordAsync(string current, string replacement, CancellationToken ct = default);
 }
 
-/// <summary>Erro devolvido pela API, já com uma mensagem legível.</summary>
+/// <summary>Error returned by the API, already with a readable message.</summary>
 public sealed class ApiException(string message) : Exception(message);

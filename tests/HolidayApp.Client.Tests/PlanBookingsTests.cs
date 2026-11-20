@@ -5,14 +5,15 @@ namespace HolidayApp.Client.Tests;
 public sealed class PlanBookingsTests : BunitContext
 {
     [Fact]
-    public void Por_no_mapa_so_aparece_em_alojamentos_que_ainda_nao_estao_no_mapa()
+    public void Put_on_map_only_shows_on_lodgings_not_on_the_map_yet()
+
     {
         PlanBookingDto? clicked = null;
         var bookings = new List<PlanBookingDto>
         {
-            new() { Type = BookingType.Voo, Name = "Lisboa-Roma" },
-            new() { Type = BookingType.Alojamento, Name = "Hotel Roma", Date = new DateOnly(2026, 11, 2) },
-            new() { Type = BookingType.Alojamento, Name = "Hotel Paris" },
+            new() { Type = BookingType.Flight, Name = "Lisbon-Rome" },
+            new() { Type = BookingType.Lodging, Name = "Hotel Roma", Date = new DateOnly(2026, 11, 2) },
+            new() { Type = BookingType.Lodging, Name = "Hotel Paris" },
         };
         var places = new List<PlanPlaceDto> { new() { Name = "hotel paris", IsLodging = true } };
 

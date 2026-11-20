@@ -1,9 +1,10 @@
-// Liga o service worker (app instalável e sem internet) e mostra o aviso de "sem ligação".
+// Registers the service worker (installable app, works offline) and shows the "offline" banner.
 (function () {
     if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
             navigator.serviceWorker.register("service-worker.js").catch((error) => {
-                console.warn("Não foi possível ativar o modo sem internet.", error);
+                console.warn("Could not turn on offline mode.", error);
+
             });
         });
     }

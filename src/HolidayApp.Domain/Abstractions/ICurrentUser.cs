@@ -1,9 +1,8 @@
 namespace HolidayApp.Domain.Abstractions;
 
 /// <summary>
-/// Identifica o utilizador do pedido atual.
-/// Hoje devolve sempre o utilizador local; quando houver login, passa a vir
-/// das claims de autenticação sem mudar o resto da aplicação.
+/// Identifies the user of the current request: the signed-in account or, without
+/// accounts, the local user. The rest of the app does not need to know which.
 /// </summary>
 public interface ICurrentUser
 {

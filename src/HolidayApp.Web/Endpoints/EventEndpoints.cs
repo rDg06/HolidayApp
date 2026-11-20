@@ -8,7 +8,7 @@ public static class EventEndpoints
 {
     public static RouteGroupBuilder MapEventEndpoints(this RouteGroupBuilder api)
     {
-        var group = api.MapGroup("/events").WithTags("Marcações");
+        var group = api.MapGroup("/events").WithTags("Events");
 
         // GET /api/events?year=2026
         group.MapGet("/", async (int year, ICalendarService service, CancellationToken ct) =>

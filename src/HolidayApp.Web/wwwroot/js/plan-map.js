@@ -1,8 +1,8 @@
-// Mapa dos locais a visitar na página "Organizar férias".
-// Usa Leaflet com os mapas do OpenStreetMap (gratuitos, sem chave de API) e o
-// Nominatim (OpenStreetMap) para procurar locais pelo nome.
+// Map of the places to visit on the "Plan vacation" page.
+// Uses Leaflet with OpenStreetMap tiles (free, no API key) and
+// Nominatim (OpenStreetMap) to look places up by name.
 
-// Leaflet 1.9.4 servido pela própria app (wwwroot/lib/leaflet), com as hashes oficiais
+// Leaflet 1.9.4 served by the app itself (wwwroot/lib/leaflet), with the official hashes
 const LEAFLET_CSS = {
     href: "lib/leaflet/leaflet.css",
     integrity: "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=",
@@ -13,7 +13,7 @@ const LEAFLET_JS = {
     integrity: "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=",
 };
 
-// Portugal continental, quando ainda não há locais nem destino
+// Mainland Portugal, when there are no places or destination yet
 const DEFAULT_VIEW = { lat: 39.6, lng: -8.0, zoom: 6 };
 
 let leafletLoading = null;
@@ -36,7 +36,7 @@ function loadLeaflet() {
         script.onload = () => resolve();
         script.onerror = () => {
             leafletLoading = null;
-            reject(new Error("Não foi possível carregar o mapa. Verifica a ligação à internet."));
+            reject(new Error("Could not load the map. Check your internet connection."));
         };
         document.head.appendChild(script);
     });
@@ -44,7 +44,7 @@ function loadLeaflet() {
     return leafletLoading;
 }
 
-/** Texto seguro para popups (o nome é escrito pelo utilizador: nunca como HTML). */
+/** Safe text for popups (the name is typed by the user: never as HTML). */
 function textElement(text) {
     const el = document.createElement("strong");
     el.textContent = text;
@@ -52,11 +52,11 @@ function textElement(text) {
 }
 
 /**
- * Cria o mapa dentro de `element`. `dotnet` recebe os cliques no mapa
- * (OnMapClick) e os marcadores arrastados (OnPlaceMoved).
- * Com `options.readOnly` (página de partilha/PDF, mapa "Onde já estive") não há cliques no
- * mapa nem arrastar; se houver `dotnet`, carregar num marcador avisa-o (OnPlaceClick).
- * `options.fitMaxZoom` limita o zoom ao ajustar aos marcadores (por omissão 14).
+ * Creates the map inside `element`. `dotnet` receives map clicks
+ * (OnMapClick) and dragged markers (OnPlaceMoved).
+ * With `options.readOnly` (share/PDF page, "Where I've been" map) there are no map
+ * clicks and no dragging; if there is a `dotnet`, clicking a marker tells it (OnPlaceClick).
+ * `options.fitMaxZoom` limits the zoom when fitting the markers (14 by default).
  */
 export async function create(element, dotnet, places, route, options) {
     const readOnly = !!options?.readOnly;
@@ -72,31 +72,31 @@ export async function create(element, dotnet, places, route, options) {
 
     const routeLayer = L.layerGroup().addTo(map);
     const layer = L.layerGroup().addTo(map);
-    // Marcadores visíveis, pela posição do local na lista completa
+    // Visible markers, by the place's position in the full list
     let markers = new Map();
 
     if (!readOnly) {
         map.on("click", (e) => dotnet.invokeMethodAsync("OnMapClick", e.latlng.lat, e.latlng.lng));
     }
 
-    // O mapa precisa de saber quando o tamanho do cartão muda (ex.: rodar o telemóvel)
+    // The map needs to know when the card size changes (e.g. rotating the phone)
     const resizeObserver = new ResizeObserver(() => map.invalidateSize());
     resizeObserver.observe(element);
 
     const api = {
         /**
-         * Redesenha os marcadores (só os do filtro atual). Cada local traz `index` (posição
-         * na lista completa), `number` (só nas visitas), `kind` e `icon` (SVG feito pela app,
-         * no alojamento e nos transportes), `front` (fica por cima) e `reference` (transporte
-         * sem dia: aparece, mas fica fora do zoom).
-         * `fit` ajusta o mapa para mostrar todos. `route` é a linha do percurso do dia
-         * ({ points, exact }), sem pontos quando não há dia escolhido.
+         * Redraws the markers (only those in the current filter). Each place has `index` (position
+         * in the full list), `number` (visits only), `kind` and `icon` (SVG made by the app,
+         * for lodging and transport), `front` (stays on top) and `reference` (transport
+         * without a day: shown, but left out of the zoom).
+         * `fit` adjusts the map to show them all. `route` is the line of the day's route
+         * ({ points, exact }), without points when no day is chosen.
          */
         setPlaces(list, fit, route) {
             layer.clearLayers();
             routeLayer.clearLayers();
-            // `route`: { points: [[lat, lng]], exact } — exato = caminho por ruas (linha cheia);
-            // senão é a linha reta entre os locais (tracejado), enquanto se calcula ou sem serviço
+            // `route`: { points: [[lat, lng]], exact } — exact = route along streets (solid line);
+            // otherwise it is the straight line between places (dashed), while computing or without the service
             const points = route?.points ?? [];
             if (points.length > 1) {
                 const style = route.exact
@@ -113,7 +113,7 @@ export async function create(element, dotnet, places, route, options) {
                 const big = !!place.icon;
                 const icon = L.divIcon({
                     className: classes.join(" "),
-                    // O ícone é SVG fixo gerado pela app (PlaceIcons.cs), nunca texto do utilizador
+                    // The icon is a fixed SVG generated by the app (PlaceIcons.cs), never user text
                     html: place.icon ? `<span>${place.icon}</span>` : `<span>${place.number}</span>`,
                     iconSize: big ? [32, 32] : [28, 28],
                     iconAnchor: big ? [16, 16] : [14, 14],
@@ -124,7 +124,7 @@ export async function create(element, dotnet, places, route, options) {
                     icon,
                     draggable: !readOnly,
                     title: place.icon ? `${place.label}: ${place.name}` : place.name,
-                    zIndexOffset: place.front ? 1000 : 0, // a casa fica por cima dos outros marcadores
+                    zIndexOffset: place.front ? 1000 : 0, // the house stays on top of the other markers
                 })
                     .bindPopup(textElement(place.name))
                     .addTo(layer);
@@ -146,7 +146,7 @@ export async function create(element, dotnet, places, route, options) {
         },
 
         fitAll() {
-            // Transportes que servem todos os dias não puxam o zoom (ex.: metro de outra cidade)
+            // Transport that serves every day does not pull the zoom (e.g. a metro in another city)
             const main = [...markers.values()].filter((m) => !m.isReference);
             const all = main.length > 0 ? main : [...markers.values()];
             if (all.length === 1) {
@@ -177,18 +177,18 @@ export async function create(element, dotnet, places, route, options) {
     return api;
 }
 
-/** Desloca a página até ao mapa (ex.: ao pôr uma reserva de alojamento no mapa). */
+/** Scrolls the page to the map (e.g. when putting a lodging booking on the map). */
 export function scrollIntoView(element) {
     element?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-/** Procura locais pelo nome (Nominatim / OpenStreetMap). Devolve no máximo 6 resultados. */
+/** Looks places up by name (Nominatim / OpenStreetMap). Returns at most 6 results. */
 export async function search(query) {
-    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&accept-language=pt&q="
+    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&accept-language=en&q="
         + encodeURIComponent(query);
 
     const response = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`A pesquisa falhou (${response.status}).`);
+    if (!response.ok) throw new Error(`The search failed (${response.status}).`);
 
     const results = await response.json();
     return results.map((r) => ({
@@ -201,10 +201,10 @@ export async function search(query) {
 }
 
 /**
- * Arrastar os locais da lista para mudar a ordem (rato e toque), pela pega `.drag-handle`.
- * Não mexe no HTML (é do Blazor): só desloca o item com `transform`, mostra onde vai ficar
- * e, ao largar, avisa o .NET (OnReorder) com as posições na lista completa (`data-index`).
- * Com o teclado, as setas ↑ ↓ na pega trocam com o anterior/seguinte (OnReorderStep).
+ * Drag places in the list to change the order (mouse and touch), by the `.drag-handle`.
+ * Does not touch the HTML (it belongs to Blazor): only moves the item with `transform`, shows
+ * where it will land and, on drop, tells .NET (OnReorder) the positions in the full list (`data-index`).
+ * With the keyboard, the ↑ ↓ arrows on the handle swap with the previous/next one (OnReorderStep).
  */
 export function attachSortable(root, dotnet) {
     let drag = null;
@@ -227,7 +227,7 @@ export function attachSortable(root, dotnet) {
         try {
             if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
         } catch {
-            // Já libertado
+            // Already released
         }
         if (!cancelled && target) dotnet.invokeMethodAsync("OnReorder", indexOf(item), target.index, target.after);
     }
@@ -240,10 +240,10 @@ export function attachSortable(root, dotnet) {
 
         e.preventDefault();
         try {
-            // Continua a receber o movimento mesmo fora da pega
+            // Keeps receiving the movement even outside the handle
             handle.setPointerCapture(e.pointerId);
         } catch {
-            // Ponteiro já terminado: o arrastar funciona na mesma pelos eventos da lista
+            // Pointer already finished: dragging still works through the list's events
         }
         drag = {
             item,
@@ -262,7 +262,7 @@ export function attachSortable(root, dotnet) {
         if (!drag || e.pointerId !== drag.pointerId) return;
         const { item, scroller } = drag;
 
-        // Aproxima-se da borda da lista com scroll: desloca-a
+        // Near the edge of a scrolling list: scroll it
         if (scroller && scroller.scrollHeight > scroller.clientHeight) {
             const box = scroller.getBoundingClientRect();
             if (e.clientY < box.top + 40) scroller.scrollTop -= 8;
@@ -272,7 +272,7 @@ export function attachSortable(root, dotnet) {
         const scrolled = (scroller?.scrollTop ?? 0) - drag.startScroll;
         item.style.transform = `translateY(${e.clientY - drag.startY + scrolled}px)`;
 
-        // Onde fica: antes do primeiro item cujo meio está abaixo do ponteiro, ou depois do último
+        // Where it lands: before the first item whose middle is below the pointer, or after the last
         const others = items().filter((li) => li !== item);
         clearMarks();
         drag.target = null;
@@ -286,7 +286,7 @@ export function attachSortable(root, dotnet) {
         const after = !before;
         target.classList.add(after ? "drop-after" : "drop-before");
 
-        // Largar no mesmo sítio não muda nada
+        // Dropping in the same spot changes nothing
         const all = items();
         const from = all.indexOf(item);
         const to = all.indexOf(target);
@@ -309,26 +309,26 @@ export function attachSortable(root, dotnet) {
         e.preventDefault();
         const item = handle.closest("li[data-visit]");
         const newIndex = await dotnet.invokeMethodAsync("OnReorderStep", indexOf(item), e.key === "ArrowUp" ? -1 : 1);
-        // Depois de o Blazor redesenhar, a pega do mesmo local continua com o foco
+        // After Blazor redraws, the handle of the same place keeps the focus
         requestAnimationFrame(() => root.querySelector(`li[data-index="${newIndex}"] .drag-handle`)?.focus());
     });
 }
 
-// Caminhos por ruas: serviço de rotas do OpenStreetMap (FOSSGIS, o mesmo do openstreetmap.org),
-// gratuito para uso pessoal. Recebe as coordenadas dos locais do dia, pela ordem.
+// Street routes: OpenStreetMap routing service (FOSSGIS, the same as openstreetmap.org),
+// free for personal use. Receives the coordinates of the day's places, in order.
 const ROUTE_PROFILES = {
-    APe: "routed-foot",
-    Carro: "routed-car",
-    Bicicleta: "routed-bike",
+    Walk: "routed-foot",
+    Car: "routed-car",
+    Bike: "routed-bike",
 };
 
 /**
- * Caminho entre os pontos ([lat, lng] pela ordem) a pé, de carro ou de bicicleta.
- * Devolve { distance (m), duration (s), legs: [{ distance, duration }], geometry: [[lat, lng]] },
- * ou null se não houver caminho. Lança erro se o serviço não responder.
+ * Route between the points ([lat, lng] in order) on foot, by car or by bike.
+ * Returns { distance (m), duration (s), legs: [{ distance, duration }], geometry: [[lat, lng]] },
+ * or null if there is no route. Throws if the service does not answer.
  */
 export async function route(points, mode) {
-    const profile = ROUTE_PROFILES[mode] ?? ROUTE_PROFILES.APe;
+    const profile = ROUTE_PROFILES[mode] ?? ROUTE_PROFILES.Walk;
     const coords = points.map(([lat, lng]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join(";");
     const url = `https://routing.openstreetmap.de/${profile}/route/v1/driving/${coords}?overview=simplified&geometries=geojson`;
 
@@ -336,7 +336,7 @@ export async function route(points, mode) {
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
         const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-        if (!response.ok) throw new Error(`O serviço de percursos respondeu ${response.status}.`);
+        if (!response.ok) throw new Error(`The routing service answered ${response.status}.`);
 
         const data = await response.json();
         const best = data.code === "Ok" ? data.routes?.[0] : null;
@@ -353,11 +353,11 @@ export async function route(points, mode) {
     }
 }
 
-/** País (em português) de umas coordenadas, pelo Nominatim; null se não houver (ex.: no mar). */
+/** Country of some coordinates, from Nominatim; null if there is none (e.g. at sea). */
 export async function country(lat, lng) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&accept-language=pt&lat=${lat}&lon=${lng}`;
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&accept-language=en&lat=${lat}&lon=${lng}`;
     const response = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`A pesquisa do país falhou (${response.status}).`);
+    if (!response.ok) throw new Error(`The country lookup failed (${response.status}).`);
 
     const data = await response.json();
     return data.address?.country ?? null;

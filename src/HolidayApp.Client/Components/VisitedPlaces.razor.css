@@ -1,0 +1,36 @@
+/* "Other places I've been" (Map page) */
+.visited { display: grid; gap: 12px; }
+.visited-hint { margin: -6px 0 0; }
+
+.visited-form { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.visited-form > .input { flex: 1; min-width: 200px; }
+.visited-year { display: grid; gap: 4px; }
+.visited-year .input { width: 110px; }
+.visited-error { margin: 0; color: var(--c-danger); }
+
+.visited-results { gap: 2px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; }
+
+.visited-result {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.visited-result:hover { background: var(--surface-2); }
+.visited-result.chosen { background: color-mix(in srgb, var(--c-primary) 14%, transparent); }
+.visited-result .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.visited-years { gap: 12px; }
+.visited-years h3 { margin: 0 0 4px; font-size: 0.85rem; color: var(--muted); }
+.visited-list { gap: 2px; }
+.visited-list li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.visited-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.visited-list .btn { margin-left: auto; }

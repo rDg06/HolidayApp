@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HolidayApp.Client.Tests;
 
-/// <summary>Página "Férias": números de cada viagem.</summary>
+/// <summary>"Vacations" page: each trip's numbers.</summary>
 public sealed class VacationsTests : BunitContext
 {
     public VacationsTests()
@@ -14,7 +14,7 @@ public sealed class VacationsTests : BunitContext
     }
 
     [Fact]
-    public void Cartao_mostra_o_total_de_dias_e_os_locais()
+    public void Card_shows_the_total_days_and_the_places()
     {
         var cut = Render<Vacations>();
         cut.WaitForElement(".vacation-stats");
@@ -22,9 +22,9 @@ public sealed class VacationsTests : BunitContext
         var stats = cut.FindAll(".vacation-stats > div")
             .ToDictionary(d => d.QuerySelector("dt")!.TextContent.Trim(), d => d.QuerySelector("dd")!.TextContent.Trim());
 
-        Assert.StartsWith("5", stats["Dias"]);
-        Assert.Contains("4 úteis", stats["Dias"]);
-        Assert.StartsWith("3", stats["Locais"]);
-        Assert.Contains("1 visitado", stats["Locais"]);
+        Assert.StartsWith("5", stats["Days"]);
+        Assert.Contains("4 working", stats["Days"]);
+        Assert.StartsWith("3", stats["Places"]);
+        Assert.Contains("1 visited", stats["Places"]);
     }
 }

@@ -1,7 +1,7 @@
-@* Um mês da vista anual. Não guarda estado: recebe os dados e avisa o pai das interações. *@
+@* One month of the year view. Keeps no state: gets the data and tells the parent about interactions. *@
 
 <article class="@(IsCurrentMonth ? "month current" : "month")">
-    <h2 class="month-title">@Pt.Months[Month - 1]</h2>
+    <h2 class="month-title">@Display.Months[Month - 1]</h2>
 
     <div class="weekdays" aria-hidden="true">
         @foreach (var label in WeekdayLabels)
@@ -39,8 +39,8 @@
 </article>
 
 @code {
-    // Semana começa à segunda-feira
-    private static readonly string[] WeekdayLabels = ["S", "T", "Q", "Q", "S", "S", "D"];
+    // The week starts on Monday
+    private static readonly string[] WeekdayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
     [Parameter, EditorRequired] public int Year { get; set; }
     [Parameter, EditorRequired] public int Month { get; set; }
@@ -69,7 +69,7 @@
         _builtMonth = Month;
 
         var first = new DateOnly(Year, Month, 1);
-        _leadingBlanks = ((int)first.DayOfWeek + 6) % 7; // segunda = 0 … domingo = 6
+        _leadingBlanks = ((int)first.DayOfWeek + 6) % 7; // Monday = 0 … Sunday = 6
         _dates = Enumerable.Range(0, DateTime.DaysInMonth(Year, Month)).Select(first.AddDays).ToArray();
     }
 
@@ -83,15 +83,16 @@
             css.Add("weekend");
 
         if (info?.Holiday is { } holiday)
-            css.Add(holiday.Kind == HolidayKind.Nacional ? "holiday" : "holiday-alt");
+            css.Add(holiday.Kind == HolidayKind.National ? "holiday" : "holiday-alt");
 
         if (info is { Events.Count: > 0 })
         {
             var ev = info.Events[0];
             css.Add("has-event");
-            css.Add(Pt.Css(ev.Type));
+            css.Add(Display.Css(ev.Type));
 
-            // Arredonda as pontas para a marcação parecer uma barra contínua
+            // Rounds the ends so the entry looks like one continuous bar
+
             if (ev.StartDate == date || date.DayOfWeek == DayOfWeek.Monday || date.Day == 1)
                 css.Add("range-start");
             if (ev.EndDate == date || date.DayOfWeek == DayOfWeek.Sunday || date.Day == _dates.Length)
@@ -109,7 +110,7 @@
 
     private static string Describe(DateOnly date, DayInfo? info)
     {
-        var parts = new List<string> { Pt.Long(date) };
+        var parts = new List<string> { Display.Long(date) };
 
         if (info?.Holiday is { } holiday)
             parts.Add(holiday.Name);

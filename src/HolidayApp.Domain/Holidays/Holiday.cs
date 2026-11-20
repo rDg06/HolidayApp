@@ -4,7 +4,7 @@ namespace HolidayApp.Domain.Holidays;
 
 public sealed record Holiday(DateOnly Date, string Name, HolidayKind Kind);
 
-/// <summary>Opções que alteram a lista de feriados de um utilizador.</summary>
+/// <summary>Options that change a user's list of holidays.</summary>
 public sealed record HolidayOptions(
     bool IncludeCarnival = false,
     string? MunicipalHolidayName = null,
@@ -15,8 +15,8 @@ public sealed record HolidayOptions(
 }
 
 /// <summary>
-/// Fornece os feriados de um ano. Para suportar outro país basta criar
-/// outra implementação (ex.: SpanishHolidayProvider).
+/// Provides the holidays of a year. To support another country just add
+/// another implementation (e.g. SpanishHolidayProvider).
 /// </summary>
 public interface IHolidayProvider
 {

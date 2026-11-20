@@ -15,7 +15,7 @@
 .put-on-map { color: var(--c-lodging); }
 .link-field { display: flex; gap: 6px; }
 
-/* Dia da reserva fora das datas das férias (escrito à mão ou de dados antigos) */
+/* Booking day outside the vacation dates (typed by hand or from old data) */
 .input.out-of-range { border-color: var(--c-danger); color: var(--c-danger); }
 
 @media (max-width: 900px) {

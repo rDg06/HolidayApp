@@ -1,4 +1,4 @@
-/* Mapa e lista dos locais a visitar. Os marcadores (.map-pin) são criados pelo Leaflet: ficam no app.css. */
+/* Map and list of the places to visit. The markers (.map-pin) are created by Leaflet: they live in app.css. */
 .place-map {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
@@ -13,7 +13,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
-    isolation: isolate; /* os painéis do Leaflet não passam por cima do cabeçalho */
+    isolation: isolate; /* Leaflet's panes do not go over the header */
     background: var(--surface-2);
 }
 
@@ -50,7 +50,7 @@
 .search-result:hover { background: var(--surface-2); }
 .search-result .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Filtro por dia */
+/* Day filter */
 .day-filter {
     display: flex;
     gap: 6px;
@@ -91,10 +91,10 @@
 
 .place-list { gap: 10px; }
 
-/* Dia de hoje (durante a viagem) */
+/* Today (during the trip) */
 .chip.today:not([aria-pressed="true"]) { border-color: var(--c-primary); color: var(--c-primary); }
 
-/* Percurso do dia: total e modo (a pé, carro, bicicleta) */
+/* Day's route: total and mode (walk, car, bike) */
 .route-total { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
 .route-total p { margin: 0; }
 .route-modes { display: flex; gap: 4px; }
@@ -109,5 +109,5 @@
     .place-side { max-height: none; overflow: visible; }
 }
 
-/* Enquanto se arrasta um local: sem seleção de texto */
+/* While dragging a place: no text selection */
 .place-map-root.is-sorting { user-select: none; cursor: grabbing; }

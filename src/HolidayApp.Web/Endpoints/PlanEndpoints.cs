@@ -7,12 +7,12 @@ public static class PlanEndpoints
 {
     public static RouteGroupBuilder MapPlanEndpoints(this RouteGroupBuilder api)
     {
-        // GET /api/vacations — todas as férias com o resumo do planeamento
+        // GET /api/vacations — every vacation with its plan summary
         api.MapGet("/vacations", async (IVacationPlanService service, CancellationToken ct) =>
             Results.Ok(await service.GetVacationsAsync(ct)))
-            .WithTags("Planeamento");
+            .WithTags("Plans");
 
-        var group = api.MapGroup("/events/{id:guid}/plan").WithTags("Planeamento");
+        var group = api.MapGroup("/events/{id:guid}/plan").WithTags("Plans");
 
         // GET /api/events/{id}/plan
         group.MapGet("/", async (Guid id, IVacationPlanService service, CancellationToken ct) =>
@@ -24,7 +24,7 @@ public static class PlanEndpoints
         // PUT /api/events/{id}/plan
         group.MapPut("/", async (Guid id, VacationPlanDto plan, IVacationPlanService service, CancellationToken ct) =>
         {
-            // Listas enviadas como null passam a vazias
+            // Lists sent as null become empty
             plan.Bookings ??= [];
             plan.Days ??= [];
             plan.Tasks ??= [];
@@ -36,8 +36,8 @@ public static class PlanEndpoints
             {
                 { Errors: { } errors } => Results.ValidationProblem(errors),
                 { Conflict: true } => Results.Problem(
-                    title: "Outra pessoa guardou alterações nesta viagem depois de a abrires. "
-                           + "Recarrega a página para veres a versão nova e volta a fazer as tuas alterações.",
+                    title: "Someone else saved changes to this trip after you opened it. "
+                           + "Reload the page to see the new version and make your changes again.",
                     statusCode: StatusCodes.Status409Conflict),
                 { Plan: { } saved } => Results.Ok(saved),
                 _ => Results.NotFound(),
