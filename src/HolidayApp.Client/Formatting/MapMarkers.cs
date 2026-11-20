@@ -3,14 +3,14 @@ using HolidayApp.Shared;
 namespace HolidayApp.Client.Formatting;
 
 /// <summary>
-/// Dados dos marcadores enviados ao plan-map.js (mapa do planeador e da página de partilha),
-/// para os dois mostrarem os mesmos números, ícones e cores.
+/// Marker data sent to plan-map.js (planner map and share page map),
+/// so both show the same numbers, icons and colours.
 /// </summary>
 public static class MapMarkers
 {
-    /// <param name="places">Lista completa (o índice de cada marcador é a posição nela).</param>
-    /// <param name="visible">Quais aparecem.</param>
-    /// <param name="reference">Quais são só referência (aparecem, mas não puxam o zoom).</param>
+    /// <param name="places">Full list (each marker's index is its position in it).</param>
+    /// <param name="visible">Which ones are shown.</param>
+    /// <param name="reference">Which are only a reference (shown, but do not pull the zoom).</param>
     public static object[] Build(
         IReadOnlyList<PlanPlaceDto> places,
         Func<PlanPlaceDto, bool> visible,
@@ -30,7 +30,7 @@ public static class MapMarkers
                 visited = x.p.Visited,
                 kind = x.p.IsVisit ? null : PlaceIcons.Css(x.p.Kind),
                 icon = x.p.IsVisit ? null : PlaceIcons.Svg(x.p.Kind),
-                label = Pt.Label(x.p.Kind),
+                label = Display.Label(x.p.Kind),
                 front = x.p.IsLodging,
                 reference = reference?.Invoke(x.p) ?? false,
             })

@@ -20,7 +20,7 @@ internal sealed class VacationPlanService(
     public async Task<IReadOnlyList<VacationSummaryDto>> GetVacationsAsync(CancellationToken ct = default)
     {
         var vacations = await db.Events.AsNoTracking()
-            .Where(e => e.Type == EventType.Ferias)
+            .Where(e => e.Type == EventType.Vacation)
             .OrderBy(e => e.StartDate)
             .ToListAsync(ct);
 
@@ -32,7 +32,7 @@ internal sealed class VacationPlanService(
             .Where(p => ids.Contains(p.EventId))
             .ToDictionaryAsync(p => p.EventId, p => Deserialize(p.Content), ct);
 
-        // Feriados de todos os anos abrangidos, para contar os dias úteis
+        // Holidays of every year covered, to count the working days
         var options = (await db.GetSettingsOrDefaultAsync(ct)).ToHolidayOptions();
         var holidayDates = Enumerable.Range(vacations.Min(e => e.StartDate.Year),
                                             vacations.Max(e => e.EndDate.Year) - vacations.Min(e => e.StartDate.Year) + 1)
@@ -64,9 +64,9 @@ internal sealed class VacationPlanService(
     }
 
     /// <summary>
-    /// Pontos da viagem no mapa "Onde já estive": cada alojamento (uma viagem por várias
-    /// cidades fica com várias) ou, sem alojamentos, o centro dos locais marcados. Sem locais
-    /// fica vazio e o navegador procura o destino pelo nome.
+    /// Points of the trip on the "Where I've been" map: each lodging (a trip through several
+    /// cities gets several) or, without lodging, the centre of the pinned places. Without places
+    /// it is empty and the browser looks the destination up by name.
     /// </summary>
     private static List<MapPointDto> MapPoints(VacationPlanDto plan, string title)
     {
@@ -96,7 +96,7 @@ internal sealed class VacationPlanService(
         var entity = await db.VacationPlans.AsNoTracking().FirstOrDefaultAsync(p => p.EventId == eventId, ct);
         var plan = entity is null ? new VacationPlanDto() : Deserialize(entity.Content);
 
-        // As datas da marcação podem ter mudado: os dias fora do intervalo deixam de aparecer.
+        // The entry dates may have changed: days outside the range are no longer shown.
         plan.Days = plan.Days.Where(d => d.Date >= ev.StartDate && d.Date <= ev.EndDate).ToList();
         plan.Version = VersionOf(entity);
         return plan;
@@ -108,19 +108,19 @@ internal sealed class VacationPlanService(
         if (ev is null)
             return SavePlanResult.NotFound;
 
-        // As datas da marcação limitam os dias das reservas e dos locais
+        // The entry dates limit the days of bookings and places
         var errors = VacationPlanValidator.Validate(plan, ev.StartDate, ev.EndDate);
         if (errors.Count > 0)
             return SavePlanResult.Invalid(errors);
 
         var existing = await db.VacationPlans.FirstOrDefaultAsync(p => p.EventId == eventId, ct);
 
-        // Outra pessoa gravou depois de este planeamento ter sido aberto: não se grava por cima
+        // Someone else saved after this plan was opened: do not overwrite it
         if (plan.Version is { } version && version != VersionOf(existing))
             return SavePlanResult.Outdated;
 
         var clean = Normalise(plan, ev);
-        var content = JsonSerializer.Serialize(clean, Json); // a versão não vai no conteúdo (é a data da gravação)
+        var content = JsonSerializer.Serialize(clean, Json); // the version is not in the content (it is the save time)
         var savedAt = DateTime.UtcNow;
 
         void Apply(VacationPlan entity)
@@ -147,12 +147,12 @@ internal sealed class VacationPlanService(
         return SavePlanResult.Saved(clean);
     }
 
-    /// <summary>Versão de um planeamento: a data da última gravação (0 se ainda não existe).</summary>
+    /// <summary>Version of a plan: the time of the last save (0 if it does not exist yet).</summary>
     private static long VersionOf(VacationPlan? entity) => entity is null ? 0 : VersionOf(entity.UpdatedAtUtc);
 
     /// <summary>
-    /// Milissegundos desde 1970: cabe num número do JavaScript sem arredondar (os "ticks" do
-    /// .NET não cabem, e um cliente em JavaScript nunca conseguiria gravar).
+    /// Milliseconds since 1970: fits in a JavaScript number without rounding (.NET "ticks" do
+    /// not, and a JavaScript client could never save).
     /// </summary>
     private static long VersionOf(DateTime savedAtUtc) => (savedAtUtc.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerMillisecond;
 
@@ -164,12 +164,12 @@ internal sealed class VacationPlanService(
         }
         catch (JsonException)
         {
-            // Conteúdo estragado não deve impedir de abrir a página.
+            // Broken content must not stop the page from opening.
             return new VacationPlanDto();
         }
     }
 
-    /// <summary>Limpa espaços, retira linhas vazias e dias fora das datas da marcação.</summary>
+    /// <summary>Trims spaces, drops empty rows and days outside the entry dates.</summary>
     private static VacationPlanDto Normalise(VacationPlanDto plan, CalendarEvent ev) => new()
     {
         Destination = Clean(plan.Destination),
@@ -209,15 +209,16 @@ internal sealed class VacationPlanService(
             .Select(p => new PlanPlaceDto
             {
                 Name = p.Name.Trim(),
-                // 6 casas decimais ≈ 10 cm: chega e evita guardar ruído
+                // 6 decimal places ≈ 10 cm: enough, and avoids storing noise
                 Latitude = Math.Round(p.Latitude, 6),
                 Longitude = Math.Round(p.Longitude, 6),
-                // O alojamento tem entrada e saída (sem saída = um só dia) e não tem "visitado"
+                // Lodging has check-in and check-out (no check-out = a single day) and no "visited"
                 Date = p.Date,
                 EndDate = p.IsLodging && p.Date is not null ? p.EndDate ?? p.Date : null,
                 Notes = Clean(p.Notes),
                 Url = Clean(p.Url),
-                Visited = p.IsVisit && p.Visited, // só os locais a visitar têm "visitado"
+                Visited = p.IsVisit && p.Visited, // only places to visit have "visited"
+
                 Kind = p.Kind,
             })
             .ToList(),

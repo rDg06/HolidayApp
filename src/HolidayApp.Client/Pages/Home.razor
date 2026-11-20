@@ -1,4 +1,4 @@
-@page "/"
+@page "/calendar"
 @inject ICalendarApi Api
 @inject NavigationManager Navigation
 
@@ -8,17 +8,17 @@
 
     <div class="toolbar">
         <div class="year-nav">
-            <button type="button" class="btn icon" aria-label="Ano anterior" @onclick="() => ChangeYearAsync(_year - 1)">‹</button>
+            <button type="button" class="btn icon" aria-label="Previous year" @onclick="() => ChangeYearAsync(_year - 1)">‹</button>
             <h1>@_year</h1>
-            <button type="button" class="btn icon" aria-label="Ano seguinte" @onclick="() => ChangeYearAsync(_year + 1)">›</button>
+            <button type="button" class="btn icon" aria-label="Next year" @onclick="() => ChangeYearAsync(_year + 1)">›</button>
             @if (_year != _today.Year)
             {
-                <button type="button" class="btn ghost" @onclick="() => ChangeYearAsync(_today.Year)">Ano atual</button>
+                <button type="button" class="btn ghost" @onclick="() => ChangeYearAsync(_today.Year)">This year</button>
             }
         </div>
         <div class="toolbar-actions">
-            <span class="hint">Clica num dia ou arrasta sobre vários para marcar</span>
-            <button type="button" class="btn primary" @onclick="() => OpenCreator(DefaultNewDate, DefaultNewDate)">+ Marcar férias</button>
+            <span class="hint">Click a day or drag over several to book</span>
+            <button type="button" class="btn primary" @onclick="() => OpenCreator(DefaultNewDate, DefaultNewDate)">+ Book vacation</button>
         </div>
     </div>
 
@@ -26,12 +26,12 @@
     {
         <div class="alert" role="alert">
             <span>@_error</span>
-            <button type="button" class="btn ghost small" @onclick="LoadAsync">Tentar de novo</button>
+            <button type="button" class="btn ghost small" @onclick="LoadAsync">Try again</button>
         </div>
     }
 
     <div class="layout">
-        <section class="@(_loading ? "year-grid is-loading" : "year-grid")" aria-label="Calendário">
+        <section class="@(_loading ? "year-grid is-loading" : "year-grid")" aria-label="Calendar">
             @for (var m = 1; m <= 12; m++)
             {
                 var month = m;
@@ -75,7 +75,7 @@
     private int _year;
     private int _loadVersion;
 
-    // Dados
+    // Data
     private bool _loading = true;
     private string? _error;
     private List<HolidayDto> _holidays = [];
@@ -84,7 +84,7 @@
     private Dictionary<DateOnly, DayInfo> _dayMap = new();
     private HashSet<DateOnly> _holidayDates = [];
 
-    // Arrastar para selecionar
+    // Drag to select
     private bool _dragging;
     private DateOnly? _dragAnchor;
     private DateOnly? _dragCurrent;
@@ -114,7 +114,7 @@
         await LoadAsync();
     }
 
-    // ---------- Carregar dados ----------
+    // ---------- Loading data ----------
 
     private async Task LoadAsync()
     {
@@ -133,7 +133,7 @@
             var events = await eventsTask;
             var summary = await summaryTask;
 
-            // Se o utilizador já mudou de ano entretanto, ignora esta resposta
+            // If the user changed year in the meantime, ignore this response
             if (version != _loadVersion)
                 return;
 
@@ -145,7 +145,7 @@
         catch (Exception ex)
         {
             if (version == _loadVersion)
-                _error = $"Não foi possível carregar os dados. {ex.Message}";
+                _error = $"Could not load the data. {ex.Message}";
         }
         finally
         {
@@ -174,7 +174,7 @@
         var yearStart = new DateOnly(_year, 1, 1);
         var yearEnd = new DateOnly(_year, 12, 31);
 
-        // Férias primeiro: em dias com várias marcações, é a cor que aparece
+        // Vacation first: on days with several entries, it is the colour shown
         foreach (var ev in _events.OrderBy(e => e.Type).ThenBy(e => e.StartDate))
         {
             var from = ev.StartDate < yearStart ? yearStart : ev.StartDate;
@@ -197,7 +197,7 @@
         await LoadAsync();
     }
 
-    // ---------- Seleção com o rato ----------
+    // ---------- Mouse selection ----------
 
     private void OnDayDown(DateOnly date)
     {
@@ -211,7 +211,7 @@
         if (!_dragging)
             return;
 
-        // O botão foi largado fora da página: cancela a seleção
+        // The button was released outside the page: cancel the selection
         if (pointer.Buttons == 0)
         {
             ResetDrag();
@@ -228,7 +228,7 @@
 
         ResetDrag();
 
-        // Clique simples num dia já marcado → editar essa marcação
+        // Single click on a day already booked → edit that entry
         if (start == end && _dayMap.TryGetValue(start, out var info) && info.Events.Count > 0)
         {
             OpenEditor(info.Events[0]);
@@ -303,7 +303,7 @@
         }
     }
 
-    /// <summary>Guarda a marcação (nova ou existente) e abre a página "Organizar férias".</summary>
+    /// <summary>Saves the entry (new or existing) and opens the "Plan vacation" page.</summary>
     private async Task SaveAndOrganizeAsync(SaveCalendarEventRequest request)
     {
         _busy = true;
@@ -314,7 +314,7 @@
                 ? await Api.CreateEventAsync(request)
                 : await Api.UpdateEventAsync(_editing.Id, request);
 
-            Navigation.NavigateTo($"ferias/{saved.Id}");
+            Navigation.NavigateTo($"vacations/{saved.Id}");
         }
         catch (Exception ex)
         {
@@ -352,10 +352,10 @@
         try
         {
             var request = new SaveCalendarEventRequest(
-                $"Ponte · {bridge.HolidayName}",
+                $"Bridge · {bridge.HolidayName}",
                 bridge.SuggestedDayOff,
                 bridge.SuggestedDayOff,
-                EventType.Ferias,
+                EventType.Vacation,
                 null);
 
             await Api.CreateEventAsync(request);
@@ -363,7 +363,7 @@
         }
         catch (Exception ex)
         {
-            _error = $"Não foi possível marcar a ponte. {ex.Message}";
+            _error = $"Could not book the bridge. {ex.Message}";
         }
         finally
         {

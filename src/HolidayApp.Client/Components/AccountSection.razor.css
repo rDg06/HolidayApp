@@ -1,0 +1,21 @@
+.account { display: grid; gap: 12px; }
+.account h2 { font-size: 1.05rem; }
+.account-who { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.account-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.account-delete {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid color-mix(in srgb, var(--c-danger) 40%, var(--border));
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--c-danger) 6%, var(--surface));
+}
+
+.account-delete p { margin: 0; }
+
+/* Name (editable), email and password */
+.account-name { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.account-name .field { flex: 1; min-width: 200px; }
+.account-email { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.account-password { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; }

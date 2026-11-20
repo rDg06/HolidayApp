@@ -1,4 +1,4 @@
-/* Um local da lista do mapa */
+/* A place in the map list */
 .place-item { display: flex; gap: 8px; align-items: flex-start; }
 .place-fields { display: grid; gap: 6px; flex: 1; min-width: 0; }
 .place-row { display: flex; align-items: center; gap: 6px; }
@@ -15,16 +15,16 @@
 .details-toggle.has-details { color: var(--c-primary); }
 .btn.icon.small:disabled { opacity: 0.3; }
 
-/* Tipo do local: botão com o ícone e menu (visita, alojamento, aeroporto, metro, autocarro, comboio) */
+/* Place kind: button with the icon and a menu (visit, lodging, airport, metro, bus, train) */
 .kind-picker { position: relative; flex: none; }
-.kind-button { gap: 3px; padding: 0 6px; color: var(--c-primary); } /* visita: a cor dos números */
+.kind-button { gap: 3px; padding: 0 6px; color: var(--c-primary); } /* visit: the number colour */
 .kind-caret { width: 8px; height: 5px; opacity: 0.7; }
 .kind-button[aria-expanded="true"] { background: var(--surface-2); }
 .kind-button[aria-expanded="true"] .kind-caret { transform: rotate(180deg); }
-.kind-button.kind-alojamento { color: var(--c-lodging); }
-.kind-button.kind-aeroporto, .kind-button.kind-metro, .kind-button.kind-autocarro, .kind-button.kind-comboio { color: var(--c-transport); }
+.kind-button.kind-lodging { color: var(--c-lodging); }
+.kind-button.kind-airport, .kind-button.kind-metro, .kind-button.kind-bus, .kind-button.kind-train { color: var(--c-transport); }
 
-/* Menu do tipo: abre por baixo do local, dentro da lista (não fica cortado pelo scroll) */
+/* Kind menu: opens below the place, inside the list (not clipped by the scroll) */
 .kind-menu {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -57,7 +57,7 @@
 .kind-option.selected { font-weight: 600; background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
 .kind-swatch { width: 24px; height: 24px; margin: 0; border-width: 1px; font-size: 0.7rem; cursor: inherit; }
 
-/* Pega para arrastar (o arrastar em si está em plan-map.js) */
+/* Drag handle (the dragging itself is in plan-map.js) */
 .drag-handle {
     display: grid;
     place-items: center;
@@ -71,7 +71,7 @@
     background: transparent;
     color: var(--muted);
     cursor: grab;
-    touch-action: none; /* no telemóvel, arrastar a pega não faz scroll à página */
+    touch-action: none; /* on a phone, dragging the handle does not scroll the page */
 }
 
 .drag-handle svg { width: 10px; height: 16px; fill: currentColor; }
@@ -89,6 +89,6 @@
 
 .place-item.dragging .drag-handle { cursor: grabbing; }
 
-/* Onde o local vai ficar ao largar */
+/* Where the place lands when dropped */
 .place-item.drop-before { box-shadow: inset 0 3px 0 -1px var(--c-primary); }
 .place-item.drop-after { box-shadow: inset 0 -3px 0 -1px var(--c-primary); }

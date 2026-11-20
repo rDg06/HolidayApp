@@ -6,8 +6,9 @@ namespace HolidayApp.Domain.Planning;
 public sealed record BridgeSuggestion(Holiday Holiday, DateOnly DayOff, int ConsecutiveDaysOff);
 
 /// <summary>
-/// Encontra "pontes": feriados à terça ou à quinta em que basta tirar
-/// a segunda ou a sexta para ter um fim de semana prolongado.
+/// Finds "bridges": holidays on a Tuesday or Thursday where taking the Monday
+/// or the Friday off is enough for a long weekend.
+
 /// </summary>
 public static class BridgeSuggester
 {

@@ -1,13 +1,13 @@
 namespace HolidayApp.Shared;
 
-/// <summary>Uma paragem do percurso de um dia, com a distância desde a paragem anterior.</summary>
+/// <summary>A stop on a day's route, with the distance from the previous stop.</summary>
 public sealed record RouteStop(PlanPlaceDto Place, double? KmFromPrevious);
 
 /// <summary>
-/// Percurso de um dia: sai do alojamento onde se acordou, passa pelos locais desse dia
-/// (visitas e transportes com esse dia, pela ordem da lista) e acaba no alojamento onde
-/// se vai dormir (se for outro, no dia da mudança). Transportes sem dia ficam de fora.
-/// As distâncias são em linha reta.
+/// A day's route: leaves the lodging you woke up in, goes through that day's places
+/// (visits and transport with that day, in list order) and ends at the lodging where you
+/// sleep (if it is a different one, on the day you move). Transport without a day is left out.
+/// Distances are straight-line.
 /// </summary>
 public static class PlaceRoute
 {
@@ -29,10 +29,10 @@ public static class PlaceRoute
         return stops;
     }
 
-    /// <summary>Distância total do percurso (km, em linha reta).</summary>
+    /// <summary>Total route distance (km, straight-line).</summary>
     public static double TotalKm(IEnumerable<RouteStop> stops) => stops.Sum(s => s.KmFromPrevious ?? 0);
 
-    /// <summary>Distância em linha reta entre dois locais (fórmula de Haversine), em km.</summary>
+    /// <summary>Straight-line distance between two places (Haversine formula), in km.</summary>
     public static double DistanceKm(PlanPlaceDto a, PlanPlaceDto b)
     {
         const double EarthRadiusKm = 6371.0;

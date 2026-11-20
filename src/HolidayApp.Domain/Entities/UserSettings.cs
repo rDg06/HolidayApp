@@ -2,10 +2,10 @@ using HolidayApp.Domain.Holidays;
 
 namespace HolidayApp.Domain.Entities;
 
-/// <summary>Preferências de cada utilizador.</summary>
+/// <summary>Preferences of each user.</summary>
 public sealed class UserSettings
 {
-    /// <summary>Mínimo legal em Portugal (dias úteis por ano).</summary>
+    /// <summary>Legal minimum in Portugal (working days per year).</summary>
     public const int DefaultAnnualVacationDays = 22;
 
     public required string UserId { get; set; }

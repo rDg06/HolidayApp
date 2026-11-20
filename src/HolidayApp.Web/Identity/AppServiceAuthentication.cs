@@ -6,11 +6,11 @@ using Microsoft.Extensions.Options;
 namespace HolidayApp.Web.Identity;
 
 /// <summary>
-/// Lê o utilizador autenticado pela "Authentication" do Azure App Service (Easy Auth).
-/// O App Service faz o login (Microsoft, Google…) antes de o pedido chegar à app e
-/// envia quem é nos cabeçalhos X-MS-CLIENT-PRINCIPAL-*. Esses cabeçalhos só são de
-/// confiança quando o App Service está mesmo à frente (WEBSITE_AUTH_ENABLED=True),
-/// porque é ele que apaga os que viessem do navegador.
+/// Reads the user signed in by Azure App Service "Authentication" (Easy Auth).
+/// App Service does the sign-in (Microsoft, Google…) before the request reaches the app and
+/// sends who it is in the X-MS-CLIENT-PRINCIPAL-* headers. Those headers can only be
+/// trusted when App Service really is in front (WEBSITE_AUTH_ENABLED=True),
+/// because it removes any that came from the browser.
 /// </summary>
 public sealed class AppServiceAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -35,12 +35,12 @@ public sealed class AppServiceAuthenticationHandler(
 
         var claims = new List<Claim>
         {
-            // O fornecedor faz parte do id: o mesmo id em fornecedores diferentes são pessoas diferentes
+            // The provider is part of the id: the same id on different providers is different people
             new(ClaimTypes.NameIdentifier, string.IsNullOrWhiteSpace(provider) ? id : $"{provider}:{id}"),
             new(ClaimTypes.Name, name),
         };
 
-        // Para contas Microsoft e Google o "name" é o email
+        // For Microsoft and Google accounts the "name" is the email
         if (name.Contains('@'))
             claims.Add(new Claim(ClaimTypes.Email, name));
 
@@ -54,9 +54,9 @@ public static class AppServiceAuthenticationExtensions
     public const string AllowedUserPolicy = "AllowedUser";
 
     /// <summary>
-    /// Login e lista de emails autorizados ("Auth:AllowedEmails"). Em desenvolvimento a
-    /// API fica aberta (utilizador "local"); fora dele, só passa quem estiver na lista.
-    /// Com "Auth:GroupPassword" o login passa a ser a palavra-passe do grupo (ver GroupPassword).
+    /// Sign-in and list of allowed emails ("Auth:AllowedEmails"). In development the
+    /// API is open ("local" user); outside it, only people on the list get through.
+    /// With "Auth:InviteCode" sign-in uses accounts with email and password (see Accounts).
     /// </summary>
     public static IServiceCollection AddAppServiceAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
@@ -65,31 +65,31 @@ public static class AppServiceAuthenticationExtensions
             .Select(e => e.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var groupPassword = GroupPassword.IsEnabled(configuration);
+        var accounts = Accounts.IsEnabled(configuration);
 
-        services.AddAuthentication(groupPassword ? GroupPassword.SchemeName : AppServiceAuthenticationHandler.SchemeName)
+        services.AddAuthentication(accounts ? Accounts.SchemeName : AppServiceAuthenticationHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, AppServiceAuthenticationHandler>(AppServiceAuthenticationHandler.SchemeName, null)
-            .AddGroupPasswordCookie();
+            .AddAccountCookie();
 
-        services.AddGroupPasswordRateLimit();
+        services.AddAccountRateLimit();
 
         services.AddAuthorizationBuilder()
             .AddPolicy(AllowedUserPolicy, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireAssertion(context =>
-                    context.User.Identity?.AuthenticationType == GroupPassword.SchemeName
+                    context.User.Identity?.AuthenticationType == Accounts.SchemeName
                     || (context.User.FindFirstValue(ClaimTypes.Email) is { } email && allowed.Contains(email))));
 
         return services;
     }
 
     /// <summary>
-    /// Protege a API, exceto em desenvolvimento (ou com "Auth:Disabled": true). Com a
-    /// palavra-passe do grupo definida, protege sempre.
+    /// Protects the API, except in development (or with "Auth:Disabled": true). With
+    /// accounts turned on (invite code), it always protects it.
     /// </summary>
     public static RouteGroupBuilder RequireAllowedUser(this RouteGroupBuilder api, IHostEnvironment environment, IConfiguration configuration)
     {
-        if (!GroupPassword.IsEnabled(configuration)
+        if (!Accounts.IsEnabled(configuration)
             && (environment.IsDevelopment() || configuration.GetValue<bool>("Auth:Disabled")))
             return api;
 

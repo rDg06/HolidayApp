@@ -1,12 +1,12 @@
-@* Feriados do ano (os que já passaram ficam esbatidos). *@
+@* The year's holidays (past ones are faded). *@
 
 <details class="card">
-    <summary><h3>Feriados de @Year</h3></summary>
+    <summary><h3>Holidays in @Year</h3></summary>
     <ul class="plain-list holidays">
         @foreach (var holiday in Holidays)
         {
             <li class="@(holiday.Date < Today ? "past" : null)">
-                <span class="holiday-date">@Pt.Long(holiday.Date)</span>
+                <span class="holiday-date">@Display.Long(holiday.Date)</span>
                 <span>@holiday.Name</span>
             </li>
         }

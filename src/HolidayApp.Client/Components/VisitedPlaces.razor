@@ -1,0 +1,195 @@
+@* "Other places I've been": add a place and the year by hand (trips outside the calendar). *@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<section class="card visited" aria-labelledby="visited-title">
+    <div class="section-head">
+        <h2 id="visited-title">Other places I've been</h2>
+        @if (Places.Count > 0)
+        {
+            <span class="muted small">@(Places.Count == 1 ? "1 place" : $"{Places.Count} places")</span>
+        }
+    </div>
+    <p class="muted small visited-hint">Trips that are not in the calendar: search for the place, choose the year and add it to the map.</p>
+
+    <div class="visited-form">
+        <input class="input" placeholder="Place (e.g. Paris, Machu Picchu)" aria-label="Search for a place"
+               @bind="_query" @bind:event="oninput" @onkeydown="OnKeyDown" />
+        <button type="button" class="btn small" disabled="@_searching" @onclick="SearchAsync">@(_searching ? "…" : "Search")</button>
+    </div>
+
+    @if (_message is not null)
+    {
+        <p class="small visited-error" role="alert">@_message</p>
+    }
+
+    @if (_results.Count > 0)
+    {
+        <ul class="plain-list visited-results" aria-label="Search results">
+            @foreach (var result in _results)
+            {
+                var r = result;
+                <li>
+                    <button type="button" class="@(ReferenceEquals(_chosen, r) ? "visited-result chosen" : "visited-result")"
+                            aria-pressed="@(ReferenceEquals(_chosen, r) ? "true" : "false")" @onclick="() => _chosen = r">
+                        <strong>@r.Name</strong>
+                        <span class="muted small">@r.Description</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (_chosen is not null)
+    {
+        <div class="visited-form">
+            <label class="visited-year">
+                <span class="small">Year</span>
+                <input class="input" type="number" min="@VisitedPlaceValidator.MinYear" max="@CurrentYear" aria-label="Year I was there"
+                       @bind="_year" />
+            </label>
+            <button type="button" class="btn primary small" disabled="@_saving" @onclick="AddAsync">
+                @(_saving ? "Adding…" : $"Add {_chosen.Name}")
+            </button>
+        </div>
+    }
+
+    @if (Places.Count > 0)
+    {
+        <ol class="plain-list visited-years">
+            @foreach (var year in Places.GroupBy(p => p.Year).OrderByDescending(g => g.Key))
+            {
+                <li>
+                    <h3>@year.Key</h3>
+                    <ul class="plain-list visited-list">
+                        @foreach (var place in year.OrderBy(p => p.Name))
+                        {
+                            var p = place;
+                            <li>
+                                <span class="visited-name">@p.Name</span>
+                                @if (p.Country is not null && p.Country != p.Name)
+                                {
+                                    <span class="muted small">@p.Country</span>
+                                }
+                                <button type="button" class="btn icon ghost small" aria-label="Delete @p.Name (@p.Year)"
+                                        @onclick="() => OnDelete.InvokeAsync(p)">✕</button>
+                            </li>
+                        }
+                    </ul>
+                </li>
+            }
+        </ol>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<VisitedPlaceDto> Places { get; set; } = [];
+
+    /// <summary>Adds a place (the page saves it and refreshes the list).</summary>
+    [Parameter] public Func<SaveVisitedPlaceRequest, Task>? OnAdd { get; set; }
+
+    [Parameter] public EventCallback<VisitedPlaceDto> OnDelete { get; set; }
+
+    /// <summary>This year (can be swapped in tests): the suggested year and the maximum.</summary>
+    [Parameter] public int CurrentYear { get; set; } = DateTime.Today.Year;
+
+    /// <summary>Search result (comes from plan-map.js).</summary>
+    public sealed class SearchResult
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+        public string? Country { get; set; }
+    }
+
+    private IJSObjectReference? _module;
+    private string _query = "";
+    private bool _searching;
+    private bool _saving;
+    private string? _message;
+    private List<SearchResult> _results = [];
+    private SearchResult? _chosen;
+    private int _year;
+
+    protected override void OnInitialized() => _year = CurrentYear;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query) || _searching)
+            return;
+
+        _searching = true;
+        _message = null;
+        _chosen = null;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/plan-map.js");
+            _results = await _module.InvokeAsync<List<SearchResult>?>("search", _query.Trim()) ?? [];
+            if (_results.Count == 0)
+                _message = "No place found.";
+            else if (_results.Count == 1)
+                _chosen = _results[0];
+        }
+        catch (Exception ex)
+        {
+            _results = [];
+            _message = $"Could not search. {ex.Message}";
+        }
+        finally
+        {
+            _searching = false;
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        if (_chosen is not { } chosen || OnAdd is null)
+            return;
+
+        var name = chosen.Name.Length > VisitedPlaceValidator.NameMaxLength ? chosen.Name[..VisitedPlaceValidator.NameMaxLength] : chosen.Name;
+        var request = new SaveVisitedPlaceRequest(name, chosen.Lat, chosen.Lng, chosen.Country, _year);
+        var errors = VisitedPlaceValidator.Validate(request, CurrentYear);
+        if (errors.Count > 0)
+        {
+            _message = string.Join(" ", errors.SelectMany(e => e.Value));
+            return;
+        }
+
+        _saving = true;
+        _message = null;
+        try
+        {
+            await OnAdd(request);
+            _results = [];
+            _chosen = null;
+            _query = "";
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+                await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+}

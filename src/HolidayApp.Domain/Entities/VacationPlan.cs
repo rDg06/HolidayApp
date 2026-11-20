@@ -1,18 +1,18 @@
 namespace HolidayApp.Domain.Entities;
 
 /// <summary>
-/// Planeamento de umas férias (um por marcação). O conteúdo — destino, reservas,
-/// plano dia a dia, tarefas e orçamento — é guardado como um documento JSON,
-/// por isso acrescentar campos ao planeamento não obriga a mudar tabelas.
+/// Plan for a vacation (one per entry). The content — destination, bookings,
+/// day-by-day plan, tasks and budget — is stored as a JSON document,
+/// so adding fields to the plan does not require table changes.
 /// </summary>
 public sealed class VacationPlan
 {
-    /// <summary>Marcação a que este planeamento pertence (também é a chave).</summary>
+    /// <summary>Entry this plan belongs to (also the key).</summary>
     public Guid EventId { get; set; }
 
     public required string UserId { get; set; }
 
-    /// <summary>JSON com o <c>VacationPlanDto</c>.</summary>
+    /// <summary>JSON with the <c>VacationPlanDto</c>.</summary>
     public required string Content { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;

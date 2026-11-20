@@ -44,14 +44,50 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
     public Task<UserSettingsDto> SaveSettingsAsync(UserSettingsDto settings, CancellationToken ct = default) =>
         SendAsync<UserSettingsDto, UserSettingsDto>(HttpMethod.Put, "api/settings", settings, ct);
 
-    // ---------- Auxiliares ----------
+    public async Task<IReadOnlyList<VisitedPlaceDto>> GetVisitedPlacesAsync(CancellationToken ct = default) =>
+        await GetAsync<List<VisitedPlaceDto>>("api/visited", ct);
+
+    public Task<VisitedPlaceDto> AddVisitedPlaceAsync(SaveVisitedPlaceRequest request, CancellationToken ct = default) =>
+        SendAsync<SaveVisitedPlaceRequest, VisitedPlaceDto>(HttpMethod.Post, "api/visited", request, ct);
+
+    public async Task DeleteVisitedPlaceAsync(Guid id, CancellationToken ct = default)
+    {
+        using var response = await http.DeleteAsync($"api/visited/{id}", ct);
+        await EnsureSuccessAsync(response, ct);
+    }
+
+    public async Task<AccountDto?> GetMeAsync(CancellationToken ct = default)
+    {
+        using var response = await http.GetAsync("api/me", ct);
+        await EnsureSuccessAsync(response, ct);
+        return response.StatusCode == System.Net.HttpStatusCode.NoContent
+            ? null
+            : await response.Content.ReadFromJsonAsync<AccountDto>(ct);
+    }
+
+    public async Task DeleteMeAsync(CancellationToken ct = default)
+    {
+        using var response = await http.DeleteAsync("api/me", ct);
+        await EnsureSuccessAsync(response, ct);
+    }
+
+    public Task<AccountDto> RenameMeAsync(string name, CancellationToken ct = default) =>
+        SendAsync<RenameAccountRequest, AccountDto>(HttpMethod.Put, "api/me", new RenameAccountRequest(name), ct);
+
+    public async Task ChangePasswordAsync(string current, string replacement, CancellationToken ct = default)
+    {
+        using var response = await http.PostAsJsonAsync("api/me/password", new ChangePasswordRequest(current, replacement), ct);
+        await EnsureSuccessAsync(response, ct);
+    }
+
+    // ---------- Helpers ----------
 
     private async Task<T> GetAsync<T>(string url, CancellationToken ct)
     {
         using var response = await http.GetAsync(url, ct);
         await EnsureSuccessAsync(response, ct);
         return await response.Content.ReadFromJsonAsync<T>(ct)
-               ?? throw new ApiException("O servidor devolveu uma resposta vazia.");
+               ?? throw new ApiException("The server returned an empty response.");
     }
 
     private async Task<TResponse> SendAsync<TBody, TResponse>(HttpMethod method, string url, TBody body, CancellationToken ct)
@@ -60,10 +96,10 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         using var response = await http.SendAsync(request, ct);
         await EnsureSuccessAsync(response, ct);
         return await response.Content.ReadFromJsonAsync<TResponse>(ct)
-               ?? throw new ApiException("O servidor devolveu uma resposta vazia.");
+               ?? throw new ApiException("The server returned an empty response.");
     }
 
-    /// <summary>Converte respostas de erro (ProblemDetails) numa mensagem para o utilizador.</summary>
+    /// <summary>Turns error responses (ProblemDetails) into a message for the user.</summary>
     private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken ct)
     {
         if (response.IsSuccessStatusCode)
@@ -72,12 +108,12 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         switch (response.StatusCode)
         {
             case System.Net.HttpStatusCode.Unauthorized:
-                throw new ApiException("Precisas de iniciar sessão para usar a aplicação.");
+                throw new ApiException("You need to sign in to use the app.");
             case System.Net.HttpStatusCode.Forbidden:
-                throw new ApiException("A tua conta não tem acesso a esta aplicação.");
+                throw new ApiException("Your account does not have access to this app.");
         }
 
-        var message = $"Erro {(int)response.StatusCode} ao comunicar com o servidor.";
+        var message = $"Error {(int)response.StatusCode} talking to the server.";
         try
         {
             var problem = await response.Content.ReadFromJsonAsync<ProblemPayload>(ct);
@@ -88,7 +124,7 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         }
         catch
         {
-            // A resposta não era JSON: fica a mensagem genérica.
+            // The response was not JSON: keep the generic message.
         }
 
         throw new ApiException(message);

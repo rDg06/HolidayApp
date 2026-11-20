@@ -1,23 +1,32 @@
-// Service worker do HolidayApp: deixa abrir a app e ver os dados sem internet.
+// HolidayApp service worker: lets the app open and show the data without internet.
 //
-// Estratégia "rede primeiro": cada pedido vai sempre ao servidor e a resposta é
-// guardada; só quando não há ligação é que se usa a última cópia guardada. Assim,
-// com internet, vês sempre a versão mais recente. Gravar (POST/PUT/DELETE) precisa
-// sempre de ligação.
+// "Network first" strategy: every request always goes to the server and the response is
+// stored; only when there is no connection is the last stored copy used. So, online,
+// you always see the latest version. Saving (POST/PUT/DELETE) always needs a connection.
 //
-// Fica de fora: o login do App Service (/.auth/), e tudo o que é de outros sites
-// (mapas do OpenStreetMap e pesquisa de locais), que seguem as regras desses serviços.
+// Left out: sign-in (the login, register and logout pages, and App Service's /.auth/),
+// and everything from other sites (OpenStreetMap tiles, place search and routes), which
+// follow those services' rules. Redirects are never stored (e.g. "no session, go to the
+// login page"): serving them from the cache broke the app.
 
-const CACHE = "holidayapp-v1";
+// v3: English routes. Changing the name deletes the old caches (see "activate").
+const CACHE = "holidayapp-v3";
+
+/** Sign-in pages: always go to the network, no cache. */
+const ACCOUNT_PATHS = ["/login", "/register", "/logout"];
+
+/** A response that can be stored: complete, from this site, and not a redirect. */
+const cacheable = (response) =>
+    response.ok && response.status === 200 && response.type === "basic" && !response.redirected;
 
 self.addEventListener("install", (event) => {
-    // Guarda já a página inicial: sem internet, qualquer página da app abre a partir dela
+    // Stores the home page right away: offline, any page of the app opens from it
     event.waitUntil((async () => {
         try {
-            const response = await fetch("/");
-            if (response.ok && response.type === "basic") await (await caches.open(CACHE)).put("/", response);
+            const response = await fetch("/", { redirect: "manual" });
+            if (cacheable(response)) await (await caches.open(CACHE)).put("/", response);
         } catch {
-            // Sem ligação ou à espera do login: fica guardada na próxima visita
+            // Offline or waiting for sign-in: it is stored on the next visit
         }
         await self.skipWaiting();
     })());
@@ -25,7 +34,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
     event.waitUntil((async () => {
-        // Apaga caches de versões antigas do service worker
+        // Deletes caches from older versions of the service worker
         for (const name of await caches.keys()) {
             if (name !== CACHE) await caches.delete(name);
         }
@@ -39,6 +48,7 @@ self.addEventListener("fetch", (event) => {
 
     const url = new URL(request.url);
     if (url.origin !== self.location.origin || url.pathname.startsWith("/.auth/")) return;
+    if (ACCOUNT_PATHS.some((path) => url.pathname === path)) return;
 
     event.respondWith(networkFirst(request));
 });
@@ -47,19 +57,19 @@ async function networkFirst(request) {
     const cache = await caches.open(CACHE);
     try {
         const response = await fetch(request);
-        // Só guarda respostas completas e normais (sem erros, redirecionamentos para o login, etc.)
-        if (response.ok && response.type === "basic" && response.status === 200) {
+        // Only stores complete, normal responses (no errors and no redirects to the login page)
+        if (cacheable(response)) {
             await cache.put(request, response.clone());
         }
         return response;
     } catch (error) {
         const cached = await cache.match(request, { ignoreVary: true });
-        if (cached) return cached;
+        if (cached && !cached.redirected) return cached;
 
-        // Páginas (ex.: /ferias/…) sem cópia própria: a app é a mesma, abre a página inicial guardada
+        // Pages (e.g. /vacations/…) without their own copy: it is the same app, open the stored home page
         if (request.mode === "navigate") {
             const home = await cache.match("/", { ignoreVary: true });
-            if (home) return home;
+            if (home && !home.redirected) return home;
         }
         throw error;
     }

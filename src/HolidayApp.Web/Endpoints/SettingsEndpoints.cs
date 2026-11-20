@@ -8,7 +8,7 @@ public static class SettingsEndpoints
 {
     public static RouteGroupBuilder MapSettingsEndpoints(this RouteGroupBuilder api)
     {
-        var group = api.MapGroup("/settings").WithTags("Definições");
+        var group = api.MapGroup("/settings").WithTags("Settings");
 
         // GET /api/settings
         group.MapGet("/", async (ICalendarService service, CancellationToken ct) =>

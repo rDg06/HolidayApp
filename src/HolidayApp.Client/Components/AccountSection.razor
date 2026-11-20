@@ -1,0 +1,231 @@
+@* Profile (Profile and settings page): name, email, password, sign out, download the data and
+   delete the account. Not shown in home mode (no accounts). *@
+@inject ICalendarApi Api
+@inject NavigationManager Navigation
+
+@if (_account is not null)
+{
+    <section class="card account" aria-labelledby="account-title">
+        <h2 id="account-title">Profile</h2>
+        <form class="account-name" @onsubmit="RenameAsync">
+            <label class="field">
+                <span>Name</span>
+                <input class="input" maxlength="@AccountValidator.NameMaxLength" autocomplete="name" aria-label="Name"
+                       @bind="_name" @bind:event="oninput" />
+            </label>
+            <button type="submit" class="btn small" disabled="@(!NameChanged || _renaming)">@(_renaming ? "Saving…" : "Save name")</button>
+            @if (_nameSaved && !NameChanged)
+            {
+                <span class="saved" role="status">Saved ✓</span>
+            }
+        </form>
+        @if (_nameError is not null)
+        {
+            <p class="form-errors" role="alert">@_nameError</p>
+        }
+
+        <p class="account-email"><span class="muted small">Email</span> @_account.Email</p>
+
+        @if (!_changingPassword)
+        {
+            <div class="account-actions">
+                <button type="button" class="btn small" @onclick="OpenPasswordForm">Change password</button>
+                @if (_passwordChanged)
+                {
+                    <span class="saved" role="status">Password changed ✓</span>
+                }
+            </div>
+        }
+        else
+        {
+            <form class="account-password" @onsubmit="ChangePasswordAsync">
+                <label class="field">
+                    <span>Current password</span>
+                    <input class="input" type="password" autocomplete="current-password" aria-label="Current password" @bind="_currentPassword" />
+                </label>
+                <label class="field">
+                    <span>New password <span class="muted small">(at least @AccountValidator.PasswordMinLength characters)</span></span>
+                    <input class="input" type="password" autocomplete="new-password" aria-label="New password" @bind="_newPassword" />
+                </label>
+                <label class="field">
+                    <span>Repeat the new password</span>
+                    <input class="input" type="password" autocomplete="new-password" aria-label="Repeat the new password" @bind="_repeatPassword" />
+                </label>
+                @if (_passwordError is not null)
+                {
+                    <p class="form-errors" role="alert">@_passwordError</p>
+                }
+                <div class="account-actions">
+                    <button type="submit" class="btn primary small" disabled="@_savingPassword">@(_savingPassword ? "Changing…" : "Change")</button>
+                    <button type="button" class="btn ghost small" @onclick="ClosePasswordForm">Cancel</button>
+                </div>
+            </form>
+        }
+
+        <div class="account-actions">
+            <button type="button" class="btn" @onclick="SignOut">Sign out</button>
+            @* "download": the browser saves the file instead of navigating *@
+            <a class="btn" href="api/me/export" download>Download my data</a>
+            <button type="button" class="btn danger" @onclick="() => _confirming = true">Delete my account</button>
+        </div>
+
+        @if (_confirming)
+        {
+            <div class="account-delete" role="alert">
+                <p>
+                    This deletes your account and all your data <strong>forever</strong>: entries, plans,
+                    settings and places. It cannot be undone. If you want, download your data first.
+                </p>
+                <label class="field">
+                    <span>To confirm, type your email</span>
+                    <input class="input" type="email" autocomplete="off" @bind="_typedEmail" @bind:event="oninput" />
+                </label>
+                @if (_error is not null)
+                {
+                    <p class="form-errors">@_error</p>
+                }
+                <div class="account-actions">
+                    <button type="button" class="btn danger" disabled="@(!EmailMatches || _deleting)" @onclick="DeleteAsync">
+                        @(_deleting ? "Deleting…" : "Delete everything")
+                    </button>
+                    <button type="button" class="btn ghost" @onclick="Cancel">Cancel</button>
+                </div>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private AccountDto? _account;
+    private bool _confirming;
+    private bool _deleting;
+    private string _typedEmail = "";
+    private string? _error;
+
+    private bool EmailMatches =>
+        _account is not null && string.Equals(_typedEmail.Trim(), _account.Email, StringComparison.OrdinalIgnoreCase);
+
+    // Name
+    private string _name = "";
+    private bool _renaming;
+    private bool _nameSaved;
+    private string? _nameError;
+
+    private bool NameChanged => _account is not null && _name.Trim() != _account.Name && _name.Trim().Length > 0;
+
+    // Password
+    private bool _changingPassword;
+    private bool _savingPassword;
+    private bool _passwordChanged;
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _repeatPassword = "";
+    private string? _passwordError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _account = await Api.GetMeAsync();
+            _name = _account?.Name ?? "";
+        }
+        catch (Exception)
+        {
+            // No account info: the section is not shown
+        }
+    }
+
+    private async Task RenameAsync()
+    {
+        if (!NameChanged)
+            return;
+
+        _nameError = AccountValidator.ValidateName(_name).FirstOrDefault();
+        if (_nameError is not null)
+            return;
+
+        _renaming = true;
+        _nameSaved = false;
+        try
+        {
+            _account = await Api.RenameMeAsync(_name.Trim());
+            _name = _account.Name;
+            _nameSaved = true;
+        }
+        catch (Exception ex)
+        {
+            _nameError = $"Could not change the name. {ex.Message}";
+        }
+        finally
+        {
+            _renaming = false;
+        }
+    }
+
+    private void OpenPasswordForm()
+    {
+        _changingPassword = true;
+        _passwordChanged = false;
+    }
+
+    private void ClosePasswordForm()
+    {
+        _changingPassword = false;
+        _currentPassword = _newPassword = _repeatPassword = "";
+        _passwordError = null;
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _passwordError = _newPassword != _repeatPassword
+            ? "The two new passwords are not the same."
+            : AccountValidator.ValidatePassword(_newPassword).FirstOrDefault();
+        if (_passwordError is not null)
+            return;
+
+        _savingPassword = true;
+        try
+        {
+            await Api.ChangePasswordAsync(_currentPassword, _newPassword);
+            ClosePasswordForm();
+            _passwordChanged = true;
+        }
+        catch (Exception ex)
+        {
+            _passwordError = ex.Message;
+        }
+        finally
+        {
+            _savingPassword = false;
+        }
+    }
+
+    /// <summary>"/logout" is a server page (outside Blazor): load the page for real.</summary>
+    private void SignOut() => Navigation.NavigateTo("logout", forceLoad: true);
+
+    private void Cancel()
+    {
+        _confirming = false;
+        _typedEmail = "";
+        _error = null;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!EmailMatches)
+            return;
+
+        _deleting = true;
+        _error = null;
+        try
+        {
+            await Api.DeleteMeAsync();
+            Navigation.NavigateTo("login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not delete the account. {ex.Message}";
+            _deleting = false;
+        }
+    }
+}

@@ -2,73 +2,73 @@ using System.Text.Json.Serialization;
 
 namespace HolidayApp.Shared;
 
-/// <summary>Tipo de marcação no calendário.</summary>
+/// <summary>Kind of calendar entry.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<EventType>))]
 public enum EventType
 {
-    /// <summary>Dias de férias (descontam ao saldo anual).</summary>
-    Ferias = 0,
+    /// <summary>Vacation days (count against the yearly allowance).</summary>
+    Vacation = 0,
 
-    /// <summary>Compromissos pessoais (não descontam férias).</summary>
-    Pessoal = 1,
+    /// <summary>Personal appointments (do not use vacation days).</summary>
+    Personal = 1,
 
-    /// <summary>Qualquer outra marcação.</summary>
-    Outro = 2,
+    /// <summary>Anything else.</summary>
+    Other = 2,
 }
 
-/// <summary>Natureza de um feriado.</summary>
+/// <summary>Kind of public holiday.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<HolidayKind>))]
 public enum HolidayKind
 {
-    Nacional = 0,
-    Facultativo = 1,
+    National = 0,
+    Optional = 1,
     Municipal = 2,
 }
 
-/// <summary>Tipo de reserva no planeamento de umas férias.</summary>
+/// <summary>Kind of booking in a vacation plan.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<BookingType>))]
 public enum BookingType
 {
-    Voo = 0,
-    Alojamento = 1,
-    Transporte = 2,
-    Atividade = 3,
-    Outro = 4,
+    Flight = 0,
+    Lodging = 1,
+    Transport = 2,
+    Activity = 3,
+    Other = 4,
 }
 
-/// <summary>Como se anda entre os locais de um dia (para o caminho e os tempos no mapa).</summary>
+/// <summary>How people get around between the places of a day (for the route and times on the map).</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<RouteMode>))]
 public enum RouteMode
 {
-    APe = 0,
-    Carro = 1,
-    Bicicleta = 2,
+    Walk = 0,
+    Car = 1,
+    Bike = 2,
 }
 
-/// <summary>Tipo de local no mapa das férias.</summary>
+/// <summary>Kind of place on the vacation map.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<PlaceKind>))]
 public enum PlaceKind
 {
-    /// <summary>Local a visitar: tem número, dia e "visitado".</summary>
-    Visita = 0,
+    /// <summary>A place to visit: has a number, a day and "visited".</summary>
+    Visit = 0,
 
-    /// <summary>Onde se dorme: tem primeiro e último dia.</summary>
-    Alojamento = 1,
+    /// <summary>Where you sleep: has a first and a last day.</summary>
+    Lodging = 1,
 
-    Aeroporto = 2,
+    Airport = 2,
     Metro = 3,
-    Autocarro = 4,
-    Comboio = 5,
+    Bus = 4,
+    Train = 5,
 }
 
-/// <summary>Categoria de uma despesa no orçamento das férias.</summary>
+/// <summary>Category of an expense in the vacation budget.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ExpenseCategory>))]
 public enum ExpenseCategory
 {
-    Transporte = 0,
-    Alojamento = 1,
-    Alimentacao = 2,
-    Atividades = 3,
-    Compras = 4,
-    Outro = 5,
+    Transport = 0,
+    Lodging = 1,
+    Food = 2,
+    Activities = 3,
+    Shopping = 4,
+    Other = 5,
 }

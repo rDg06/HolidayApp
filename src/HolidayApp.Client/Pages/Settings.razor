@@ -1,11 +1,16 @@
-@page "/definicoes"
+@page "/settings"
 @inject ICalendarApi Api
 
-<PageTitle>Definições · HolidayApp</PageTitle>
+<PageTitle>Profile and settings · HolidayApp</PageTitle>
 
 <div class="settings-page">
-    <h1>Definições</h1>
-    <p class="muted">Estas opções alteram os feriados mostrados e o saldo de férias.</p>
+    <h1>Profile and settings</h1>
+
+    @* Profile: only shown with accounts *@
+    <AccountSection />
+
+    <h2 class="settings-title">Settings</h2>
+    <p class="muted">These options change the holidays shown and the vacation balance.</p>
 
     @if (_model is null)
     {
@@ -15,45 +20,45 @@
         }
         else
         {
-            <p class="muted">A carregar…</p>
+            <p class="muted">Loading…</p>
         }
     }
     else
     {
         <form class="card settings-form" @onsubmit="SaveAsync">
             <label class="field">
-                <span>Dias úteis de férias por ano</span>
+                <span>Working days of vacation per year</span>
                 <input class="input narrow" type="number" min="0" max="@SettingsValidator.MaxAnnualVacationDays"
                        @bind="_model.AnnualVacationDays" />
-                <small class="muted">Em Portugal, o mínimo legal são 22 dias úteis.</small>
+                <small class="muted">In Portugal, the legal minimum is 22 working days.</small>
             </label>
 
             <label class="check">
                 <input type="checkbox" @bind="_model.IncludeCarnival" />
-                <span>Tenho dispensa no Carnaval (conta como dia não útil)</span>
+                <span>I get Carnival off (counts as a non-working day)</span>
             </label>
 
             <fieldset class="fieldset">
-                <legend>Feriado municipal</legend>
+                <legend>Municipal holiday</legend>
                 <label class="field">
-                    <span>Nome</span>
-                    <input class="input" placeholder="ex.: Santo António" maxlength="@SettingsValidator.MunicipalNameMaxLength"
+                    <span>Name</span>
+                    <input class="input" placeholder="e.g. Saint Anthony" maxlength="@SettingsValidator.MunicipalNameMaxLength"
                            @bind="_model.MunicipalHolidayName" />
                 </label>
                 <div class="field-row">
                     <label class="field">
-                        <span>Mês</span>
+                        <span>Month</span>
                         <select class="input" @bind="_model.MunicipalHolidayMonth">
-                            <option value="">Nenhum</option>
+                            <option value="">None</option>
                             @for (var i = 1; i <= 12; i++)
                             {
                                 var month = i;
-                                <option value="@month">@Pt.Months[month - 1]</option>
+                                <option value="@month">@Display.Months[month - 1]</option>
                             }
                         </select>
                     </label>
                     <label class="field">
-                        <span>Dia</span>
+                        <span>Day</span>
                         <input class="input" type="number" min="1" max="31" @bind="_model.MunicipalHolidayDay" />
                     </label>
                 </div>
@@ -70,10 +75,10 @@
             }
 
             <div class="form-actions">
-                <button type="submit" class="btn primary" disabled="@_saving">@(_saving ? "A guardar…" : "Guardar")</button>
+                <button type="submit" class="btn primary" disabled="@_saving">@(_saving ? "Saving…" : "Save")</button>
                 @if (_saved)
                 {
-                    <span class="saved" role="status">Guardado ✓</span>
+                    <span class="saved" role="status">Saved ✓</span>
                 }
             </div>
         </form>
@@ -95,7 +100,7 @@
         }
         catch (Exception ex)
         {
-            _loadError = $"Não foi possível carregar as definições. {ex.Message}";
+            _loadError = $"Could not load the settings. {ex.Message}";
         }
     }
 

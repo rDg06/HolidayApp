@@ -4,8 +4,8 @@ using HolidayApp.Domain.Abstractions;
 namespace HolidayApp.Web.Identity;
 
 /// <summary>
-/// Lê o utilizador das claims de autenticação. Enquanto não houver login,
-/// todos os pedidos pertencem ao utilizador "local".
+/// Reads the user from the authentication claims. Without a sign-in,
+/// every request belongs to the "local" user.
 /// </summary>
 public sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 {

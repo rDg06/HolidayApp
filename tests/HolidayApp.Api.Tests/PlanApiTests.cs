@@ -21,13 +21,13 @@ public sealed class PlanApiTests : IAsyncLifetime
     private async Task<CalendarEventDto> CreateVacationAsync(string start = "2026-08-03", string end = "2026-08-14")
     {
         var response = await _client.PostAsJsonAsync("api/events",
-            new SaveCalendarEventRequest("Algarve", DateOnly.Parse(start), DateOnly.Parse(end), EventType.Ferias, null));
+            new SaveCalendarEventRequest("Algarve", DateOnly.Parse(start), DateOnly.Parse(end), EventType.Vacation, null));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<CalendarEventDto>())!;
     }
 
     [Fact]
-    public async Task Guarda_e_devolve_o_planeamento_limpo()
+    public async Task Saves_and_returns_the_cleaned_plan()
     {
         var ev = await CreateVacationAsync();
         var plan = new VacationPlanDto
@@ -36,10 +36,10 @@ public sealed class PlanApiTests : IAsyncLifetime
             Days =
             [
                 new PlanDayDto { Date = new DateOnly(2026, 8, 3), Place = " Faro " },
-                new PlanDayDto { Date = new DateOnly(2026, 8, 4) }, // vazio: não é guardado
+                new PlanDayDto { Date = new DateOnly(2026, 8, 4) }, // empty: not saved
             ],
-            Tasks = [new PlanTaskDto { Text = " Malas " }],
-            RouteMode = RouteMode.Carro,
+            Tasks = [new PlanTaskDto { Text = " Suitcases " }],
+            RouteMode = RouteMode.Car,
         };
 
         var saved = await (await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", plan)).Content.ReadFromJsonAsync<VacationPlanDto>();
@@ -48,14 +48,14 @@ public sealed class PlanApiTests : IAsyncLifetime
         Assert.Equal("Algarve", saved!.Destination);
         Assert.Equal("Algarve", reloaded!.Destination);
         Assert.Equal("Faro", Assert.Single(reloaded.Days).Place);
-        Assert.Equal("Malas", Assert.Single(reloaded.Tasks).Text);
-        Assert.Equal(RouteMode.Carro, reloaded.RouteMode);
+        Assert.Equal("Suitcases", Assert.Single(reloaded.Tasks).Text);
+        Assert.Equal(RouteMode.Car, reloaded.RouteMode);
     }
 
     [Theory]
     [InlineData("""{"bookings":[null]}""")]
     [InlineData("""{"tasks":[null],"places":[null]}""")]
-    public async Task Elementos_vazios_dao_erro_400_e_nao_500(string body)
+    public async Task Empty_items_return_400_not_500(string body)
     {
         var ev = await CreateVacationAsync();
 
@@ -68,16 +68,16 @@ public sealed class PlanApiTests : IAsyncLifetime
     [Theory]
     [InlineData("9999-12-31")]
     [InlineData("0001-01-01")]
-    public async Task Marcacoes_fora_dos_anos_suportados_sao_recusadas(string date)
+    public async Task Entries_outside_the_supported_years_are_rejected(string date)
     {
         var response = await _client.PostAsJsonAsync("api/events",
-            new SaveCalendarEventRequest("x", DateOnly.Parse(date), DateOnly.Parse(date), EventType.Ferias, null));
+            new SaveCalendarEventRequest("x", DateOnly.Parse(date), DateOnly.Parse(date), EventType.Vacation, null));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task Reserva_fora_das_datas_das_ferias_e_recusada()
+    public async Task Booking_outside_the_vacation_dates_is_rejected()
     {
         var ev = await CreateVacationAsync();
         var plan = new VacationPlanDto { Bookings = [new PlanBookingDto { Name = "Hotel", Date = new DateOnly(2026, 9, 1) }] };
@@ -88,28 +88,28 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Gravar_por_cima_de_outra_pessoa_e_recusado()
+    public async Task Overwriting_someone_else_is_rejected()
     {
         var ev = await CreateVacationAsync();
 
-        // Duas pessoas abrem a mesma viagem (ainda sem planeamento: versão 0)
+        // Two people open the same trip (no plan yet: version 0)
         var ana = await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan");
         var rui = await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan");
         Assert.Equal(0, ana!.Version);
 
         ana.Destination = "Algarve";
         var anaSaves = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", ana);
-        rui!.Destination = "Açores";
+        rui!.Destination = "Azores";
         var ruiSaves = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", rui);
 
         Assert.Equal(HttpStatusCode.OK, anaSaves.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, ruiSaves.StatusCode);
-        Assert.Contains("Outra pessoa", await ruiSaves.Content.ReadAsStringAsync());
+        Assert.Contains("Someone else", await ruiSaves.Content.ReadAsStringAsync());
         Assert.Equal("Algarve", (await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan"))!.Destination);
     }
 
     [Fact]
-    public async Task Gravar_com_a_versao_devolvida_continua_a_funcionar()
+    public async Task Saving_with_the_returned_version_keeps_working()
     {
         var ev = await CreateVacationAsync();
         var plan = (await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan"))!;
@@ -120,42 +120,42 @@ public sealed class PlanApiTests : IAsyncLifetime
         var second = await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", first);
 
         Assert.NotEqual(0, first.Version);
-        Assert.True(first.Version < 9_007_199_254_740_991); // cabe num número do JavaScript sem arredondar
+        Assert.True(first.Version < 9_007_199_254_740_991); // fits in a JavaScript number without rounding
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
     }
 
     [Fact]
-    public async Task Resumo_tem_um_ponto_por_alojamento_ou_o_centro_dos_locais()
+    public async Task Summary_has_one_point_per_lodging_or_the_centre_of_the_places()
     {
-        var porCidades = await CreateVacationAsync();
-        await _client.PutAsJsonAsync($"api/events/{porCidades.Id}/plan", new VacationPlanDto
+        var byCity = await CreateVacationAsync();
+        await _client.PutAsJsonAsync($"api/events/{byCity.Id}/plan", new VacationPlanDto
         {
             Places =
             [
-                new PlanPlaceDto { Name = "Hotel Paris", Kind = PlaceKind.Alojamento, Date = new DateOnly(2026, 8, 8), EndDate = new DateOnly(2026, 8, 14), Latitude = 48.86, Longitude = 2.35 },
-                new PlanPlaceDto { Name = "Hotel Roma", Kind = PlaceKind.Alojamento, Date = new DateOnly(2026, 8, 3), EndDate = new DateOnly(2026, 8, 8), Latitude = 41.9, Longitude = 12.49 },
-                new PlanPlaceDto { Name = "Coliseu", Latitude = 41.89, Longitude = 12.49 },
+                new PlanPlaceDto { Name = "Hotel Paris", Kind = PlaceKind.Lodging, Date = new DateOnly(2026, 8, 8), EndDate = new DateOnly(2026, 8, 14), Latitude = 48.86, Longitude = 2.35 },
+                new PlanPlaceDto { Name = "Hotel Roma", Kind = PlaceKind.Lodging, Date = new DateOnly(2026, 8, 3), EndDate = new DateOnly(2026, 8, 8), Latitude = 41.9, Longitude = 12.49 },
+                new PlanPlaceDto { Name = "Colosseum", Latitude = 41.89, Longitude = 12.49 },
             ],
         });
-        var soLocais = await CreateVacationAsync("2026-09-01", "2026-09-03");
-        await _client.PutAsJsonAsync($"api/events/{soLocais.Id}/plan", new VacationPlanDto
+        var placesOnly = await CreateVacationAsync("2026-09-01", "2026-09-03");
+        await _client.PutAsJsonAsync($"api/events/{placesOnly.Id}/plan", new VacationPlanDto
         {
-            Destination = "Lisboa",
+            Destination = "Lisbon",
             Places = [new PlanPlaceDto { Name = "A", Latitude = 38.70, Longitude = -9.10 }, new PlanPlaceDto { Name = "B", Latitude = 38.72, Longitude = -9.14 }],
         });
-        var semNada = await CreateVacationAsync("2026-10-01", "2026-10-02");
+        var nothing = await CreateVacationAsync("2026-10-01", "2026-10-02");
 
         var summaries = (await _client.GetFromJsonAsync<List<VacationSummaryDto>>("api/vacations"))!.ToDictionary(v => v.Id);
 
-        // Por ordem da estadia: Roma e depois Paris
-        Assert.Equal(["Hotel Roma", "Hotel Paris"], summaries[porCidades.Id].Points!.Select(p => p.Name));
-        var centro = Assert.Single(summaries[soLocais.Id].Points!);
-        Assert.Equal(("Lisboa", 38.71, -9.12), (centro.Name, Math.Round(centro.Latitude, 2), Math.Round(centro.Longitude, 2)));
-        Assert.Empty(summaries[semNada.Id].Points!);
+        // In order of the stay: Rome, then Paris
+        Assert.Equal(["Hotel Roma", "Hotel Paris"], summaries[byCity.Id].Points!.Select(p => p.Name));
+        var centre = Assert.Single(summaries[placesOnly.Id].Points!);
+        Assert.Equal(("Lisbon", 38.71, -9.12), (centre.Name, Math.Round(centre.Latitude, 2), Math.Round(centre.Longitude, 2)));
+        Assert.Empty(summaries[nothing.Id].Points!);
     }
 
     [Fact]
-    public async Task Planeamento_de_marcacao_inexistente_da_404()
+    public async Task Plan_of_a_missing_entry_returns_404()
     {
         var response = await _client.PutAsJsonAsync($"api/events/{Guid.NewGuid()}/plan", new VacationPlanDto());
 
@@ -163,19 +163,19 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Duas_gravacoes_em_simultaneo_nao_falham()
+    public async Task Simultaneous_saves_do_not_fail()
     {
         var ev = await CreateVacationAsync();
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 5).Select(i =>
-            _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto { Destination = $"Destino {i}" })));
+            _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto { Destination = $"Destination {i}" })));
 
         Assert.All(responses, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
         Assert.Equal(1, await _factory.WithDbAsync(db => db.VacationPlans.IgnoreQueryFilters().CountAsync()));
     }
 
     [Fact]
-    public async Task Apagar_a_marcacao_apaga_o_planeamento()
+    public async Task Deleting_the_entry_deletes_the_plan()
     {
         var ev = await CreateVacationAsync();
         await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto { Destination = "Algarve" });
@@ -186,15 +186,15 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Resumo_das_ferias_conta_dias_uteis_e_gastos()
+    public async Task Vacation_summary_counts_working_days_and_spending()
     {
-        // 3 a 14 de agosto de 2026: 10 dias de semana, nenhum feriado
+        // 3 to 14 August 2026: 10 weekdays, no holidays
         var ev = await CreateVacationAsync();
         await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto
         {
-            Bookings = [new PlanBookingDto { Type = BookingType.Alojamento, Name = "Hotel", Cost = 500 }],
-            Expenses = [new PlanExpenseDto { Category = ExpenseCategory.Alimentacao, Planned = 200, Actual = 250 }],
-            Tasks = [new PlanTaskDto { Text = "Malas", Done = true }, new PlanTaskDto { Text = "Bilhetes" }],
+            Bookings = [new PlanBookingDto { Type = BookingType.Lodging, Name = "Hotel", Cost = 500 }],
+            Expenses = [new PlanExpenseDto { Category = ExpenseCategory.Food, Planned = 200, Actual = 250 }],
+            Tasks = [new PlanTaskDto { Text = "Suitcases", Done = true }, new PlanTaskDto { Text = "Tickets" }],
         });
 
         var summary = Assert.Single((await _client.GetFromJsonAsync<List<VacationSummaryDto>>("api/vacations"))!);
@@ -206,7 +206,7 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Alojamentos_guardam_a_estadia_e_nao_contam_como_locais_a_visitar()
+    public async Task Lodgings_keep_the_stay_and_do_not_count_as_places_to_visit()
     {
         var ev = await CreateVacationAsync();
         await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", new VacationPlanDto
@@ -214,26 +214,26 @@ public sealed class PlanApiTests : IAsyncLifetime
             Places =
             [
                 new PlanPlaceDto { Name = "Hotel Faro", IsLodging = true, Date = new DateOnly(2026, 8, 3), EndDate = new DateOnly(2026, 8, 8), Visited = true },
-                new PlanPlaceDto { Name = "Casa Lagos", IsLodging = true, Date = new DateOnly(2026, 8, 8) }, // sem fim: um só dia
-                new PlanPlaceDto { Name = "Praia", Date = new DateOnly(2026, 8, 4), EndDate = new DateOnly(2026, 8, 6), Visited = true },
-                new PlanPlaceDto { Name = "Farol" },
+                new PlanPlaceDto { Name = "Lagos house", IsLodging = true, Date = new DateOnly(2026, 8, 8) }, // no end: a single day
+                new PlanPlaceDto { Name = "Beach", Date = new DateOnly(2026, 8, 4), EndDate = new DateOnly(2026, 8, 6), Visited = true },
+                new PlanPlaceDto { Name = "Lighthouse" },
             ],
         });
 
         var plan = await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan");
         var summary = Assert.Single((await _client.GetFromJsonAsync<List<VacationSummaryDto>>("api/vacations"))!);
 
-        var (faro, lagos, praia) = (plan!.Places[0], plan.Places[1], plan.Places[2]);
+        var (faro, lagos, beach) = (plan!.Places[0], plan.Places[1], plan.Places[2]);
         Assert.Equal((new DateOnly(2026, 8, 3), new DateOnly(2026, 8, 8)), (faro.Date, faro.EndDate));
         Assert.False(faro.Visited);
         Assert.Equal(new DateOnly(2026, 8, 8), lagos.EndDate);
-        Assert.Null(praia.EndDate); // só o alojamento tem fim
-        Assert.True(faro.StaysOn(new DateOnly(2026, 8, 8)) && lagos.StaysOn(new DateOnly(2026, 8, 8))); // dia da mudança
+        Assert.Null(beach.EndDate); // only lodging has an end
+        Assert.True(faro.StaysOn(new DateOnly(2026, 8, 8)) && lagos.StaysOn(new DateOnly(2026, 8, 8))); // moving day
         Assert.Equal((2, 1), (summary.Places, summary.PlacesVisited));
     }
 
     [Fact]
-    public async Task Alojamento_com_saida_antes_da_entrada_ou_fora_das_ferias_e_recusado()
+    public async Task Lodging_with_check_out_before_check_in_or_outside_the_vacation_is_rejected()
     {
         var ev = await CreateVacationAsync();
 
@@ -251,9 +251,9 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Feriado_nao_conta_como_dia_util()
+    public async Task Holiday_does_not_count_as_a_working_day()
     {
-        // 11 a 15 de agosto de 2025: segunda a sexta, mas 15/08 (Assunção) é feriado → 4 dias úteis
+        // 11 to 15 August 2025: Monday to Friday, but 15/08 (Assumption) is a holiday → 4 working days
         await CreateVacationAsync("2025-08-11", "2025-08-15");
 
         var summary = Assert.Single((await _client.GetFromJsonAsync<List<VacationSummaryDto>>("api/vacations"))!);
@@ -262,7 +262,8 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Definicoes_gravadas_em_simultaneo_nao_falham()
+    public async Task Simultaneous_settings_saves_do_not_fail()
+
     {
         var settings = new UserSettingsDto { AnnualVacationDays = 25 };
 

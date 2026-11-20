@@ -2,13 +2,13 @@ using System.Net;
 
 namespace HolidayApp.Api.Tests;
 
-/// <summary>Fora de desenvolvimento, a API só aceita quem fez login no App Service e está na lista.</summary>
+/// <summary>Outside development, the API only accepts people signed in through App Service and on the list.</summary>
 public sealed class AuthTests
 {
     private static AppFactory Published(bool appServiceAuth) => new("Production", new()
     {
         ["WEBSITE_AUTH_ENABLED"] = appServiceAuth ? "True" : null,
-        ["Auth:AllowedEmails:0"] = "eu@exemplo.pt",
+        ["Auth:AllowedEmails:0"] = "me@example.com",
     });
 
     private static HttpRequestMessage Request(string? email)
@@ -24,7 +24,7 @@ public sealed class AuthTests
     }
 
     [Fact]
-    public async Task Em_desenvolvimento_a_api_esta_aberta()
+    public async Task In_development_the_api_is_open()
     {
         await using var factory = new AppFactory();
 
@@ -34,7 +34,7 @@ public sealed class AuthTests
     }
 
     [Fact]
-    public async Task Publicada_sem_login_da_401()
+    public async Task Published_without_sign_in_returns_401()
     {
         await using var factory = Published(appServiceAuth: true);
 
@@ -44,32 +44,32 @@ public sealed class AuthTests
     }
 
     [Fact]
-    public async Task Publicada_com_email_autorizado_entra()
+    public async Task Published_with_an_allowed_email_gets_in()
     {
         await using var factory = Published(appServiceAuth: true);
 
-        var response = await factory.CreateClient().SendAsync(Request("EU@exemplo.pt"));
+        var response = await factory.CreateClient().SendAsync(Request("ME@example.com"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
-    public async Task Publicada_com_outro_email_da_403()
+    public async Task Published_with_another_email_returns_403()
     {
         await using var factory = Published(appServiceAuth: true);
 
-        var response = await factory.CreateClient().SendAsync(Request("outra.pessoa@exemplo.pt"));
+        var response = await factory.CreateClient().SendAsync(Request("someone.else@example.com"));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
-    public async Task Cabecalhos_falsos_sao_ignorados_sem_o_App_Service()
+    public async Task Fake_headers_are_ignored_without_App_Service()
     {
-        // Sem WEBSITE_AUTH_ENABLED, ninguém garante que os cabeçalhos vêm do App Service
+        // Without WEBSITE_AUTH_ENABLED, nothing guarantees the headers come from App Service
         await using var factory = Published(appServiceAuth: false);
 
-        var response = await factory.CreateClient().SendAsync(Request("eu@exemplo.pt"));
+        var response = await factory.CreateClient().SendAsync(Request("me@example.com"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

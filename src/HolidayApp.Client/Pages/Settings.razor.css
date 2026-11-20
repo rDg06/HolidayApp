@@ -2,3 +2,4 @@
 .settings-page h1 { font-size: 1.8rem; }
 .settings-form { display: grid; gap: 18px; padding: 20px; }
 .form-actions { display: flex; align-items: center; gap: 12px; }
+.settings-title { margin-top: 12px; font-size: 1.15rem; }

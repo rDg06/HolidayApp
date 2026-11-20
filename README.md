@@ -1,221 +1,248 @@
-# HolidayApp — planeador anual de férias
+# HolidayApp — yearly vacation planner
 
-Calendário com os 12 meses numa só página para marcar férias, ver os feriados
-nacionais portugueses e controlar o saldo de dias úteis.
+A calendar with all 12 months on one page to book vacation days, see the Portuguese
+public holidays, keep track of the working-day balance and plan each trip.
 
-## Requisitos
+## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- Visual Studio 2022 (17.14+) / Visual Studio 2026, Rider ou VS Code com C# Dev Kit
+- Visual Studio 2022 (17.14+) / Visual Studio 2026, Rider or VS Code with C# Dev Kit
 
-## Arrancar
+## Run
 
 ```bash
 dotnet run --project src/HolidayApp.Web
 ```
 
-Abre http://localhost:5180. A base de dados SQLite (`holidayapp.db`) é criada
-automaticamente na primeira execução.
+Open http://localhost:5180. The SQLite database (`holidayapp.db`) is created
+automatically on the first run.
 
-No Visual Studio: abre `HolidayApp.slnx`, define **HolidayApp.Web** como projeto
-de arranque e carrega em F5.
+In Visual Studio: open `HolidayApp.slnx`, set **HolidayApp.Web** as the startup
+project and press F5.
 
-Testes (regras de calendário e validação, interface com bUnit e integração à API
-com uma base de dados SQLite temporária):
+Tests (calendar rules and validation, UI with bUnit and API integration tests
+with a temporary SQLite database):
 
 ```bash
 dotnet test
 ```
 
-## Servidor de casa (Windows)
+## Home server (Windows)
 
-Num PC Windows sempre ligado (ex.: o mesmo do Home Assistant). Precisa do Git e do
-.NET 10 SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`).
+On a Windows PC that is always on (e.g. the same one as Home Assistant). It needs Git
+and the .NET 10 SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`).
 
-**Instalar (uma vez):**
+**Install (once):**
 
 ```bash
 cd $HOME\Documents
 git clone https://github.com/rDg06/HolidayApp.git
 ```
 
-Depois, e para **cada atualização**, corre `scripts\atualizar.bat` (duplo clique):
-vai buscar a versão nova, prepara a app em `C:\HolidayApp\app`, copia o
-`scripts\iniciar.bat` para `C:\HolidayApp\iniciar.bat` e arranca-a na porta 5180.
-Os dados ficam em `C:\HolidayApp\dados` e não são tocados.
+Then, for **every update**, run `scripts\update.bat` (double-click): it gets the
+new version, publishes the app to `C:\HolidayApp\app`, copies `scripts\start.bat`
+to `C:\HolidayApp\start.bat` and starts it on port 5180. The data lives in
+`C:\HolidayApp\dados` and is not touched.
 
-Uma vez, num PowerShell de administrador, abrir a porta na rede privada:
+> Coming from the version with Portuguese script names (`atualizar.bat` / `iniciar.bat`):
+> run `git pull` in the repository folder once, then `scripts\update.bat`. A shortcut
+> to `C:\HolidayApp\iniciar.bat` keeps working (it now starts `start.bat`).
+
+Once, in an administrator PowerShell, open the port on the private network:
 
 ```bash
 New-NetFirewallRule -DisplayName "HolidayApp" -Direction Inbound -Protocol TCP -LocalPort 5180 -Action Allow -Profile Private
 ```
 
-Na rede de casa abre-se em `http://IP-DO-SERVIDOR:5180`.
+On the home network it opens at `http://SERVER-IP:5180`.
 
-**Palavra-passe do grupo.** Sem o ficheiro `C:\HolidayApp\dados\senha.txt` a app
-abre sem login (só serve para a rede de casa). Com ele, toda a gente tem de escrever
-essa palavra-passe (sessão de 30 dias em cada aparelho) e todos veem os mesmos dados.
-Criar ou mudar (sem acentos; reiniciar a app depois):
+**Accounts.** Without the file `C:\HolidayApp\dados\invite-code.txt` the app opens with
+no sign-in (home network only). With it, each person has **their own account** (email
+and password, 30-day session on each device) and only sees their own data; the file's
+content is the **invite code** needed to create an account. The first account created
+gets the data that already existed. On "Profile and settings": change name and
+password, sign out, download my data and delete the account. The older `senha.txt`
+file still works. Create or change the code (no accents; restart the app afterwards):
 
 ```bash
-Set-Content C:\HolidayApp\dados\senha.txt -Value "a-palavra-passe" -Encoding ascii -NoNewline
+Set-Content C:\HolidayApp\dados\invite-code.txt -Value "the-invite-code" -Encoding ascii -NoNewline
 ```
 
-**Abrir a amigos fora de casa (Tailscale Funnel).** Só depois de criar a palavra-passe:
+**Share with friends outside home (Tailscale Funnel).** Only after creating the invite code:
 
 ```bash
 tailscale funnel --bg 5180
 ```
 
-Mostra o endereço público (`https://NOME.xxxx.ts.net`) para enviar com a palavra-passe.
-Para fechar: `tailscale funnel --bg 5180 off`. Se duas pessoas editarem a mesma viagem,
-quem guardar depois é avisado para recarregar, em vez de apagar o trabalho do outro.
+It shows the public address (`https://NAME.xxxx.ts.net`) to send with the invite code.
+To close it: `tailscale funnel --bg 5180 off`. If two people edit the same trip,
+whoever saves second is told to reload, instead of wiping the other person's work.
 
-## Publicar (Azure App Service)
+## Publish (Azure App Service)
 
-Fora de desenvolvimento a API **só aceita utilizadores autorizados**. O login é
-feito pela *Authentication* do App Service (Easy Auth), que fica à frente da app:
+Outside development the API **only accepts allowed users**. Sign-in is done by
+App Service *Authentication* (Easy Auth), which sits in front of the app:
 
-1. Publica a app (Visual Studio → botão direito em **HolidayApp.Web** → **Publish**
+1. Publish the app (Visual Studio → right-click **HolidayApp.Web** → **Publish**
    → **Azure App Service (Linux)**).
-2. No portal do Azure, em **Authentication**, adiciona um fornecedor (Microsoft ou
-   Google) e escolhe *Require authentication*.
-3. Em **Configuration → Application settings** acrescenta os emails autorizados:
-   `Auth__AllowedEmails__0` = `o.teu@email.com` (e `__1`, `__2`… para mais pessoas).
-4. Aponta a base de dados para a pasta persistente:
+2. In the Azure portal, under **Authentication**, add a provider (Microsoft or
+   Google) and choose *Require authentication*.
+3. Under **Configuration → Application settings** add the allowed emails:
+   `Auth__AllowedEmails__0` = `your@email.com` (and `__1`, `__2`… for more people).
+4. Point the database to the persistent folder:
    `ConnectionStrings__Default` = `Data Source=/home/data/holidayapp.db`.
 
-Sem a *Authentication* ligada a API recusa todos os pedidos (401), e com outra
-conta que não esteja na lista responde 403. Cada pessoa autorizada vê só os seus
-dados. O Leaflet e a fonte Inter são servidos pela própria app (`wwwroot/lib`),
-sem pedidos a CDNs nem ao Google Fonts.
+Without *Authentication* turned on the API rejects every request (401), and with an
+account that is not on the list it answers 403. Each allowed person only sees their
+own data. Leaflet and the Inter font are served by the app itself (`wwwroot/lib`),
+with no requests to CDNs or Google Fonts.
 
-## O que já faz
+## What it does
 
-- Vista anual com os 12 meses (semana a começar à segunda)
-- Clicar num dia ou **arrastar** sobre vários para criar uma marcação
-- Clicar numa marcação para editar ou apagar
-- Tipos: Férias, Pessoal, Outro (só "Férias" desconta ao saldo)
-- Feriados nacionais calculados automaticamente para qualquer ano
-  (incluindo Sexta-feira Santa, Páscoa e Corpo de Deus)
-- Carnaval e feriado municipal opcionais (página **Definições**)
-- Contagem de dias úteis: fins de semana e feriados não contam
-- Saldo anual (22 dias por omissão) e sugestões de **pontes** com marcação num clique
-- **Organizar férias**: em cada marcação de férias, o botão "Organizar férias"
-  abre uma página com separadores por baixo das datas: Locais (destino e mapa),
-  Reservas (códigos, ligações e valor), Tarefas, Orçamento (previsto vs. gasto,
-  incluindo o valor das reservas, e o gráfico "Onde gastei mais") e Dia a dia
-- **Página Férias** com todas as viagens: dias, reservas, locais, tarefas e orçamento
-- **Mapa (Onde já estive)**, separador próprio: todas as viagens (um ponto por alojamento, ou o centro
-  dos locais, ou o destino procurado pelo nome), feitas e próximas; viagens feitas,
-  dias em viagem e países. Os países vêm do Nominatim (OpenStreetMap) e ficam
-  guardados no navegador
-- **Mapa dos locais** ([Leaflet](https://leafletjs.com) e mapas do
-  [OpenStreetMap](https://www.openstreetmap.org), sem chave de API):
-  - marcar locais clicando no mapa ou procurando pelo nome, arrastar marcadores
-  - dia da visita (aparece no plano dia a dia), "visitado", notas e ligação
-  - **tipos** com ícone próprio: visita, alojamento, aeroporto, metro, autocarro,
-    comboio; aeroportos e estações sem dia aparecem em todos os dias
-  - **alojamentos** com primeiro e último dia, para viagens por várias cidades
-    ou países; as reservas de alojamento têm "Pôr no mapa"
-  - **filtro por dia** no mapa e na lista; durante a viagem abre no dia de hoje
-  - **percurso por ruas** do dia (alojamento → locais pela ordem da lista →
-    novo alojamento) com distância e tempo de cada troço, a pé, de carro ou de
-    bicicleta; arrasta os locais para mudar a ordem
-  - serviços usados: a pesquisa e o centro do destino usam o Nominatim e os
-    percursos o serviço de rotas ([FOSSGIS](https://routing.openstreetmap.de)),
-    ambos do OpenStreetMap, por isso esses textos e as coordenadas dos locais do
-    dia são enviados a esses serviços; sem ligação fica a linha reta
-- **Partilhar em PDF**: no planeador, "Partilhar (PDF)" abre um resumo da viagem
-  (mapa, dia a dia, outros locais, reservas) pronto a guardar como PDF pela
-  impressão do navegador. Valores, códigos/ligações das reservas e notas só
-  entram se escolhidos
-- Modo claro/escuro automático e layout adaptado a telemóvel
-- **Instalável e sem internet** (PWA): no telemóvel, "Adicionar ao ecrã
-  principal". Sem ligação, abre a última versão vista neste aparelho (só
-  leitura: gravar precisa de internet; os mapas do OpenStreetMap não ficam
-  guardados)
+- Year view with all 12 months (weeks start on Monday)
+- Click a day or **drag** over several to create an entry
+- Click an entry to edit or delete it
+- Types: Vacation, Personal, Other (only "Vacation" counts against the balance)
+- National holidays calculated automatically for any year
+  (including Good Friday, Easter and Corpus Christi)
+- Optional Carnival and municipal holiday (**Profile and settings** page)
+- Working-day count: weekends and holidays do not count
+- Yearly balance (22 days by default) and **bridge** suggestions booked with one click
+- **Plan vacation**: on each vacation entry, the "Plan vacation" button opens a page
+  with tabs below the dates: Places (destination and map), Bookings (references,
+  links and cost), Tasks, Budget (planned vs. spent, including booking costs, and
+  the "Where I spent most" chart) and Day by day
+- **Vacations page** with every trip: days, bookings, places, tasks and budget
+- **Map (Where I've been)**, the home page: every trip (one point per lodging, or the
+  centre of the places, or the destination looked up by name), past and upcoming;
+  trips taken, days travelling and countries. Countries come from Nominatim
+  (OpenStreetMap) and are stored in the browser. In "Other places I've been" you add
+  places and the year by hand (trips outside the calendar), which go on the map and
+  into the countries
+- **Places map** ([Leaflet](https://leafletjs.com) and
+  [OpenStreetMap](https://www.openstreetmap.org) tiles, no API key):
+  - pin places by clicking the map or searching by name, drag markers
+  - day of the visit (shows in the day-by-day plan), "visited", notes and link
+  - **kinds** with their own icon: visit, lodging, airport, metro, bus, train;
+    airports and stations without a day show on every day
+  - **lodgings** with a first and last day, for trips through several cities or
+    countries; lodging bookings have "Put on map"
+  - **day filter** on the map and in the list; during the trip it opens on today
+  - **street route** of the day (lodging → places in list order → new lodging)
+    with the distance and time of each leg, on foot, by car or by bike; drag the
+    places to change the order
+  - services used: search and the destination centre use Nominatim and routes use
+    the routing service ([FOSSGIS](https://routing.openstreetmap.de)), both from
+    OpenStreetMap, so those texts and the coordinates of the day's places are sent
+    to them; without a connection the straight line stays
+- **Share as PDF**: in the planner, "Share (PDF)" opens a trip summary (map, day by
+  day, other places, bookings) ready to save as PDF from the browser's print dialog.
+  Amounts, booking references/links and notes are only included if chosen
+- **Accounts** (with an invite code): email and password, each person only sees
+  their own data; profile with name and password, data download and account deletion
+- Automatic light/dark mode and a layout adapted to phones
+- **Installable and offline** (PWA): on a phone, "Add to home screen". Offline, it
+  opens the last version seen on that device (read-only: saving needs internet;
+  OpenStreetMap tiles are not stored)
 
-## Arquitetura
+## Architecture
 
 ```
 src/
-  HolidayApp.Shared/          DTOs, enums, validação e cálculo de dias úteis
-                             (partilhado entre servidor e navegador)
-  HolidayApp.Domain/          Entidades e regras de negócio: feriados PT,
-                             Páscoa, sugestão de pontes. Sem dependências externas.
-  HolidayApp.Infrastructure/  EF Core (SQLite), serviços da aplicação
-  HolidayApp.Web/             Servidor ASP.NET Core: API REST em /api + aloja o Blazor
-  HolidayApp.Client/          Interface Blazor WebAssembly (corre no navegador)
+  HolidayApp.Shared/          DTOs, enums, validation and working-day calculation
+                             (shared between server and browser)
+  HolidayApp.Domain/          Entities and business rules: Portuguese holidays,
+                             Easter, bridge suggestions. No external dependencies.
+  HolidayApp.Infrastructure/  EF Core (SQLite), application services
+  HolidayApp.Web/             ASP.NET Core server: REST API at /api + hosts Blazor
+  HolidayApp.Client/          Blazor WebAssembly UI (runs in the browser)
 tests/
-  HolidayApp.Domain.Tests/    Testes xUnit das regras de calendário e da validação
-  HolidayApp.Api.Tests/       Testes de integração à API (WebApplicationFactory + SQLite)
-  HolidayApp.Client.Tests/    Testes da interface (bUnit): mapa, filtro, alojamentos, reservas
+  HolidayApp.Domain.Tests/    xUnit tests of the calendar rules and validation
+  HolidayApp.Api.Tests/       API integration tests (WebApplicationFactory + SQLite)
+  HolidayApp.Client.Tests/    UI tests (bUnit): map, filter, lodgings, bookings
 ```
 
-Os estilos globais (cores, botões, campos, cartões) estão em
-`HolidayApp.Web/wwwroot/css/app.css`; os de cada página e componente estão ao
-lado do ficheiro, em `.razor.css` (CSS isolado do Blazor).
+Global styles (colours, buttons, fields, cards) are in
+`HolidayApp.Web/wwwroot/css/app.css`; each page's and component's styles sit next
+to the file, in `.razor.css` (Blazor CSS isolation). Display texts (dates, amounts,
+labels) are in `HolidayApp.Client/Formatting/Display.cs`.
 
-A interface fala com o servidor **só pela API**, por isso no futuro podes
-acrescentar uma app móvel (MAUI, React Native…) que usa os mesmos endpoints.
+The UI talks to the server **only through the API**, so later you can add a mobile
+app (MAUI, React Native…) that uses the same endpoints.
+
+### Pages
+
+| Route | Page |
+|---|---|
+| `/` (also `/map`) | Where I've been (map of every trip) |
+| `/vacations` | Every vacation |
+| `/vacations/{id}` | Plan vacation (`?from=vacations` or `?from=map` for the back link) |
+| `/vacations/{id}/share` | Share / PDF summary |
+| `/calendar` | Year calendar |
+| `/settings` | Profile and settings |
+| `/login`, `/register`, `/logout` | Sign-in pages (server pages, with accounts on) |
 
 ### API
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 |---|---|---|
-| GET | `/api/events?year=2026` | Marcações do ano |
-| GET | `/api/events/{id}` | Uma marcação |
-| POST | `/api/events` | Criar marcação |
-| PUT | `/api/events/{id}` | Atualizar marcação |
-| DELETE | `/api/events/{id}` | Apagar marcação (e o seu planeamento) |
-| GET / PUT | `/api/events/{id}/plan` | Planeamento das férias |
-| GET | `/api/vacations` | Todas as férias com o resumo do planeamento |
-| GET | `/api/calendar/{ano}/holidays` | Feriados do ano |
-| GET | `/api/calendar/{ano}/summary` | Saldo de férias e pontes |
-| GET / PUT | `/api/settings` | Definições do utilizador |
+| GET | `/api/events?year=2026` | Entries of the year |
+| GET | `/api/events/{id}` | One entry |
+| POST | `/api/events` | Create an entry |
+| PUT | `/api/events/{id}` | Update an entry |
+| DELETE | `/api/events/{id}` | Delete an entry (and its plan) |
+| GET / PUT | `/api/events/{id}/plan` | Vacation plan |
+| GET | `/api/vacations` | Every vacation with its plan summary |
+| GET | `/api/calendar/{year}/holidays` | Holidays of the year |
+| GET | `/api/calendar/{year}/summary` | Vacation balance and bridges |
+| GET / PUT | `/api/settings` | User settings |
+| GET / PUT / DELETE | `/api/me` | My account (with accounts on) / rename / delete the account and data |
+| POST | `/api/me/password` | Change the password |
+| GET | `/api/me/export` | Download my data (JSON) |
+| GET / POST | `/api/visited` | Places I've been (added by hand) |
+| DELETE | `/api/visited/{id}` | Delete one of those places |
 
-Em desenvolvimento, a especificação OpenAPI está em `/openapi/v1.json`.
+In development, the OpenAPI document is at `/openapi/v1.json`.
 
-## Preparado para escalar
+## Ready to scale
 
-O projeto já tem as peças no sítio para crescer sem reescrever:
+The project already has the pieces in place to grow without a rewrite:
 
-**1. Vários utilizadores.** Todas as tabelas têm `UserId` e o `AppDbContext`
-aplica um filtro global para cada utilizador ver só os seus dados. Em
-desenvolvimento o utilizador é sempre `local`; publicada, vem do login do App
-Service (`Identity/AppServiceAuthentication.cs`), e a lista `Auth:AllowedEmails`
-diz quem pode entrar. Para outro tipo de login (ASP.NET Core Identity, Entra ID
-direto…) basta trocar o esquema de autenticação: o `HttpCurrentUser` lê o
-`NameIdentifier` das claims e não precisa de mudar.
+**1. Several users.** Every table has a `UserId` and `AppDbContext` applies a global
+filter so each user only sees their own data. The user comes from the account
+(`Identity/Accounts.cs`), from the App Service sign-in
+(`Identity/AppServiceAuthentication.cs`, with the `Auth:AllowedEmails` list) or, with
+neither, is `local`. For another kind of sign-in (Entra ID directly…) just swap the
+authentication scheme: `HttpCurrentUser` reads the `NameIdentifier` claim and does
+not need to change.
 
-**2. Outra base de dados.** O fornecedor vem do `appsettings.json`
-(`Database:Provider`). Para PostgreSQL: instala
-`Npgsql.EntityFrameworkCore.PostgreSQL` no projeto Infrastructure, descomenta a
-linha `UseNpgsql` em `DependencyInjection.cs` e muda a connection string.
-As migrações atuais foram geradas para SQLite: ao mudar de fornecedor, gera-as
-de novo.
+**2. Another database.** The provider comes from `appsettings.json`
+(`Database:Provider`). For PostgreSQL: install
+`Npgsql.EntityFrameworkCore.PostgreSQL` in the Infrastructure project, uncomment the
+`UseNpgsql` line in `DependencyInjection.cs` and change the connection string.
+The current migrations were generated for SQLite: when switching provider, generate
+them again.
 
-**3. Migrações.** A base de dados é criada e atualizada com migrações do EF Core
-(`Infrastructure/Persistence/Migrations`), aplicadas automaticamente ao arrancar.
-Bases de dados antigas, criadas com `EnsureCreated`, são reconhecidas e mantêm
-os dados. Quando mudares o modelo (entidades ou configurações), cria uma nova
-migração:
+**3. Migrations.** The database is created and updated with EF Core migrations
+(`Infrastructure/Persistence/Migrations`), applied automatically on startup.
+Older databases, created with `EnsureCreated`, are recognised and keep their data.
+The four oldest migrations keep their original IDs in the `[Migration("…")]` attribute
+(e.g. `20261028224624_Inicial`), because those IDs are stored in every existing
+database; only their file and class names are in English. When you change the model (entities or
+configuration), add a new migration:
 
 ```bash
 dotnet tool restore
-dotnet dotnet-ef migrations add NomeDaAlteracao --project src/HolidayApp.Infrastructure --startup-project src/HolidayApp.Web --output-dir Persistence/Migrations
+dotnet dotnet-ef migrations add NameOfTheChange --project src/HolidayApp.Infrastructure --startup-project src/HolidayApp.Web --output-dir Persistence/Migrations
 ```
 
-**4. Partilhar com equipa/família.** Próximo passo natural: entidade `Team`
-com membros e uma vista que mostra as férias de todos sobrepostas no mesmo
-calendário.
+**4. Sharing with a team/family.** Natural next step: share a trip between
+accounts, and a view that shows everyone's vacations on the same calendar.
 
-## Ideias para a próxima iteração
+## Ideas for the next iteration
 
-- "O que há perto" do alojamento (restaurantes, supermercados, farmácias…)
-- Informação automática dos locais (resumo e foto da Wikipédia, horários)
-- Mapa de todas as viagens na página Férias
-- Login e partilha de calendário
-- Saldo transitado do ano anterior
-- Feriados de outros países (nova implementação de `IHolidayProvider`)
+- "What's nearby" the lodging (restaurants, supermarkets, pharmacies…)
+- Automatic place info (Wikipedia summary and photo, opening hours)
+- Share trips between accounts
+- Balance carried over from the previous year
+- Holidays of other countries (a new `IHolidayProvider` implementation)

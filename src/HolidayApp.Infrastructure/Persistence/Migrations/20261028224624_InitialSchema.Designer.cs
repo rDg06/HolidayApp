@@ -12,7 +12,7 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20261028224624_Inicial")]
-    partial class Inicial
+    partial class InitialSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

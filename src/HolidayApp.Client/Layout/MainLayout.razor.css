@@ -1,4 +1,4 @@
-/* Cabeçalho e área principal. NavLink é um componente: os seus <a> precisam de ::deep. */
+/* Header and main area. NavLink is a component: its <a> elements need ::deep. */
 .app-header {
     position: sticky;
     top: 0;
@@ -25,7 +25,7 @@
 .nav-main { margin-left: 12px; }
 .nav-side { margin-left: auto; }
 
-/* Definições: só a engrenagem */
+/* Profile and settings: only the icon */
 .nav ::deep a.nav-icon { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; }
 .nav ::deep a.nav-icon svg { width: 20px; height: 20px; }
 
@@ -50,6 +50,6 @@
     .page { padding: 16px; }
     .app-header { gap: 8px; padding: 10px 16px; }
     .nav-main { margin-left: 0; }
-    .brand span { display: none; } /* no telemóvel fica só o ícone, para caberem os separadores */
+    .brand span { display: none; } /* on a phone only the icon stays, so the tabs fit */
     .nav ::deep a { padding: 6px 10px; }
 }

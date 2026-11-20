@@ -1,9 +1,9 @@
 /* =========================================================
-   HolidayApp — estilos globais
-   Cores definidas como variáveis: muda aqui para mudar tudo.
+   HolidayApp — global styles
+   Colours defined as variables: change them here to change everything.
    ========================================================= */
 
-/* Fonte Inter (variável, alfabeto latino) servida pela própria app — sem pedidos ao Google */
+/* Inter font (variable, Latin alphabet) served by the app itself — no requests to Google */
 @font-face {
     font-family: "Inter";
     font-style: normal;
@@ -21,9 +21,9 @@
     --muted: #77736a;
     --focus: #0f766e;
 
-    --c-ferias: #0f9d8a;
-    --c-pessoal: #7c5cff;
-    --c-outro: #d99a00;
+    --c-vacation: #0f9d8a;
+    --c-personal: #7c5cff;
+    --c-other: #d99a00;
     --c-holiday: #e0484d;
     --c-primary: #0f766e;
     --c-primary-text: #ffffff;
@@ -31,7 +31,7 @@
     --c-lodging: #c2410c;
     --c-transport: #2557c4;
 
-    /* Categorias do orçamento (paleta categórica validada para daltonismo, ordem fixa) */
+    /* Budget categories (categorical palette checked for colour blindness, fixed order) */
     --cat-1: #2a78d6;
     --cat-2: #eb6834;
     --cat-3: #1baf7a;
@@ -56,9 +56,9 @@
         --muted: #9a968c;
         --focus: #2dd4bf;
 
-        --c-ferias: #2cc4ad;
-        --c-pessoal: #9d85ff;
-        --c-outro: #f0b429;
+        --c-vacation: #2cc4ad;
+        --c-personal: #9d85ff;
+        --c-other: #f0b429;
         --c-holiday: #ff6b6f;
         --c-primary: #2cc4ad;
         --c-primary-text: #0b1f1c;
@@ -100,13 +100,13 @@ a { color: inherit; }
 
 .muted { color: var(--muted); }
 
-/* Link "← Calendário / ← Férias" no topo das páginas */
+/* "← Calendar / ← Vacations" link at the top of the pages */
 .back-link { width: fit-content; color: var(--muted); font-weight: 500; text-decoration: none; }
 .back-link:hover { color: var(--text); }
 .small { font-size: 0.85rem; }
 
 
-/* ---------- Botões e campos ---------- */
+/* ---------- Buttons and fields ---------- */
 
 .btn {
     display: inline-flex;
@@ -202,10 +202,10 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 
 .card h3 { font-size: 0.95rem; margin-bottom: 10px; }
 
-/* Cores das marcações (calendário, legendas e editor) */
-.ev-ferias { --ev: var(--c-ferias); }
-.ev-pessoal { --ev: var(--c-pessoal); }
-.ev-outro { --ev: var(--c-outro); }
+/* Entry colours (calendar, legends and editor) */
+.ev-vacation { --ev: var(--c-vacation); }
+.ev-personal { --ev: var(--c-personal); }
+.ev-other { --ev: var(--c-other); }
 
 .swatch {
     display: inline-block;
@@ -222,16 +222,16 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 .tag {
     padding: 2px 8px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--c-ferias) 18%, transparent);
-    color: var(--c-ferias);
+    background: color-mix(in srgb, var(--c-vacation) 18%, transparent);
+    color: var(--c-vacation);
     font-size: 0.75rem;
     font-weight: 600;
 }
 
-.saved { color: var(--c-ferias); font-weight: 600; }
+.saved { color: var(--c-vacation); font-weight: 600; }
 .btn { text-decoration: none; white-space: nowrap; }
 
-/* Secções do planeador (usadas pela página e pelos componentes de cada secção) */
+/* Planner sections (used by the page and by each section's components) */
 .plan-section { display: grid; gap: 12px; }
 .plan-wide { grid-column: 1 / -1; }
 
@@ -240,7 +240,7 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 
 .input.amount { text-align: right; font-variant-numeric: tabular-nums; }
 
-/* Campo de valor com o símbolo € à direita */
+/* Amount field with the € sign on the right */
 .money-field { position: relative; display: block; min-width: 0; }
 .money-field .input { padding-right: 28px; -moz-appearance: textfield; appearance: textfield; }
 .money-field .input::-webkit-inner-spin-button,
@@ -256,7 +256,7 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
     pointer-events: none;
 }
 
-/* Número do local: igual na lista, no mapa e no plano dia a dia */
+/* Place number: the same in the list, on the map and in the day-by-day plan */
 .place-number, .map-pin {
     display: grid;
     place-items: center;
@@ -271,27 +271,28 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
     box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
 }
 
-/* O Leaflet força display: block no marcador: o número centra-se num span por dentro */
+/* Leaflet forces display: block on the marker: the number is centred in a span inside */
 .leaflet-marker-icon.map-pin { display: block; box-sizing: border-box; line-height: 24px; text-align: center; }
 .map-pin > span { display: block; width: 100%; line-height: 24px; text-align: center; }
 .place-number { margin-top: 5px; padding: 0; cursor: pointer; }
 .leaflet-container { font-family: var(--font); }
 .map-pin.visited { background: var(--muted); }
 
-/* Alojamento: casa em vez de número */
-/* Alojamento (casa) e transportes (avião, metro, autocarro, comboio): ícone em vez de número */
-.place-number.kind-alojamento, .map-pin.kind-alojamento { background: var(--c-lodging); color: #fff; }
-.place-number.kind-aeroporto, .map-pin.kind-aeroporto,
+/* Lodging: house instead of a number */
+/* Lodging (house) and transport (plane, metro, bus, train): icon instead of a number */
+.place-number.kind-lodging, .map-pin.kind-lodging { background: var(--c-lodging); color: #fff; }
+.place-number.kind-airport, .map-pin.kind-airport,
 .place-number.kind-metro, .map-pin.kind-metro,
-.place-number.kind-autocarro, .map-pin.kind-autocarro,
-.place-number.kind-comboio, .map-pin.kind-comboio { background: var(--c-transport); color: #fff; }
+.place-number.kind-bus, .map-pin.kind-bus,
+.place-number.kind-train, .map-pin.kind-train { background: var(--c-transport); color: #fff; }
 .map-pin.has-icon > span { display: grid; place-items: center; height: 100%; }
 .map-pin.reference { opacity: 0.75; }
 
-/* Mapa "Onde já estive": viagens feitas e próximas */
-.map-pin.trip-past { background: var(--c-ferias); color: #fff; }
-.map-pin.trip-next { background: var(--c-pessoal); color: #fff; }
-/* Linha do percurso do dia (desenhada pelo Leaflet) */
+/* "Where I've been" map: past and upcoming trips */
+.map-pin.trip-past { background: var(--c-vacation); color: #fff; }
+.map-pin.trip-next { background: var(--c-personal); color: #fff; }
+.map-pin.trip-manual { background: #fff; color: #0f766e; border-color: #0f766e; }
+/* Line of the day's route (drawn by Leaflet) */
 .leaflet-overlay-pane .route-line { stroke: var(--c-primary); stroke-opacity: 0.85; fill: none; }
 .leaflet-overlay-pane .route-line.exact { stroke-opacity: 0.9; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -306,7 +307,7 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
     white-space: nowrap;
 }
 
-/* ---------- Sem ligação (modo offline) ---------- */
+/* ---------- No connection (offline mode) ---------- */
 
 #offline-banner {
     position: sticky;
@@ -321,7 +322,7 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
 
 #offline-banner[hidden] { display: none; }
 
-/* ---------- Erro do Blazor ---------- */
+/* ---------- Blazor error ---------- */
 
 #blazor-error-ui {
     display: none;
@@ -342,16 +343,16 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
     .field-row { grid-template-columns: 1fr; }
 }
 
-/* Marca pequena de um local (página de partilha) */
+/* Small place marker (share page) */
 .place-number.pin-small { width: 22px; height: 22px; margin: 0; border-width: 1px; font-size: 0.72rem; box-shadow: none; }
 .place-number.pin-small .place-icon { width: 12px; height: 12px; }
 
-/* ---------- Impressão / PDF ---------- */
+/* ---------- Print / PDF ---------- */
 
 @page { margin: 14mm 12mm; }
 
 @media print {
-    /* Sempre em claro e com as cores das marcas (casa, números…) */
+    /* Always light, with the marker colours (house, numbers…) */
     :root {
         --bg: #ffffff;
         --surface: #ffffff;
@@ -359,7 +360,7 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
         --border: #dedad1;
         --text: #1c1b18;
         --muted: #6b675f;
-        --c-ferias: #0f766e;
+        --c-vacation: #0f766e;
         --c-primary: #0f766e;
         --c-primary-text: #ffffff;
         --c-lodging: #c2410c;

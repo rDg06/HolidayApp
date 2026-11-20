@@ -1,11 +1,11 @@
-@* Gráfico circular (donut) com o gasto por categoria de uma viagem. *@
+@* Donut chart with a trip's spending per category. *@
 @using System.Globalization
 
-<PlanSection Id="spending" Title="Onde gastei mais" Class="spending-card">
+<PlanSection Id="spending" Title="Where I spent most" Class="spending-card">
     <Info>
         @if (Total > 0)
         {
-            <span class="muted small">@Pt.Money(Total)</span>
+            <span class="muted small">@Display.Money(Total)</span>
         }
     </Info>
     <ChildContent>
@@ -13,8 +13,8 @@
     @if (Total <= 0)
     {
         <p class="muted small">
-            Ainda não há gastos. Junta o valor real das despesas no orçamento, ou o valor das
-            reservas, para veres aqui onde gastaste mais.
+            No spending yet. Add the actual amount of the expenses in the budget, or the booking
+            costs, to see here where you spent most.
         </p>
     }
     else
@@ -25,13 +25,13 @@
         <div class="spending-body">
             <div class="donut-wrap">
             <svg class="donut" viewBox="0 0 200 200" role="img"
-                 aria-label="@($"Gasto por categoria: {string.Join(", ", Ranked.Select(s => $"{Pt.Label(s.Category)} {Pt.Money(s.Amount)}"))}")">
+                 aria-label="@($"Spending per category: {string.Join(", ", Ranked.Select(s => $"{Display.Label(s.Category)} {Display.Money(s.Amount)}"))}")">
                 @if (slices.Count == 1)
                 {
                     var only = slices[0];
                     <circle class="@SliceCss(only)" cx="100" cy="100" r="76" fill="none" stroke-width="32"
                             @onmouseenter="() => _hover = only.Category" @onmouseleave="() => _hover = null">
-                        <title>@Pt.Label(only.Category): @Pt.Money(only.Amount) (100%)</title>
+                        <title>@Display.Label(only.Category): @Display.Money(only.Amount) (100%)</title>
                     </circle>
                 }
                 else
@@ -41,17 +41,17 @@
                         var s = slice;
                         <path class="@SliceCss(s)" d="@s.Path"
                               @onmouseenter="() => _hover = s.Category" @onmouseleave="() => _hover = null">
-                            <title>@Pt.Label(s.Category): @Pt.Money(s.Amount) (@Percent(s.Category))</title>
+                            <title>@Display.Label(s.Category): @Display.Money(s.Amount) (@Percent(s.Category))</title>
                         </path>
                     }
                 }
 
             </svg>
 
-            @* Centro: total, ou a categoria por baixo do rato *@
+            @* Centre: the total, or the category under the mouse *@
             <div class="donut-center" aria-hidden="true">
-                <span class="donut-label">@(hovered is null ? "Total gasto" : Pt.Label(hovered.Category))</span>
-                <span class="donut-value">@Pt.Money(hovered?.Amount ?? Total)</span>
+                <span class="donut-label">@(hovered is null ? "Total spent" : Display.Label(hovered.Category))</span>
+                <span class="donut-value">@Display.Money(hovered?.Amount ?? Total)</span>
                 @if (hovered is not null)
                 {
                     <span class="donut-label">@Percent(hovered.Category)</span>
@@ -59,17 +59,17 @@
             </div>
             </div>
 
-            @* Legenda = tabela: categoria, valor e percentagem, do maior para o menor *@
+            @* Legend = table: category, amount and percentage, largest first *@
             <table class="spending-legend">
-                <caption class="visually-hidden">Gasto por categoria</caption>
+                <caption class="visually-hidden">Spending per category</caption>
                 <tbody>
                     @foreach (var slice in Ranked)
                     {
                         var s = slice;
                         <tr class="@(_hover is not null && _hover != s.Category ? "dim" : null)"
                             @onmouseenter="() => _hover = s.Category" @onmouseleave="() => _hover = null">
-                            <th scope="row"><span class="swatch @CategoryCss(s.Category)"></span>@Pt.Label(s.Category)</th>
-                            <td>@Pt.Money(s.Amount)</td>
+                            <th scope="row"><span class="swatch @CategoryCss(s.Category)"></span>@Display.Label(s.Category)</th>
+                            <td>@Display.Money(s.Amount)</td>
                             <td class="muted">@Percent(s.Category)</td>
                         </tr>
                     }
@@ -81,7 +81,7 @@
 </PlanSection>
 
 @code {
-    /// <summary>Gasto por categoria, pela ordem fixa das categorias (a cor segue a categoria, não o valor).</summary>
+    /// <summary>Spending per category, in the fixed category order (the colour follows the category, not the amount).</summary>
     [Parameter, EditorRequired] public IReadOnlyList<CategoryAmountDto> Amounts { get; set; } = [];
 
     private ExpenseCategory? _hover;
@@ -114,7 +114,7 @@
 
     private const double Outer = 92, Inner = 60, Cx = 100, Cy = 100;
 
-    /// <summary>Fatia do anel entre dois ângulos (graus, 0 = topo, sentido dos ponteiros do relógio).</summary>
+    /// <summary>Ring slice between two angles (degrees, 0 = top, clockwise).</summary>
     private static string ArcPath(double from, double to)
     {
         var large = to - from > 180 ? 1 : 0;
@@ -136,8 +136,8 @@
         $"{RoundedPercents.GetValueOrDefault(category).ToString(CultureInfo.InvariantCulture)}%";
 
     /// <summary>
-    /// Percentagens inteiras que somam sempre 100 (método do maior resto): arredonda
-    /// tudo para baixo e dá os pontos que faltam às categorias com maior parte decimal.
+    /// Whole percentages that always add up to 100 (largest remainder method): rounds
+    /// everything down and gives the missing points to the categories with the largest fraction.
     /// </summary>
     private Dictionary<ExpenseCategory, int> RoundedPercents
     {

@@ -1,8 +1,8 @@
 namespace HolidayApp.Domain.Holidays;
 
 /// <summary>
-/// Calcula o Domingo de Páscoa (calendário gregoriano) com o algoritmo
-/// de Meeus/Jones/Butcher. Os feriados móveis dependem desta data.
+/// Calculates Easter Sunday (Gregorian calendar) with the Meeus/Jones/Butcher
+/// algorithm. The movable holidays depend on this date.
 /// </summary>
 public static class EasterCalculator
 {

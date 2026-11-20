@@ -6,16 +6,16 @@ using HolidayApp.Web.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Interface Blazor (corre no navegador em WebAssembly)
+// Blazor UI (runs in the browser on WebAssembly)
 builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
-// Utilizador atual: "local" em desenvolvimento; publicado, vem do login do App Service (ver README)
+// Current user: the signed-in account, the App Service login, or "local" (see README)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddAppServiceAuthentication(builder.Configuration);
 
-// Base de dados + serviços da aplicação
+// Database + application services
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddProblemDetails();
@@ -28,7 +28,7 @@ await app.Services.InitialiseDatabaseAsync();
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
-    app.MapOpenApi(); // documento OpenAPI em /openapi/v1.json
+    app.MapOpenApi(); // OpenAPI document at /openapi/v1.json
 }
 else
 {
@@ -39,25 +39,26 @@ else
 app.UseHttpsRedirection();
 app.UseAuthentication();
 
-// Palavra-passe do grupo: sem sessão, só a página de entrada fica aberta
-var groupPassword = GroupPassword.IsEnabled(app.Configuration);
-if (groupPassword)
+// Accounts (with an invite code): without a session only the sign-in and register pages open
+if (Accounts.IsEnabled(app.Configuration))
 {
     app.UseRateLimiter();
-    app.UseGroupPasswordGate();
-    app.MapGroupPasswordEndpoints();
+    app.UseAccountGate();
+    app.MapAccountPages();
 }
 
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets();
 
-// API REST em /api/... (só para utilizadores autorizados, fora de desenvolvimento)
+// REST API at /api/... (only for allowed users, outside development)
 var api = app.MapGroup("/api").RequireAllowedUser(app.Environment, app.Configuration);
 api.MapEventEndpoints();
 api.MapPlanEndpoints();
 api.MapCalendarEndpoints();
 api.MapSettingsEndpoints();
+api.MapVisitedPlaceEndpoints();
+api.MapAccountEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()

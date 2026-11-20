@@ -6,24 +6,24 @@ namespace HolidayApp.Domain.Tests;
 public class VacationPlanValidatorTests
 {
     [Fact]
-    public void Aceita_um_planeamento_vazio()
+    public void Accepts_an_empty_plan()
     {
         Assert.Empty(VacationPlanValidator.Validate(new VacationPlanDto()));
     }
 
     [Theory]
-    [InlineData("https://www.booking.com/reserva/123", true)]
-    [InlineData("http://exemplo.pt", true)]
+    [InlineData("https://www.booking.com/booking/123", true)]
+    [InlineData("http://example.com", true)]
     [InlineData("javascript:alert(1)", false)]
     [InlineData("data:text/html,<script>", false)]
-    [InlineData("www.exemplo.pt", false)]
-    public void So_aceita_ligacoes_http(string url, bool valid)
+    [InlineData("www.example.com", false)]
+    public void Only_accepts_http_links(string url, bool valid)
     {
         Assert.Equal(valid, VacationPlanValidator.IsSafeUrl(url));
     }
 
     [Fact]
-    public void Rejeita_reservas_sem_nome_e_tarefas_vazias()
+    public void Rejects_bookings_without_a_name_and_empty_tasks()
     {
         var plan = new VacationPlanDto
         {
@@ -38,7 +38,7 @@ public class VacationPlanValidatorTests
     }
 
     [Fact]
-    public void Rejeita_valores_negativos_no_orcamento()
+    public void Rejects_negative_amounts_in_the_budget()
     {
         var plan = new VacationPlanDto { Expenses = [new PlanExpenseDto { Planned = -5 }] };
 
@@ -46,7 +46,7 @@ public class VacationPlanValidatorTests
     }
 
     [Fact]
-    public void Rejeita_valor_negativo_numa_reserva()
+    public void Rejects_a_negative_booking_cost()
     {
         var plan = new VacationPlanDto { Bookings = [new PlanBookingDto { Name = "Hotel", Cost = -1 }] };
 
@@ -58,7 +58,7 @@ public class VacationPlanValidatorTests
     [InlineData("2026-08-14", true)]
     [InlineData("2026-08-02", false)]
     [InlineData("2026-08-15", false)]
-    public void So_aceita_reservas_nos_dias_das_ferias(string date, bool valid)
+    public void Only_accepts_bookings_on_vacation_days(string date, bool valid)
     {
         var plan = new VacationPlanDto { Bookings = [new PlanBookingDto { Name = "Hotel", Date = DateOnly.Parse(date) }] };
 
@@ -72,22 +72,22 @@ public class VacationPlanValidatorTests
     [InlineData(91, 0, false)]
     [InlineData(0, -181, false)]
     [InlineData(double.NaN, 0, false)]
-    public void Valida_as_coordenadas_dos_locais(double lat, double lng, bool valid)
+    public void Validates_place_coordinates(double lat, double lng, bool valid)
     {
-        var plan = new VacationPlanDto { Places = [new PlanPlaceDto { Name = "Coliseu", Latitude = lat, Longitude = lng }] };
+        var plan = new VacationPlanDto { Places = [new PlanPlaceDto { Name = "Colosseum", Latitude = lat, Longitude = lng }] };
 
         Assert.Equal(valid, VacationPlanValidator.Validate(plan).Count == 0);
     }
 
     [Fact]
-    public void Locais_precisam_de_nome_e_de_um_dia_das_ferias()
+    public void Places_need_a_name_and_a_vacation_day()
     {
         var plan = new VacationPlanDto
         {
             Places =
             [
                 new PlanPlaceDto { Name = " ", Latitude = 41.9, Longitude = 12.5 },
-                new PlanPlaceDto { Name = "Vaticano", Latitude = 41.9, Longitude = 12.45, Date = new DateOnly(2026, 9, 1) },
+                new PlanPlaceDto { Name = "Vatican", Latitude = 41.9, Longitude = 12.45, Date = new DateOnly(2026, 9, 1) },
             ],
         };
 
@@ -97,31 +97,32 @@ public class VacationPlanValidatorTests
     }
 
     [Fact]
-    public void Aceita_reservas_sem_dia()
+    public void Accepts_bookings_without_a_day()
     {
-        var plan = new VacationPlanDto { Bookings = [new PlanBookingDto { Name = "Seguro" }] };
+        var plan = new VacationPlanDto { Bookings = [new PlanBookingDto { Name = "Insurance" }] };
 
         Assert.Empty(VacationPlanValidator.Validate(plan, new DateOnly(2026, 8, 3), new DateOnly(2026, 8, 14)));
     }
 
     [Theory]
-    [InlineData(BookingType.Voo, ExpenseCategory.Transporte)]
-    [InlineData(BookingType.Alojamento, ExpenseCategory.Alojamento)]
-    [InlineData(BookingType.Atividade, ExpenseCategory.Atividades)]
-    [InlineData(BookingType.Outro, ExpenseCategory.Outro)]
-    public void Reserva_entra_na_categoria_certa_do_orcamento(BookingType type, ExpenseCategory expected)
+    [InlineData(BookingType.Flight, ExpenseCategory.Transport)]
+    [InlineData(BookingType.Lodging, ExpenseCategory.Lodging)]
+    [InlineData(BookingType.Activity, ExpenseCategory.Activities)]
+    [InlineData(BookingType.Other, ExpenseCategory.Other)]
+    public void Booking_goes_into_the_right_budget_category(BookingType type, ExpenseCategory expected)
     {
         Assert.Equal(expected, PlanBookingDto.BudgetCategory(type));
     }
 
     [Fact]
-    public void Alojamento_nao_tem_numero_e_os_outros_locais_seguem_a_ordem()
+    public void Lodging_has_no_number_and_the_other_places_follow_the_order()
     {
         PlanPlaceDto[] places =
         [
-            new() { Name = "Coliseu" },
+            new() { Name = "Colosseum" },
             new() { Name = "Hotel", IsLodging = true },
-            new() { Name = "Panteão" },
+            new() { Name = "Pantheon" },
+
         ];
 
         Assert.Equal([1, null, 2], PlanPlaceDto.Numbers(places));

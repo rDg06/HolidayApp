@@ -5,19 +5,18 @@
         <img src="favicon.svg" alt="" width="26" height="26" />
         <span>HolidayApp</span>
     </a>
-    @* Calendário e Férias à esquerda, junto ao nome; Definições à direita *@
-    <nav class="nav nav-main" aria-label="Navegação principal">
-        <NavLink href="" Match="NavLinkMatch.All">Calendário</NavLink>
-        <NavLink href="ferias">Férias</NavLink>
-        <NavLink href="mapa">Mapa</NavLink>
+    @* Map, Vacations and Calendar on the left, next to the name; the account on the right *@
+    <nav class="nav nav-main" aria-label="Main navigation">
+        <NavLink href="" Match="NavLinkMatch.All">Map</NavLink>
+        <NavLink href="vacations">Vacations</NavLink>
+        <NavLink href="calendar">Calendar</NavLink>
     </nav>
-    <nav class="nav nav-side" aria-label="Definições">
-        @* Só o ícone; o nome fica para leitores de ecrã e na dica do rato *@
-        <NavLink href="definicoes" class="nav-icon" title="Definições" aria-label="Definições">
+    <nav class="nav nav-side" aria-label="Account">
+        @* Only the person icon; the name is for screen readers and the mouse tooltip *@
+        <NavLink href="settings" class="nav-icon" title="Profile and settings" aria-label="Profile and settings">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                      d="M10.3 3.6c.4-1.5 2.9-1.5 3.3 0a1.7 1.7 0 0 0 2.6 1c1.3-.8 3.1 1 2.3 2.3a1.7 1.7 0 0 0 1 2.6c1.5.4 1.5 2.9 0 3.3a1.7 1.7 0 0 0-1 2.6c.8 1.3-1 3.1-2.3 2.3a1.7 1.7 0 0 0-2.6 1c-.4 1.5-2.9 1.5-3.3 0a1.7 1.7 0 0 0-2.6-1c-1.3.8-3.1-1-2.3-2.3a1.7 1.7 0 0 0-1-2.6c-1.5-.4-1.5-2.9 0-3.3a1.7 1.7 0 0 0 1-2.6c-.8-1.3 1-3.1 2.3-2.3a1.7 1.7 0 0 0 2.6-1z" />
-                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+                <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8" />
+                <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 20.5c1.2-3.6 4.3-5.5 8-5.5s6.8 1.9 8 5.5" />
             </svg>
         </NavLink>
     </nav>

@@ -1,4 +1,4 @@
-/* Um mês: dias, feriados, marcações (barra contínua), hoje e seleção. */
+/* One month: days, holidays, entries (continuous bar), today and selection. */
 .month {
     padding: 14px 12px 12px;
     background: var(--surface);
@@ -30,7 +30,7 @@
 
 .days { row-gap: 3px; }
 
-/* ---------- Dia ---------- */
+/* ---------- Day ---------- */
 
 .day {
     position: relative;
@@ -61,7 +61,7 @@
     border-radius: 50%;
 }
 
-/* Feriados */
+/* Holidays */
 .day.holiday { color: var(--c-holiday); font-weight: 700; }
 .day.holiday-alt { color: var(--c-holiday); font-weight: 600; text-decoration: underline dotted; text-underline-offset: 3px; }
 
@@ -86,10 +86,10 @@
     background: var(--c-holiday);
 }
 
-/* Hoje */
+/* Today */
 .day.today .num { background: var(--text); color: var(--bg); font-weight: 700; }
 
-/* Seleção a arrastar */
+/* Drag selection */
 .day.selected {
     border-radius: 0;
     background: color-mix(in srgb, var(--c-primary) 30%, transparent);

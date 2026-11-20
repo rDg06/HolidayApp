@@ -1,11 +1,12 @@
-/* "Onde já estive" (página Férias) */
+/* "Where I've been" (Map page) */
 .travel-map { display: grid; gap: 14px; }
 
 .travel-legend { display: flex; gap: 14px; color: var(--muted); }
 .travel-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.legend-dot.trip-past { background: var(--c-ferias); }
-.legend-dot.trip-next { background: var(--c-pessoal); }
+.legend-dot.trip-past { background: var(--c-vacation); }
+.legend-dot.trip-next { background: var(--c-personal); }
+.legend-dot.trip-manual { background: var(--surface); box-shadow: inset 0 0 0 2px var(--c-vacation); }
 
 .travel-stats {
     display: grid;
