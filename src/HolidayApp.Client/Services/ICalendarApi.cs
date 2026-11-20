@@ -41,8 +41,17 @@ public interface ICalendarApi
     /// <summary>The owner removes someone, or I leave the trip (my own user name).</summary>
     Task RemoveTripMemberAsync(Guid eventId, string username, CancellationToken ct = default);
 
-    /// <summary>Public trips of everyone ("Explore").</summary>
-    Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default);
+    /// <summary>A page of the feed (public trips of everyone, newest first).</summary>
+    Task<FeedPageDto> GetFeedAsync(int skip, CancellationToken ct = default);
+
+    /// <summary>Likes (or unlikes) a trip.</summary>
+    Task<TripLikesDto> SetLikeAsync(Guid eventId, bool like, CancellationToken ct = default);
+
+    /// <summary>All the comments on a trip, oldest first.</summary>
+    Task<IReadOnlyList<TripCommentDto>> GetCommentsAsync(Guid eventId, CancellationToken ct = default);
+
+    Task<TripCommentDto> AddCommentAsync(Guid eventId, string text, CancellationToken ct = default);
+    Task DeleteCommentAsync(Guid eventId, Guid commentId, CancellationToken ct = default);
 
     /// <summary>Deletes the account and all its data.</summary>
     Task DeleteMeAsync(CancellationToken ct = default);

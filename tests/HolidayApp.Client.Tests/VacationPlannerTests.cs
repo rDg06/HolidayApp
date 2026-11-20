@@ -97,7 +97,8 @@ public sealed class VacationPlannerTests : BunitContext
     [Theory]
     [InlineData(null, "calendar", "← Calendar")]
     [InlineData("vacations", "vacations", "← Vacations")]
-    [InlineData("map", "", "← Map")] // the map is the home page
+    [InlineData("map", "map", "← Map")]
+    [InlineData("feed", "", "← Feed")] // the feed is the home page
     public void Back_link_goes_where_you_came_from(string? from, string href, string label)
     {
         // "from" comes from the address (?from=…), as when the trip is opened from another page

@@ -36,6 +36,9 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("PublishedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("TEXT");
 
@@ -59,11 +62,61 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsPublic");
+                    b.HasIndex("IsPublic", "PublishedAtUtc");
 
                     b.HasIndex("UserId", "StartDate", "EndDate");
 
                     b.ToTable("Events", (string)null);
+                });
+
+            modelBuilder.Entity("HolidayApp.Domain.Entities.TripComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EventId", "CreatedAtUtc");
+
+                    b.ToTable("TripComments", (string)null);
+                });
+
+            modelBuilder.Entity("HolidayApp.Domain.Entities.TripLike", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("EventId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TripLikes", (string)null);
                 });
 
             modelBuilder.Entity("HolidayApp.Domain.Entities.TripMember", b =>
@@ -213,6 +266,24 @@ namespace HolidayApp.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "Year");
 
                     b.ToTable("VisitedPlaces", (string)null);
+                });
+
+            modelBuilder.Entity("HolidayApp.Domain.Entities.TripComment", b =>
+                {
+                    b.HasOne("HolidayApp.Domain.Entities.CalendarEvent", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HolidayApp.Domain.Entities.TripLike", b =>
+                {
+                    b.HasOne("HolidayApp.Domain.Entities.CalendarEvent", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HolidayApp.Domain.Entities.TripMember", b =>

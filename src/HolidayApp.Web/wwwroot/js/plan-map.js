@@ -57,14 +57,20 @@ function textElement(text) {
  * With `options.readOnly` (share/PDF page, "Where I've been" map) there are no map
  * clicks and no dragging; if there is a `dotnet`, clicking a marker tells it (OnPlaceClick).
  * `options.fitMaxZoom` limits the zoom when fitting the markers (14 by default).
+ * `options.still` (feed): the map does not move or zoom, so scrolling the page with the
+ * finger or the mouse wheel over it scrolls the page, not the map.
  */
 export async function create(element, dotnet, places, route, options) {
     const readOnly = !!options?.readOnly;
+    const still = !!options?.still;
     const fitMaxZoom = options?.fitMaxZoom ?? 14;
     await loadLeaflet();
     const L = window.L;
 
-    const map = L.map(element).setView([DEFAULT_VIEW.lat, DEFAULT_VIEW.lng], DEFAULT_VIEW.zoom);
+    const stillOptions = still
+        ? { dragging: false, scrollWheelZoom: false, touchZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, zoomControl: false }
+        : {};
+    const map = L.map(element, stillOptions).setView([DEFAULT_VIEW.lat, DEFAULT_VIEW.lng], DEFAULT_VIEW.zoom);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',

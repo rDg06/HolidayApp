@@ -110,7 +110,7 @@ Google Fonts.
   links and cost), Tasks, Budget (planned vs. spent, including booking costs, and
   the "Where I spent most" chart) and Day by day
 - **Vacations page** with every trip: days, bookings, places, tasks and budget
-- **Map (Where I've been)**, the home page: every trip (one point per lodging, or the
+- **Map (Where I've been)**: every trip (one point per lodging, or the
   centre of the places, or the destination looked up by name), past and upcoming;
   trips taken, days travelling and countries. Countries come from Nominatim
   (OpenStreetMap) and are stored in the browser. In "Other places I've been" you add
@@ -143,8 +143,11 @@ Google Fonts.
   even while the trip stays private. Only the person who created the trip changes the
   dates, adds or removes people, makes it public or deletes it; people added can leave.
   Shared trips show in "Vacations" and on the map, but not in your calendar or balance
-- **Explore**: trips people made **public**, seen by everyone with an account (view only,
-  without the list of people)
+- **Feed**, the home page: trips people made **public**, newest first, like a travel
+  Instagram. Each post shows who went, the map of the trip's places, a heart (likes) and
+  comments. Whoever wrote a comment, or the trip's owner, can delete it. People who only
+  see a trip because it is public get it view only, without the list of people and
+  without booking codes
 - Automatic light/dark mode and a layout adapted to phones
 - **Installable and offline** (PWA): on a phone, "Add to home screen". Offline, it
   opens the last version seen on that device (read-only: saving needs internet;
@@ -179,11 +182,11 @@ app (MAUI, React Native…) that uses the same endpoints.
 
 | Route | Page |
 |---|---|
-| `/` (also `/map`) | Where I've been (map of every trip) |
+| `/` (also `/explore`) | Feed: public trips of everyone, with likes and comments |
+| `/map` | Where I've been (map of every trip) |
 | `/vacations` | Every vacation |
-| `/vacations/{id}` | Plan vacation (`?from=vacations`, `?from=map` or `?from=explore` for the back link) |
+| `/vacations/{id}` | Plan vacation (`?from=vacations`, `?from=map` or `?from=feed` for the back link) |
 | `/vacations/{id}/share` | Share / PDF summary (also the read-only view of trips you can only see) |
-| `/explore` | Public trips of everyone |
 | `/calendar` | Year calendar |
 | `/settings` | Profile and settings |
 | `/login`, `/register`, `/logout` | Sign-in pages (server pages) |
@@ -208,7 +211,10 @@ app (MAUI, React Native…) that uses the same endpoints.
 | GET / PUT | `/api/events/{id}/sharing` | Who sees the trip / make it public or private (owner) |
 | POST | `/api/events/{id}/sharing/members` | Add someone by email or user name (owner) |
 | PUT / DELETE | `/api/events/{id}/sharing/members/{username}` | Can edit or view only (owner) / remove someone or leave |
-| GET | `/api/explore` | Public trips |
+| GET | `/api/feed?skip=0` | The feed, 10 trips at a time (newest first) |
+| PUT / DELETE | `/api/events/{id}/like` | Like / unlike a trip |
+| GET / POST | `/api/events/{id}/comments` | A trip's comments / write one |
+| DELETE | `/api/events/{id}/comments/{commentId}` | Delete a comment (its author or the trip's owner) |
 | GET | `/api/me/export` | Download my data (JSON) |
 | GET / POST | `/api/visited` | Places I've been (added by hand) |
 | DELETE | `/api/visited/{id}` | Delete one of those places |

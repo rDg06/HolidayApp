@@ -266,7 +266,7 @@
     /// <summary>Each day's street route (those not back yet stay straight-line).</summary>
     private readonly Dictionary<DateOnly, RouteResult> _routes = [];
 
-    /// <summary>Where you came from ("vacations", "map", "explore"), for the back link.</summary>
+    /// <summary>Where you came from ("vacations", "map", "feed"), for the back link.</summary>
     [SupplyParameterFromQuery(Name = "from")] public string? From { get; set; }
 
     private TripSharingDto? _sharing;
@@ -277,12 +277,12 @@
         ? ($"vacations/{Id}", "← Plan vacation")
         : From switch
         {
-            "map" => ("", "← Map"),
-            "explore" => ("explore", "← Explore"),
+            "map" => ("map", "← Map"),
+            "feed" or "explore" => ("", "← Feed"),
             _ => ("vacations", "← Vacations"),
         };
 
-    private void Left() => Navigation.NavigateTo(From == "explore" ? "explore" : "vacations");
+    private void Left() => Navigation.NavigateTo(From is "feed" or "explore" ? "" : "vacations");
 
     private int DayCount => _event is null ? 0 : _event.EndDate.DayNumber - _event.StartDate.DayNumber + 1;
 

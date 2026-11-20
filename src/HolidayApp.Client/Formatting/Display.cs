@@ -35,6 +35,24 @@ public static class Display
         return $"{Short(start)} – {Short(end)}";
     }
 
+    /// <summary>How long ago, like a social feed: "just now", "5 min", "3 h", "2 days", then the date.</summary>
+    public static string Ago(DateTime utc, DateTime? nowUtc = null)
+    {
+        var now = nowUtc ?? DateTime.UtcNow;
+        var elapsed = now - DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        if (elapsed < TimeSpan.FromMinutes(1))
+            return "just now";
+        if (elapsed < TimeSpan.FromHours(1))
+            return $"{(int)elapsed.TotalMinutes} min";
+        if (elapsed < TimeSpan.FromDays(1))
+            return $"{(int)elapsed.TotalHours} h";
+        if (elapsed < TimeSpan.FromDays(7))
+            return elapsed.TotalDays < 2 ? "1 day" : $"{(int)elapsed.TotalDays} days";
+
+        var date = DateOnly.FromDateTime(utc);
+        return date.Year == DateOnly.FromDateTime(now).Year ? Short(date) : $"{Short(date)} {date.Year}";
+    }
+
     public static string Days(int n) => n == 1 ? "1 day" : $"{n} days";
 
     public static string Workdays(int n) => n == 1 ? "1 working day" : $"{n} working days";

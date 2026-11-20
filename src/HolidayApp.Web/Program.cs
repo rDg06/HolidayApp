@@ -57,6 +57,7 @@ api.MapSettingsEndpoints();
 api.MapVisitedPlaceEndpoints();
 api.MapAccountEndpoints();
 api.MapSharingEndpoints();
+api.MapFeedEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()

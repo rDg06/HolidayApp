@@ -163,8 +163,8 @@
     private (string Href, string Label) BackLink => From switch
     {
         "vacations" => ("vacations", "← Vacations"),
-        "map" => ("", "← Map"),
-        "explore" => ("explore", "← Explore"),
+        "map" => ("map", "← Map"),
+        "feed" or "explore" => ("", "← Feed"),
         _ => ("calendar", "← Calendar"),
     };
 

@@ -1,0 +1,82 @@
+@* The home page: public trips of everyone, newest first ("/explore" was the old address) *@
+@page "/"
+@page "/explore"
+@inject ICalendarApi Api
+
+<PageTitle>Feed · HolidayApp</PageTitle>
+
+<div class="feed-page">
+    <header class="feed-header">
+        <h1>Feed</h1>
+        <p class="muted">Trips people made public. Yours stay private until you choose "Public" in a trip's plan.</p>
+    </header>
+
+    @if (_trips.Count == 0 && _loading)
+    {
+        <p class="muted">Loading…</p>
+    }
+    else if (_trips.Count == 0 && _error is null)
+    {
+        <div class="card empty-state">
+            <p>No public trips yet.</p>
+            <p class="muted small">Open one of your trips, choose who sees it and set it to <strong>Public</strong> to show it here.</p>
+            <a class="btn primary" href="vacations">My vacations</a>
+        </div>
+    }
+    else
+    {
+        <ul class="plain-list feed-list" aria-label="Public trips">
+            @foreach (var trip in _trips)
+            {
+                <li @key="trip.Id"><FeedPost Trip="trip" /></li>
+            }
+        </ul>
+    }
+
+    @if (_error is not null)
+    {
+        <div class="alert" role="alert">
+            <span>@_error</span>
+            <button type="button" class="btn ghost small" @onclick="LoadMoreAsync">Try again</button>
+        </div>
+    }
+    else if (_hasMore)
+    {
+        <button type="button" class="btn feed-more" disabled="@_loading" @onclick="LoadMoreAsync">
+            @(_loading ? "Loading…" : "Show older trips")
+        </button>
+    }
+</div>
+
+@code {
+    private readonly List<FeedTripDto> _trips = [];
+    private bool _hasMore;
+    private bool _loading;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    /// <summary>The next page (the first one when the list is empty).</summary>
+    private async Task LoadMoreAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var page = await Api.GetFeedAsync(_trips.Count);
+
+            // A trip made public meanwhile pushes the others down: never show one twice
+            var shown = _trips.Select(t => t.Id).ToHashSet();
+            _trips.AddRange(page.Trips.Where(t => shown.Add(t.Id)));
+            _hasMore = page.HasMore;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load the feed. {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

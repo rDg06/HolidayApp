@@ -1,4 +1,3 @@
-using System.Text.Json;
 using HolidayApp.Domain.Entities;
 using HolidayApp.Infrastructure.Persistence;
 using HolidayApp.Shared;
@@ -7,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HolidayApp.Infrastructure.Services;
 
-/// <summary>Public or private trips, the people added to each trip and the "Explore" page.</summary>
+/// <summary>Public or private trips and the people added to each trip.</summary>
 public interface ITripSharingService
 {
     /// <summary>Who sees the trip (null if I cannot see it).</summary>
@@ -24,9 +23,6 @@ public interface ITripSharingService
 
     /// <summary>The owner removes someone, or someone leaves the trip (their own user name).</summary>
     Task<SharingResult> RemoveMemberAsync(Guid eventId, string username, CancellationToken ct = default);
-
-    /// <summary>Public trips of everyone, most recent first.</summary>
-    Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default);
 }
 
 public enum SharingStatus { Ok, NotFound, Forbidden, Invalid }
@@ -41,9 +37,6 @@ public sealed record SharingResult(SharingStatus Status, TripSharingDto? Sharing
 
 internal sealed class TripSharingService(AppDbContext db, TripAccess access) : ITripSharingService
 {
-    private const int ExploreLimit = 100;
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     public async Task<TripSharingDto?> GetAsync(Guid eventId, CancellationToken ct = default)
     {
         var (ev, role) = await access.FindAsync(eventId, ct);
@@ -60,9 +53,14 @@ internal sealed class TripSharingService(AppDbContext db, TripAccess access) : I
         if (ev.Type != EventType.Vacation)
             return SharingResult.Invalid("Only vacations can be shared.");
 
+        // Going from private to public puts the trip at the top of the feed again
+        var publishedAt = isPublic && !ev.IsPublic ? DateTime.UtcNow : ev.PublishedAtUtc;
         await db.Events.IgnoreQueryFilters().Where(e => e.Id == eventId)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.IsPublic, isPublic), ct);
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.IsPublic, isPublic)
+                .SetProperty(e => e.PublishedAtUtc, publishedAt), ct);
         ev.IsPublic = isPublic;
+        ev.PublishedAtUtc = publishedAt;
         return new(SharingStatus.Ok, await BuildAsync(ev, role, ct));
     }
 
@@ -138,37 +136,6 @@ internal sealed class TripSharingService(AppDbContext db, TripAccess access) : I
         return new(SharingStatus.Ok, newRole == TripRole.None ? null : await BuildAsync(ev, newRole, ct));
     }
 
-    public async Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default)
-    {
-        var trips = await db.Events.IgnoreQueryFilters().AsNoTracking()
-            .Where(e => e.IsPublic && e.Type == EventType.Vacation)
-            .OrderByDescending(e => e.StartDate)
-            .Take(ExploreLimit)
-            .ToListAsync(ct);
-        if (trips.Count == 0)
-            return [];
-
-        var ids = trips.Select(e => e.Id).ToList();
-        var plans = await db.VacationPlans.IgnoreQueryFilters().AsNoTracking()
-            .Where(p => ids.Contains(p.EventId))
-            .ToDictionaryAsync(p => p.EventId, p => p.Content, ct);
-        var people = await access.PeopleAsync(trips.Select(e => e.UserId), ct);
-
-        return trips.Select(e =>
-        {
-            var plan = plans.TryGetValue(e.Id, out var content) ? Deserialize(content) : new VacationPlanDto();
-            return new PublicTripDto(
-                e.Id,
-                e.Title,
-                e.StartDate,
-                e.EndDate,
-                plan.Destination,
-                plan.Places.Count(p => p.IsVisit),
-                people.GetValueOrDefault(e.UserId) ?? TripAccess.Unknown,
-                e.UserId == access.Me);
-        }).ToList();
-    }
-
     // ---------- Helpers ----------
 
     private async Task<TripSharingDto> BuildAsync(CalendarEvent ev, TripRole role, CancellationToken ct)
@@ -213,15 +180,4 @@ internal sealed class TripSharingService(AppDbContext db, TripAccess access) : I
         return id?.ToString();
     }
 
-    private static VacationPlanDto Deserialize(string content)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<VacationPlanDto>(content, Json) ?? new VacationPlanDto();
-        }
-        catch (JsonException)
-        {
-            return new VacationPlanDto();
-        }
-    }
 }

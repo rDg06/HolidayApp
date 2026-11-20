@@ -320,6 +320,20 @@ public static class VisitedPlaceValidator
     }
 }
 
+public static class TripCommentValidator
+{
+    public const int TextMaxLength = 500;
+
+    /// <summary>The error to show, or null if the comment is fine.</summary>
+    public static string? Validate(string? text)
+    {
+        var clean = (text ?? "").Trim();
+        if (clean.Length == 0)
+            return "Write something first.";
+        return clean.Length > TextMaxLength ? $"A comment cannot be longer than {TextMaxLength} characters." : null;
+    }
+}
+
 public static class SettingsValidator
 {
     public const int MaxAnnualVacationDays = 60;

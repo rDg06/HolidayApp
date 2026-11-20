@@ -55,8 +55,18 @@ public sealed class FakeApi(Guid tripId) : ICalendarApi
     /// <summary>Who sees the trip: by default mine, private, nobody added (tests can change it).</summary>
     public TripSharingDto Sharing { get; set; } = new(TripRole.Owner, false, new PersonDto("ana", "Ana"), []);
 
-    /// <summary>Trips on "Explore" (tests can change the list).</summary>
-    public List<PublicTripDto> PublicTrips { get; } = [];
+    /// <summary>Trips on the feed (tests can change the list).</summary>
+    public List<FeedTripDto> FeedTrips { get; } = [];
+
+    /// <summary>Trips per feed page (tests can make it small to try "Show older trips").</summary>
+    public int FeedPageSize { get; set; } = 10;
+
+    /// <summary>Comments by trip, as the server has them.</summary>
+    public Dictionary<Guid, List<TripCommentDto>> Comments { get; } = [];
+
+    /// <summary>Last like sent (trip, liked), and whether the server refuses it.</summary>
+    public (Guid Trip, bool Like)? LastLike { get; private set; }
+    public bool FailLikes { get; set; }
 
     /// <summary>Extra trips on "Vacations" (e.g. ones friends added me to).</summary>
     public List<VacationSummaryDto> MoreVacations { get; } = [];
@@ -90,8 +100,34 @@ public sealed class FakeApi(Guid tripId) : ICalendarApi
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<PublicTripDto>>(PublicTrips.ToList());
+    public Task<FeedPageDto> GetFeedAsync(int skip, CancellationToken ct = default) =>
+        Task.FromResult(new FeedPageDto(FeedTrips.Skip(skip).Take(FeedPageSize).ToList(), FeedTrips.Count > skip + FeedPageSize));
+
+    public Task<TripLikesDto> SetLikeAsync(Guid eventId, bool like, CancellationToken ct = default)
+    {
+        if (FailLikes)
+            throw new ApiException("No connection.");
+        LastLike = (eventId, like);
+        var trip = FeedTrips.Single(t => t.Id == eventId);
+        var others = trip.Likes - (trip.LikedByMe ? 1 : 0);
+        return Task.FromResult(new TripLikesDto(others + (like ? 1 : 0), like));
+    }
+
+    public Task<IReadOnlyList<TripCommentDto>> GetCommentsAsync(Guid eventId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<TripCommentDto>>(Comments.GetValueOrDefault(eventId)?.ToList() ?? []);
+
+    public Task<TripCommentDto> AddCommentAsync(Guid eventId, string text, CancellationToken ct = default)
+    {
+        var comment = new TripCommentDto(Guid.NewGuid(), new PersonDto("ana", "Ana"), text, DateTime.UtcNow, true);
+        (Comments.TryGetValue(eventId, out var list) ? list : Comments[eventId] = []).Add(comment);
+        return Task.FromResult(comment);
+    }
+
+    public Task DeleteCommentAsync(Guid eventId, Guid commentId, CancellationToken ct = default)
+    {
+        Comments.GetValueOrDefault(eventId)?.RemoveAll(c => c.Id == commentId);
+        return Task.CompletedTask;
+    }
     public bool MeDeleted { get; private set; }
 
     public Task<AccountDto?> GetMeAsync(CancellationToken ct = default) => Task.FromResult(Me);

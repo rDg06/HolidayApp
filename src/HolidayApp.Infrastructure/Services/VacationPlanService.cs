@@ -243,7 +243,7 @@ internal sealed class VacationPlanService(
     /// </summary>
     private static long VersionOf(DateTime savedAtUtc) => (savedAtUtc.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerMillisecond;
 
-    private static VacationPlanDto Deserialize(string content)
+    internal static VacationPlanDto Deserialize(string content)
     {
         try
         {

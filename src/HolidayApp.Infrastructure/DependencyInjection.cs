@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<TripAccess>();
         services.AddScoped<ITripSharingService, TripSharingService>();
+        services.AddScoped<IFeedService, FeedService>();
         services.AddSingleton(TimeProvider.System);
 
         return services;

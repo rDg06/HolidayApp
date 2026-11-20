@@ -230,6 +230,10 @@ public sealed class AccountService(AppDbContext db) : IAccountService
         var myEvents = db.Events.IgnoreQueryFilters().Where(e => e.UserId == userId).Select(e => e.Id);
         await db.TripMembers.Where(m => myEvents.Contains(m.EventId)).ExecuteDeleteAsync(ct);
 
+        // My likes and comments (also on other people's trips), and those on my trips
+        await db.TripLikes.Where(l => l.UserId == userId || myEvents.Contains(l.EventId)).ExecuteDeleteAsync(ct);
+        await db.TripComments.Where(c => c.UserId == userId || myEvents.Contains(c.EventId)).ExecuteDeleteAsync(ct);
+
         await db.VacationPlans.IgnoreQueryFilters().Where(p => p.UserId == userId).ExecuteDeleteAsync(ct);
         await db.Events.IgnoreQueryFilters().Where(e => e.UserId == userId).ExecuteDeleteAsync(ct);
         await db.UserSettings.IgnoreQueryFilters().Where(s => s.UserId == userId).ExecuteDeleteAsync(ct);
@@ -271,6 +275,15 @@ public sealed class AccountService(AppDbContext db) : IAccountService
             visitedPlaces = await db.VisitedPlaces.IgnoreQueryFilters().AsNoTracking().Where(p => p.UserId == userId)
                 .OrderByDescending(p => p.Year)
                 .Select(p => new { p.Name, p.Country, p.Year, p.Latitude, p.Longitude })
+                .ToListAsync(ct),
+            // What I wrote and liked on trips (mine and other people's)
+            comments = await db.TripComments.AsNoTracking().Where(c => c.UserId == userId)
+                .OrderBy(c => c.CreatedAtUtc)
+                .Select(c => new { TripId = c.EventId, c.Text, c.CreatedAtUtc })
+                .ToListAsync(ct),
+            likes = await db.TripLikes.AsNoTracking().Where(l => l.UserId == userId)
+                .OrderBy(l => l.CreatedAtUtc)
+                .Select(l => new { TripId = l.EventId, l.CreatedAtUtc })
                 .ToListAsync(ct),
         };
     }

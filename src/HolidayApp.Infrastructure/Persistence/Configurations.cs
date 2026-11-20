@@ -20,8 +20,8 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
         // Typical queries: "this user's events in this date range".
         builder.HasIndex(e => new { e.UserId, e.StartDate, e.EndDate });
 
-        // "Explore": public trips of everyone
-        builder.HasIndex(e => e.IsPublic);
+        // The feed: public trips of everyone, newest first
+        builder.HasIndex(e => new { e.IsPublic, e.PublishedAtUtc });
     }
 }
 
@@ -105,6 +105,46 @@ internal sealed class TripMemberConfiguration : IEntityTypeConfiguration<TripMem
         builder.HasOne<CalendarEvent>()
             .WithMany()
             .HasForeignKey(m => m.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class TripLikeConfiguration : IEntityTypeConfiguration<TripLike>
+{
+    public void Configure(EntityTypeBuilder<TripLike> builder)
+    {
+        builder.ToTable("TripLikes");
+        builder.HasKey(l => new { l.EventId, l.UserId });
+
+        builder.Property(l => l.UserId).IsRequired().HasMaxLength(128);
+        builder.HasIndex(l => l.UserId);
+
+        // Deleting the trip removes its likes
+        builder.HasOne<CalendarEvent>()
+            .WithMany()
+            .HasForeignKey(l => l.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class TripCommentConfiguration : IEntityTypeConfiguration<TripComment>
+{
+    public void Configure(EntityTypeBuilder<TripComment> builder)
+    {
+        builder.ToTable("TripComments");
+        builder.HasKey(c => c.Id);
+
+        builder.Property(c => c.UserId).IsRequired().HasMaxLength(128);
+        builder.Property(c => c.Text).IsRequired().HasMaxLength(TripCommentValidator.TextMaxLength);
+
+        // A trip's comments in order, and "my comments" (export, deleting the account)
+        builder.HasIndex(c => new { c.EventId, c.CreatedAtUtc });
+        builder.HasIndex(c => c.UserId);
+
+        // Deleting the trip removes its comments
+        builder.HasOne<CalendarEvent>()
+            .WithMany()
+            .HasForeignKey(c => c.EventId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

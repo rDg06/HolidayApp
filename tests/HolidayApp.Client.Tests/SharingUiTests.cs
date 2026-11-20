@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HolidayApp.Client.Tests;
 
-/// <summary>Who sees a trip: the sharing panel, view-only trips, the vacation cards and "Explore".</summary>
+/// <summary>Who sees a trip: the sharing panel, view-only trips and the vacation cards.</summary>
 public sealed class SharingUiTests : BunitContext
 {
     private static readonly Guid TripId = Guid.NewGuid();
@@ -40,7 +40,7 @@ public sealed class SharingUiTests : BunitContext
         Assert.Equal(("rui", false), (member.Username, member.CanEdit));
         Assert.True(_api.Sharing.IsPublic);
         Assert.Contains("@rui", cut.Find(".people").TextContent);
-        Assert.Contains("Explore", cut.Find(".sharing-hint").TextContent);
+        Assert.Contains("feed", cut.Find(".sharing-hint").TextContent);
         Assert.Equal("", cut.Find(".add-person input").GetAttribute("value"));
     }
 
@@ -130,29 +130,5 @@ public sealed class SharingUiTests : BunitContext
         Assert.Contains("view only", porto.TextContent);
         Assert.EndsWith("/share?from=vacations", porto.GetAttribute("href"));
         Assert.Contains("1 shared with you", cut.Find(".vacations-header").TextContent);
-    }
-
-    [Fact]
-    public void Explore_lists_public_trips_with_who_made_them()
-    {
-        _api.PublicTrips.Add(new PublicTripDto(Guid.NewGuid(), "Azores", new(2026, 6, 1), new(2026, 6, 8), "São Miguel", 4, new PersonDto("rui", "Rui"), false));
-
-        var cut = Render<Explore>();
-        cut.WaitForElement(".explore-card");
-
-        var card = cut.Find(".explore-card");
-        Assert.Contains("Rui", card.TextContent);
-        Assert.Contains("@rui", card.TextContent);
-        Assert.Contains("São Miguel", card.TextContent);
-        Assert.EndsWith("/share?from=explore", card.GetAttribute("href"));
-    }
-
-    [Fact]
-    public void Explore_without_public_trips_explains_how_to_add_one()
-    {
-        var cut = Render<Explore>();
-        cut.WaitForElement(".empty-state");
-
-        Assert.Contains("No public trips yet", cut.Find(".empty-state").TextContent);
     }
 }

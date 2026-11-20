@@ -87,8 +87,30 @@ public sealed class CalendarApi(HttpClient http) : ICalendarApi
         await EnsureSuccessAsync(response, ct);
     }
 
-    public async Task<IReadOnlyList<PublicTripDto>> GetPublicTripsAsync(CancellationToken ct = default) =>
-        await GetAsync<List<PublicTripDto>>("api/explore", ct);
+    public Task<FeedPageDto> GetFeedAsync(int skip, CancellationToken ct = default) =>
+        GetAsync<FeedPageDto>($"api/feed?skip={skip}", ct);
+
+    public async Task<TripLikesDto> SetLikeAsync(Guid eventId, bool like, CancellationToken ct = default)
+    {
+        using var response = like
+            ? await http.PutAsync($"api/events/{eventId}/like", null, ct)
+            : await http.DeleteAsync($"api/events/{eventId}/like", ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<TripLikesDto>(ct)
+               ?? throw new ApiException("The server returned an empty response.");
+    }
+
+    public async Task<IReadOnlyList<TripCommentDto>> GetCommentsAsync(Guid eventId, CancellationToken ct = default) =>
+        await GetAsync<List<TripCommentDto>>($"api/events/{eventId}/comments", ct);
+
+    public Task<TripCommentDto> AddCommentAsync(Guid eventId, string text, CancellationToken ct = default) =>
+        SendAsync<AddTripCommentRequest, TripCommentDto>(HttpMethod.Post, $"api/events/{eventId}/comments", new AddTripCommentRequest(text), ct);
+
+    public async Task DeleteCommentAsync(Guid eventId, Guid commentId, CancellationToken ct = default)
+    {
+        using var response = await http.DeleteAsync($"api/events/{eventId}/comments/{commentId}", ct);
+        await EnsureSuccessAsync(response, ct);
+    }
 
     public async Task DeleteMeAsync(CancellationToken ct = default)
     {

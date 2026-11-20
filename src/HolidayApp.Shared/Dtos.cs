@@ -252,16 +252,40 @@ public sealed record AddTripMemberRequest(string Person, bool CanEdit);
 /// <summary>Change what someone added to a trip can do.</summary>
 public sealed record SetTripMemberRequest(bool CanEdit);
 
-/// <summary>A public trip on the "Explore" page.</summary>
-public sealed record PublicTripDto(
+/// <summary>
+/// A public trip on the feed: who went, where, the places for the map, the likes and the
+/// newest comments.
+/// </summary>
+public sealed record FeedTripDto(
     Guid Id,
     string Title,
     DateOnly StartDate,
     DateOnly EndDate,
     string? Destination,
-    int Places,
     PersonDto Owner,
-    bool IsMine);
+    bool IsMine,
+    DateTime PublishedAtUtc,
+    IReadOnlyList<PlanPlaceDto> Places,
+    int Likes,
+    bool LikedByMe,
+    int CommentCount,
+    IReadOnlyList<TripCommentDto> LatestComments)
+{
+    /// <summary>Places to visit (the numbered ones).</summary>
+    public int VisitCount => Places.Count(p => p.IsVisit);
+}
+
+/// <summary>A page of the feed. <see cref="HasMore"/>: there are older trips to load.</summary>
+public sealed record FeedPageDto(IReadOnlyList<FeedTripDto> Trips, bool HasMore);
+
+/// <summary>How many people liked a trip, and whether I did.</summary>
+public sealed record TripLikesDto(int Likes, bool LikedByMe);
+
+/// <summary>A comment on a trip. <see cref="CanDelete"/>: I wrote it, or it is my trip.</summary>
+public sealed record TripCommentDto(Guid Id, PersonDto Author, string Text, DateTime CreatedAtUtc, bool CanDelete);
+
+/// <summary>Write a comment on a trip.</summary>
+public sealed record AddTripCommentRequest(string Text);
 
 /// <summary>Change the display name.</summary>
 public sealed record RenameAccountRequest(string Name);

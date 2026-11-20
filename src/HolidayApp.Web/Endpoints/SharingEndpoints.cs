@@ -3,16 +3,11 @@ using HolidayApp.Shared;
 
 namespace HolidayApp.Web.Endpoints;
 
-/// <summary>Public or private trips, the people in each trip and the "Explore" page.</summary>
+/// <summary>Public or private trips and the people in each trip.</summary>
 public static class SharingEndpoints
 {
     public static RouteGroupBuilder MapSharingEndpoints(this RouteGroupBuilder api)
     {
-        // GET /api/explore — public trips of everyone
-        api.MapGet("/explore", async (ITripSharingService service, CancellationToken ct) =>
-            Results.Ok(await service.GetPublicTripsAsync(ct)))
-            .WithTags("Sharing");
-
         var group = api.MapGroup("/events/{id:guid}/sharing").WithTags("Sharing");
 
         // GET /api/events/{id}/sharing — who sees the trip and what I can do

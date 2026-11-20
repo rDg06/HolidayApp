@@ -45,7 +45,7 @@ public sealed class SharingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, (await _rui.GetAsync($"api/events/{trip.Id}/plan")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _rui.GetAsync($"api/events/{trip.Id}/sharing")).StatusCode);
         Assert.Empty(await VacationsAsync(_rui));
-        Assert.Empty((await _rui.GetFromJsonAsync<List<PublicTripDto>>("api/explore"))!);
+        Assert.Empty((await _rui.GetFromJsonAsync<FeedPageDto>("api/feed"))!.Trips);
 
         var sharing = (await _ana.GetFromJsonAsync<TripSharingDto>($"api/events/{trip.Id}/sharing"))!;
         Assert.Equal(TripRole.Owner, sharing.MyRole);
@@ -177,9 +177,9 @@ public sealed class SharingTests : IAsyncLifetime
 
         (await _ana.PutAsJsonAsync($"api/events/{trip.Id}/sharing", new SetTripVisibilityRequest(true))).EnsureSuccessStatusCode();
 
-        var explore = Assert.Single((await _eva.GetFromJsonAsync<List<PublicTripDto>>("api/explore"))!);
-        Assert.Equal(("Rome", "Rome", "ana", false), (explore.Title, explore.Destination, explore.Owner.Username, explore.IsMine));
-        Assert.True(Assert.Single((await _ana.GetFromJsonAsync<List<PublicTripDto>>("api/explore"))!).IsMine);
+        var feed = Assert.Single((await _eva.GetFromJsonAsync<FeedPageDto>("api/feed"))!.Trips);
+        Assert.Equal(("Rome", "Rome", "ana", false), (feed.Title, feed.Destination, feed.Owner.Username, feed.IsMine));
+        Assert.True(Assert.Single((await _ana.GetFromJsonAsync<FeedPageDto>("api/feed"))!.Trips).IsMine);
 
         var sharing = (await _eva.GetFromJsonAsync<TripSharingDto>($"api/events/{trip.Id}/sharing"))!;
         Assert.Equal(TripRole.PublicViewer, sharing.MyRole);
@@ -192,7 +192,7 @@ public sealed class SharingTests : IAsyncLifetime
         Assert.Empty(await VacationsAsync(_eva));
 
         (await _ana.PutAsJsonAsync($"api/events/{trip.Id}/sharing", new SetTripVisibilityRequest(false))).EnsureSuccessStatusCode();
-        Assert.Empty((await _eva.GetFromJsonAsync<List<PublicTripDto>>("api/explore"))!);
+        Assert.Empty((await _eva.GetFromJsonAsync<FeedPageDto>("api/feed"))!.Trips);
         Assert.Equal(HttpStatusCode.NotFound, (await _eva.GetAsync($"api/events/{trip.Id}/plan")).StatusCode);
     }
 

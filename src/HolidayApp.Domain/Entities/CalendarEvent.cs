@@ -22,6 +22,9 @@ public sealed class CalendarEvent
     /// </summary>
     public bool IsPublic { get; set; }
 
+    /// <summary>When the trip was last made public: the feed shows the newest first.</summary>
+    public DateTime? PublishedAtUtc { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 }

@@ -1,0 +1,10 @@
+.feed-page { max-width: 620px; margin: 0 auto; display: grid; gap: 18px; }
+.feed-header h1 { font-size: 1.8rem; letter-spacing: -0.02em; }
+.feed-header p { margin: 4px 0 0; }
+
+.feed-list { display: grid; gap: 18px; }
+
+.feed-more { justify-self: center; }
+
+.empty-state { display: grid; gap: 10px; justify-items: start; }
+.empty-state p { margin: 0; }

@@ -21,6 +21,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     /// </summary>
     public DbSet<TripMember> TripMembers => Set<TripMember>();
 
+    /// <summary>Likes and comments on trips (no per-user filter: everyone who sees the trip sees them).</summary>
+    public DbSet<TripLike> TripLikes => Set<TripLike>();
+    public DbSet<TripComment> TripComments => Set<TripComment>();
+
     /// <summary>Accounts (no per-user filter: sign-in needs to look up any email).</summary>
     public DbSet<UserAccount> Accounts => Set<UserAccount>();
 

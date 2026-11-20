@@ -1,0 +1,261 @@
+@* One trip on the feed: who went, the map of the places, the heart and the comments. *@
+@implements IAsyncDisposable
+@inject ICalendarApi Api
+@inject IJSRuntime JS
+
+<article class="card feed-post" aria-labelledby="@($"post-{Trip.Id}")">
+    <header class="post-who">
+        <span class="avatar" aria-hidden="true">@Initial(Trip.Owner.Name)</span>
+        <span class="post-person">
+            <strong>@(Trip.IsMine ? "You" : Trip.Owner.Name)</strong>
+            @if (Trip.Owner.Username.Length > 0)
+            {
+                <span class="muted small">@@@Trip.Owner.Username</span>
+            }
+        </span>
+        <time class="muted small post-when" datetime="@Trip.PublishedAtUtc.ToString("o")">@Display.Ago(Trip.PublishedAtUtc)</time>
+    </header>
+
+    <a class="post-body" href="@TripHref">
+        @if (_mapPlaces > 0)
+        {
+            <div class="post-map" @ref="_mapElement" aria-label="@($"Map of {Trip.Title}")"></div>
+        }
+        else
+        {
+            <div class="post-map post-map-empty" aria-hidden="true">
+                <span>@(Trip.Destination ?? Trip.Title)</span>
+            </div>
+        }
+
+        <div class="post-trip">
+            <strong class="post-title" id="@($"post-{Trip.Id}")">@Trip.Title</strong>
+            @if (!string.IsNullOrWhiteSpace(Trip.Destination))
+            {
+                <span class="post-destination">@Trip.Destination</span>
+            }
+            <span class="muted small">
+                @Display.Range(Trip.StartDate, Trip.EndDate) @Trip.StartDate.Year · @Display.Days(Trip.EndDate.DayNumber - Trip.StartDate.DayNumber + 1)
+                @if (Trip.VisitCount > 0)
+                {
+                    <text> · @(Trip.VisitCount == 1 ? "1 place" : $"{Trip.VisitCount} places")</text>
+                }
+            </span>
+        </div>
+    </a>
+
+    <div class="post-actions">
+        <button type="button" class="@(_likedByMe ? "post-like liked" : "post-like")" aria-pressed="@(_likedByMe ? "true" : "false")"
+                aria-label="@(_likedByMe ? "Unlike" : "Like")" disabled="@_liking" @onclick="ToggleLikeAsync">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"
+                      d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.6 3.6 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 3.4 0 5.5 3.1 4.3 6.3C19.5 15.4 12 20 12 20z" />
+            </svg>
+        </button>
+        <span class="post-count" aria-live="polite">@(_likes == 1 ? "1 like" : $"{_likes} likes")</span>
+        <a class="post-open" href="@TripHref">See trip →</a>
+    </div>
+
+    <section class="post-comments" aria-label="Comments">
+        @if (_commentCount > _comments.Count)
+        {
+            <button type="button" class="link-button muted small" disabled="@_loadingComments" @onclick="ShowAllCommentsAsync">
+                @(_loadingComments ? "Loading…" : $"View all {_commentCount} comments")
+            </button>
+        }
+
+        @if (_comments.Count > 0)
+        {
+            <ul class="plain-list comment-list">
+                @foreach (var comment in _comments)
+                {
+                    var c = comment;
+                    <li @key="c.Id" class="comment">
+                        <span class="comment-text">
+                            <strong>@(c.Author.Username.Length > 0 ? c.Author.Username : c.Author.Name)</strong>
+                            @c.Text
+                        </span>
+                        <span class="muted small comment-when">@Display.Ago(c.CreatedAtUtc)</span>
+                        @if (c.CanDelete)
+                        {
+                            <button type="button" class="link-button muted small comment-delete" aria-label="Delete comment"
+                                    title="Delete comment" @onclick="() => DeleteCommentAsync(c)">✕</button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        <form class="comment-form" @onsubmit="AddCommentAsync">
+            <input class="input" placeholder="Add a comment…" aria-label="Add a comment" maxlength="@TripCommentValidator.TextMaxLength"
+                   @bind="_draft" @bind:event="oninput" disabled="@_posting" />
+            <button type="submit" class="btn small" disabled="@(_posting || string.IsNullOrWhiteSpace(_draft))">Post</button>
+        </form>
+
+        @if (_error is not null)
+        {
+            <p class="form-errors" role="alert">@_error</p>
+        }
+    </section>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public FeedTripDto Trip { get; set; } = default!;
+
+    private int _likes;
+    private bool _likedByMe;
+    private bool _liking;
+
+    private List<TripCommentDto> _comments = [];
+    private int _commentCount;
+    private bool _loadingComments;
+    private string _draft = "";
+    private bool _posting;
+    private string? _error;
+
+    private int _mapPlaces;
+    private ElementReference _mapElement;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _map;
+    private bool _mapCreated;
+
+    /// <summary>My own trips open the plan; other people's open the read-only summary.</summary>
+    private string TripHref => Trip.IsMine ? $"vacations/{Trip.Id}?from=feed" : $"vacations/{Trip.Id}/share?from=feed";
+
+    protected override void OnInitialized()
+    {
+        _likes = Trip.Likes;
+        _likedByMe = Trip.LikedByMe;
+        _comments = [.. Trip.LatestComments];
+        _commentCount = Trip.CommentCount;
+        _mapPlaces = Trip.Places.Count;
+    }
+
+    private static string Initial(string name) => name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
+
+    /// <summary>The heart changes at once; if the server says no, it goes back.</summary>
+    private async Task ToggleLikeAsync()
+    {
+        var like = !_likedByMe;
+        _likedByMe = like;
+        _likes += like ? 1 : -1;
+        _liking = true;
+        _error = null;
+        try
+        {
+            var result = await Api.SetLikeAsync(Trip.Id, like);
+            (_likes, _likedByMe) = (result.Likes, result.LikedByMe);
+        }
+        catch (Exception ex)
+        {
+            _likedByMe = !like;
+            _likes += like ? -1 : 1;
+            _error = ex.Message;
+        }
+        finally
+        {
+            _liking = false;
+        }
+    }
+
+    private async Task ShowAllCommentsAsync()
+    {
+        _loadingComments = true;
+        _error = null;
+        try
+        {
+            _comments = [.. await Api.GetCommentsAsync(Trip.Id)];
+            _commentCount = _comments.Count;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loadingComments = false;
+        }
+    }
+
+    private async Task AddCommentAsync()
+    {
+        if (TripCommentValidator.Validate(_draft) is { } invalid)
+        {
+            _error = invalid;
+            return;
+        }
+
+        _posting = true;
+        _error = null;
+        try
+        {
+            _comments.Add(await Api.AddCommentAsync(Trip.Id, _draft.Trim()));
+            _commentCount++;
+            _draft = "";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _posting = false;
+        }
+    }
+
+    private async Task DeleteCommentAsync(TripCommentDto comment)
+    {
+        _error = null;
+        try
+        {
+            await Api.DeleteCommentAsync(Trip.Id, comment.Id);
+            _comments.Remove(comment);
+            _commentCount--;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_mapCreated || _mapPlaces == 0)
+            return;
+
+        _mapCreated = true;
+        try
+        {
+            // A still map (the page scrolls over it) with every place of the trip
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/plan-map.js");
+            var markers = MapMarkers.Build(Trip.Places, _ => true, p => p.IsTransport && p.Date is null);
+            _map = await _module.InvokeAsync<IJSObjectReference>("create", _mapElement, null, markers, null,
+                new { readOnly = true, still = true, fitMaxZoom = 12 });
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception)
+        {
+            // No map (e.g. no internet): the rest of the post still works
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_map is not null)
+            {
+                await _map.InvokeVoidAsync("dispose");
+                await _map.DisposeAsync();
+            }
+            if (_module is not null)
+                await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page was closed: nothing to clean up
+        }
+    }
+}
