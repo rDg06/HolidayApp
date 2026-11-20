@@ -2,6 +2,7 @@
 .account h2 { font-size: 1.05rem; }
 .account-who { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
 .account-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sign-out-form { display: contents; }
 
 .account-delete {
     display: grid;

@@ -22,6 +22,12 @@ public static class Accounts
     public const string RegisterPath = "/register";
     public const string LogoutPath = "/logout";
     public const string AccountIdClaim = "account_id";
+
+    /// <summary>
+    /// Fingerprint of the password the session was opened with. Changing the password changes
+    /// it, so the sessions on other devices end (someone who knew the old password is out).
+    /// </summary>
+    private const string PasswordStampClaim = "password_stamp";
     private const string RateLimitPolicy = "accounts";
 
     /// <summary>
@@ -55,12 +61,14 @@ public static class Accounts
             options.ExpireTimeSpan = TimeSpan.FromDays(30);
             options.SlidingExpiration = true;
 
-            // Account deleted (on another device): the session is no longer valid
+            // Account deleted (on another device), or the password changed since this session
+            // started: the session is no longer valid
             options.Events.OnValidatePrincipal = async context =>
             {
                 var id = context.Principal?.FindFirstValue(AccountIdClaim);
                 var accounts = context.HttpContext.RequestServices.GetRequiredService<IAccountService>();
-                if (!Guid.TryParse(id, out var accountId) || await accounts.FindAsync(accountId, context.HttpContext.RequestAborted) is null)
+                var account = Guid.TryParse(id, out var accountId) ? await accounts.FindAsync(accountId, context.HttpContext.RequestAborted) : null;
+                if (account is null || context.Principal?.FindFirstValue(PasswordStampClaim) != PasswordStamp(account))
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(SchemeName);
@@ -68,17 +76,24 @@ public static class Accounts
             };
         });
 
-    /// <summary>At most 10 sign-in or register attempts per minute (against guessing).</summary>
+    /// <summary>
+    /// At most 10 sign-in or register attempts per minute from each address (against guessing).
+    /// Counted per address: with a single shared count, one person guessing would lock everyone
+    /// else out of signing in.
+    /// </summary>
     public static IServiceCollection AddAccountRateLimit(this IServiceCollection services) =>
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.AddFixedWindowLimiter(RateLimitPolicy, limiter =>
-            {
-                limiter.PermitLimit = 10;
-                limiter.Window = TimeSpan.FromMinutes(1);
-                limiter.QueueLimit = 0;
-            });
+            options.AddPolicy(RateLimitPolicy, context =>
+                System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                    }));
         });
 
     /// <summary>Without a session: the API answers 401 and everything else goes to the login page.</summary>
@@ -154,12 +169,25 @@ public static class Accounts
         .DisableAntiforgery()
         .RequireRateLimiting(RateLimitPolicy);
 
-        app.MapGet(LogoutPath, async (HttpContext context) =>
+        // Signing out is a POST: a link or image on another site (GET) cannot sign you out, and
+        // the session cookie (SameSite=Lax) does not go with POSTs that come from other sites.
+        app.MapPost(LogoutPath, async (HttpContext context) =>
         {
             await context.SignOutAsync(SchemeName);
             return Results.Redirect(LoginPath);
-        });
+        })
+        .DisableAntiforgery(); // plain form, no Blazor
+
+        // Opening /logout (an old link or bookmark) asks first, with a button that signs out
+        app.MapGet(LogoutPath, (HttpContext context) =>
+            context.User.Identity?.IsAuthenticated == true
+                ? Page(LogoutForm(), title: "Sign out", clearOfflineData: false)
+                : Results.Redirect(LoginPath));
     }
+
+    /// <summary>Fingerprint of the current password (part of a hash of the hash: reveals nothing).</summary>
+    private static string PasswordStamp(Domain.Entities.UserAccount account) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.PasswordHash)))[..16];
 
     public static async Task SignInAsync(HttpContext context, Domain.Entities.UserAccount account)
     {
@@ -169,6 +197,7 @@ public static class Accounts
             new Claim(AccountIdClaim, account.Id.ToString()),
             new Claim(ClaimTypes.Name, account.Name),
             new Claim(ClaimTypes.Email, account.Email),
+            new Claim(PasswordStampClaim, PasswordStamp(account)),
         ], SchemeName);
         await context.SignInAsync(SchemeName, new ClaimsPrincipal(identity), new AuthenticationProperties { IsPersistent = true });
     }
@@ -249,14 +278,39 @@ public static class Accounts
         </form>
         """;
 
-    private static IResult Page(string form, int status = StatusCodes.Status200OK) => Results.Content($$"""
+    /// <summary>
+    /// No session: deletes what the app stored on this device to work offline (the previous
+    /// account's data, old versions) and the service worker. After signing in, the app
+    /// registers it again and stores things again.
+    /// </summary>
+    private const string ClearOfflineDataScript = """
+        <script>
+            if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then((all) => all.forEach((r) => r.unregister()));
+            if ("caches" in window) caches.keys().then((names) => names.forEach((name) => caches.delete(name)));
+        </script>
+        """;
+
+    private static string LogoutForm() => $$"""
+        <form method="post" action="{{LogoutPath}}">
+            <div class="brand"><img src="/favicon.svg" alt="" width="28" height="28" /> HolidayApp</div>
+            <p>Sign out of HolidayApp on this device?</p>
+            <button type="submit">Sign out</button>
+            <p class="switch"><a href="/">Back to the app</a></p>
+        </form>
+        """;
+
+    /// <param name="clearOfflineData">
+    /// Deletes what the app stored on this device (pages without a session). Not on the
+    /// "Sign out?" page: the person is still signed in and may go back to the app.
+    /// </param>
+    private static IResult Page(string form, int status = StatusCodes.Status200OK, string title = "Sign in", bool clearOfflineData = true) => Results.Content($$"""
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <meta name="robots" content="noindex" />
-            <title>Sign in · HolidayApp</title>
+            <title>{{E(title)}} · HolidayApp</title>
             <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
             <style>
                 :root { --bg: #f6f5f1; --card: #fff; --text: #1c1b18; --muted: #77736a; --border: #e5e2da; --primary: #0f766e; --on-primary: #fff; --danger: #c8323a; color-scheme: light; }
@@ -281,14 +335,7 @@ public static class Accounts
         </head>
         <body>
             {{form}}
-            <script>
-                // No session: deletes what the app stored on this device to work offline
-                // (the previous account's data, old versions) and the service worker. After signing
-                // in, the app registers it again and stores things again.
-
-                if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then((all) => all.forEach((r) => r.unregister()));
-                if ("caches" in window) caches.keys().then((names) => names.forEach((name) => caches.delete(name)));
-            </script>
+            {{(clearOfflineData ? ClearOfflineDataScript : "")}}
         </body>
         </html>
         """, "text/html; charset=utf-8", statusCode: status);

@@ -53,8 +53,17 @@ internal sealed class CalendarService(
         if (entity is null)
             return null;
 
+        var datesChanged = entity.StartDate != request.StartDate || entity.EndDate != request.EndDate;
         Apply(entity, request);
         entity.UpdatedAtUtc = DateTime.UtcNow;
+
+        // New dates: the trip's plan follows them (see VacationPlanService.FitToDates)
+        if (datesChanged && await db.VacationPlans.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.EventId == id, ct) is { } plan
+            && VacationPlanService.FitToDates(plan.Content, entity.StartDate, entity.EndDate) is { } fitted)
+        {
+            plan.Content = fitted;
+            plan.UpdatedAtUtc = entity.UpdatedAtUtc.Value; // new version: whoever has the plan open reloads it
+        }
 
         await db.SaveChangesAsync(ct);
         return entity.ToDto();

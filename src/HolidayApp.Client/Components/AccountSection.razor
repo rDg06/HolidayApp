@@ -80,7 +80,10 @@
         }
 
         <div class="account-actions">
-            <button type="button" class="btn" @onclick="SignOut">Sign out</button>
+            @* A plain form that POSTs to the server's "/logout" (outside Blazor) *@
+            <form method="post" action="logout" class="sign-out-form">
+                <button type="submit" class="btn">Sign out</button>
+            </form>
             @* "download": the browser saves the file instead of navigating *@
             <a class="btn" href="api/me/export" download>Download my data</a>
             <button type="button" class="btn danger" @onclick="() => _confirming = true">Delete my account</button>
@@ -253,9 +256,6 @@
             _savingPassword = false;
         }
     }
-
-    /// <summary>"/logout" is a server page (outside Blazor): load the page for real.</summary>
-    private void SignOut() => Navigation.NavigateTo("logout", forceLoad: true);
 
     private void Cancel()
     {

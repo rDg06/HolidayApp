@@ -222,6 +222,22 @@ public sealed class AccountTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Export_still_works_with_a_broken_plan()
+    {
+        var client = Browser();
+        await RegisterAsync(client, "ana@example.com");
+        var created = (await (await CreateEventAsync(client, "Ana's vacation")).Content.ReadFromJsonAsync<CalendarEventDto>())!;
+        (await client.PutAsJsonAsync($"api/events/{created.Id}/plan", new VacationPlanDto { Destination = "Rome" })).EnsureSuccessStatusCode();
+        await _factory.WithDbAsync(db =>
+            db.VacationPlans.IgnoreQueryFilters().ExecuteUpdateAsync(s => s.SetProperty(p => p.Content, "{not json")));
+
+        var response = await client.GetAsync("api/me/export");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("{not json", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Deleting_the_account_deletes_the_data_and_ends_the_session()
     {
         var client = Browser();
@@ -256,9 +272,37 @@ public sealed class AccountTests : IAsyncLifetime
         var client = Browser();
         await RegisterAsync(client, "ana@example.com");
 
-        await client.GetAsync("logout");
+        await client.PostAsync("logout", null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("api/settings")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Opening_the_logout_link_only_asks_it_does_not_sign_out()
+    {
+        var client = Browser();
+        await RegisterAsync(client, "ana@example.com");
+
+        var page = await client.GetAsync("logout");
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("""<form method="post" action="/logout">""", await page.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("api/settings")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Changing_the_password_signs_out_the_other_devices_but_not_this_one()
+    {
+        var client = Browser();
+        await RegisterAsync(client, "ana@example.com", password: "password-one-1");
+        var otherDevice = Browser();
+        await LoginAsync(otherDevice, "ana@example.com", "password-one-1");
+        Assert.Equal(HttpStatusCode.OK, (await otherDevice.GetAsync("api/settings")).StatusCode);
+
+        (await client.PostAsJsonAsync("api/me/password", new ChangePasswordRequest("password-one-1", "new-password-2"))).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("api/settings")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await otherDevice.GetAsync("api/settings")).StatusCode);
     }
 
     [Fact]
@@ -313,7 +357,7 @@ public sealed class AccountTests : IAsyncLifetime
     {
         var client = Browser();
         await RegisterAsync(client, "ana@example.com");
-        await client.GetAsync("logout");
+        await client.PostAsync("logout", null);
 
         var response = await LoginAsync(client, "@Ana", "password-one-1");
 

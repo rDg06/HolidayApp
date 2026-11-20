@@ -93,13 +93,15 @@ public sealed class AccountSectionTests : BunitContext
     }
 
     [Fact]
-    public void Sign_out_goes_to_the_servers_logout_page()
+    public void Sign_out_posts_to_the_servers_logout_page()
     {
         _api.Me = new AccountDto("Ana", "ana@example.com");
         var cut = Render<AccountSection>();
 
-        cut.FindAll("button").First(b => b.TextContent == "Sign out").Click();
+        var button = cut.FindAll("button").First(b => b.TextContent == "Sign out");
+        var form = button.Closest("form")!;
 
-        Assert.EndsWith("/logout", Services.GetRequiredService<NavigationManager>().Uri);
+        Assert.Equal("submit", button.GetAttribute("type"));
+        Assert.Equal(("post", "logout"), (form.GetAttribute("method"), form.GetAttribute("action")));
     }
 }

@@ -107,12 +107,20 @@ internal sealed class VacationPlanService(
 
     public async Task<VacationPlanDto?> GetPlanAsync(Guid eventId, CancellationToken ct = default)
     {
-        var (ev, _) = await access.FindAsync(eventId, ct);
+        var (ev, role) = await access.FindAsync(eventId, ct);
         if (ev is null)
             return null;
 
         var entity = await db.VacationPlans.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(p => p.EventId == eventId, ct);
         var plan = entity is null ? new VacationPlanDto() : Deserialize(entity.Content);
+
+        // Booking codes (flight, hotel) let whoever has them change or cancel the booking:
+        // strangers who see the trip only because it is public do not get them.
+        if (role == TripRole.PublicViewer)
+        {
+            foreach (var booking in plan.Bookings)
+                booking.Reference = null;
+        }
 
         // The entry dates may have changed: days outside the range are no longer shown.
         plan.Days = plan.Days.Where(d => d.Date >= ev.StartDate && d.Date <= ev.EndDate).ToList();
@@ -168,6 +176,62 @@ internal sealed class VacationPlanService(
 
         clean.Version = VersionOf(savedAt);
         return SavePlanResult.Saved(clean);
+    }
+
+    /// <summary>
+    /// The trip's dates changed: makes the plan fit the new dates, so it can still be saved
+    /// (otherwise bookings and places outside the dates block every save until they are fixed
+    /// by hand). Nothing is deleted except the day-by-day notes of days that left the trip:
+    /// <list type="bullet">
+    /// <item>Bookings and places dated outside the trip lose the date (they stay, with no day).</item>
+    /// <item>A lodging that still overlaps the trip is cut to the trip's dates.</item>
+    /// </list>
+    /// Returns the new content, or null when nothing changed.
+    /// </summary>
+    internal static string? FitToDates(string content, DateOnly start, DateOnly end)
+    {
+        var plan = Deserialize(content);
+        var changed = false;
+        bool Outside(DateOnly date) => date < start || date > end;
+
+        foreach (var booking in plan.Bookings.Where(b => b.Date is { } d && Outside(d)))
+        {
+            booking.Date = null;
+            changed = true;
+        }
+
+        foreach (var place in plan.Places.Where(p => p.Date is not null))
+        {
+            var from = place.Date!.Value;
+            var to = place.EndDate ?? from;
+            if (to < start || from > end)
+            {
+                place.Date = null;
+                place.EndDate = null;
+                changed = true;
+                continue;
+            }
+
+            if (from < start)
+            {
+                place.Date = start;
+                changed = true;
+            }
+            if (place.EndDate is { } checkOut && checkOut > end)
+            {
+                place.EndDate = end;
+                changed = true;
+            }
+        }
+
+        var days = plan.Days.Where(d => !Outside(d.Date)).ToList();
+        if (days.Count != plan.Days.Count)
+        {
+            plan.Days = days;
+            changed = true;
+        }
+
+        return changed ? JsonSerializer.Serialize(plan, Json) : null;
     }
 
     /// <summary>Version of a plan: the time of the last save (0 if it does not exist yet).</summary>

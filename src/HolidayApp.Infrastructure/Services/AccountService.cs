@@ -266,13 +266,29 @@ public sealed class AccountService(AppDbContext db) : IAccountService
                 e.Notes,
                 e.IsPublic,
                 // The plan goes as it is stored (JSON)
-                Plan = plans.TryGetValue(e.Id, out var content) ? System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content) : (System.Text.Json.JsonElement?)null,
+                Plan = plans.TryGetValue(e.Id, out var content) ? PlanJson(content) : null,
             }),
             visitedPlaces = await db.VisitedPlaces.IgnoreQueryFilters().AsNoTracking().Where(p => p.UserId == userId)
                 .OrderByDescending(p => p.Year)
                 .Select(p => new { p.Name, p.Country, p.Year, p.Latitude, p.Longitude })
                 .ToListAsync(ct),
         };
+    }
+
+    /// <summary>
+    /// The stored plan as JSON. Broken content goes as text, so the download still works
+    /// (the plan page also opens with broken content).
+    /// </summary>
+    private static object PlanJson(string content)
+    {
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return content;
+        }
     }
 
     /// <summary>Moves to the account everything that belonged to the "local" user (before accounts).</summary>

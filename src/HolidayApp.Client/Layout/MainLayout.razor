@@ -1,5 +1,4 @@
 @inherits LayoutComponentBase
-@inject NavigationManager Navigation
 
 <header class="app-header">
     <a class="brand" href="">
@@ -21,20 +20,18 @@
                 <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 20.5c1.2-3.6 4.3-5.5 8-5.5s6.8 1.9 8 5.5" />
             </svg>
         </NavLink>
-        @* Sign out: "/logout" is a server page (outside Blazor), so the page loads for real *@
-        <button type="button" class="nav-logout" title="Sign out" aria-label="Sign out" @onclick="SignOut">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                      d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 16l4-4-4-4M19 12H9" />
-            </svg>
-        </button>
+        @* Sign out: a plain form that POSTs to the server's "/logout" (outside Blazor) *@
+        <form method="post" action="logout" class="nav-logout-form">
+            <button type="submit" class="nav-logout" title="Sign out" aria-label="Sign out">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                          d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 16l4-4-4-4M19 12H9" />
+                </svg>
+            </button>
+        </form>
     </nav>
 </header>
 
 <main class="page">
     @Body
 </main>
-
-@code {
-    private void SignOut() => Navigation.NavigateTo("logout", forceLoad: true);
-}

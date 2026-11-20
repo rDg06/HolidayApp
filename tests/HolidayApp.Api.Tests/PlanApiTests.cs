@@ -73,6 +73,46 @@ public sealed class PlanApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Shortening_the_trip_fits_the_plan_to_the_new_dates_and_it_still_saves()
+    {
+        // 3 to 14 August
+        var ev = await CreateVacationAsync();
+        var plan = new VacationPlanDto
+        {
+            Bookings =
+            [
+                new PlanBookingDto { Name = "Flight out", Date = new DateOnly(2026, 8, 3) },
+                new PlanBookingDto { Name = "Flight back", Date = new DateOnly(2026, 8, 14) },
+            ],
+            Places =
+            [
+                new PlanPlaceDto { Name = "Hotel Faro", Kind = PlaceKind.Lodging, Latitude = 37, Longitude = -7.9,
+                                   Date = new DateOnly(2026, 8, 3), EndDate = new DateOnly(2026, 8, 9) },
+                new PlanPlaceDto { Name = "Hotel Lagos", Kind = PlaceKind.Lodging, Latitude = 37.1, Longitude = -8.7,
+                                   Date = new DateOnly(2026, 8, 12), EndDate = new DateOnly(2026, 8, 14) },
+                new PlanPlaceDto { Name = "Beach", Latitude = 37.1, Longitude = -8.6, Date = new DateOnly(2026, 8, 13) },
+            ],
+            Days = [new PlanDayDto { Date = new DateOnly(2026, 8, 13), Place = "Lagos" }],
+        };
+        (await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", plan)).EnsureSuccessStatusCode();
+
+        // Now 3 to 7 August
+        (await _client.PutAsJsonAsync($"api/events/{ev.Id}",
+            new SaveCalendarEventRequest("Algarve", new DateOnly(2026, 8, 3), new DateOnly(2026, 8, 7), EventType.Vacation, null))).EnsureSuccessStatusCode();
+        var fitted = (await _client.GetFromJsonAsync<VacationPlanDto>($"api/events/{ev.Id}/plan"))!;
+
+        // Nothing was deleted: dates outside the trip are cleared, the overlapping lodging is cut
+        Assert.Equal([new DateOnly(2026, 8, 3), null], fitted.Bookings.Select(b => b.Date));
+        Assert.Equal(
+            [("Hotel Faro", (DateOnly?)new DateOnly(2026, 8, 3), (DateOnly?)new DateOnly(2026, 8, 7)), ("Hotel Lagos", null, null), ("Beach", null, null)],
+            fitted.Places.Select(p => (p.Name, p.Date, p.EndDate)));
+        Assert.Empty(fitted.Days);
+
+        // And it can be saved again as it is
+        Assert.Equal(HttpStatusCode.OK, (await _client.PutAsJsonAsync($"api/events/{ev.Id}/plan", fitted)).StatusCode);
+    }
+
+    [Fact]
     public async Task Booking_outside_the_vacation_dates_is_rejected()
     {
         var ev = await CreateVacationAsync();

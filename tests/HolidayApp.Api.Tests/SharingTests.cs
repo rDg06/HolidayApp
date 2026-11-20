@@ -197,6 +197,26 @@ public sealed class SharingTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Booking_codes_are_hidden_from_strangers_on_a_public_trip()
+    {
+        var trip = await CreateTripAsync(_ana);
+        var plan = new VacationPlanDto
+        {
+            Bookings = [new PlanBookingDto { Name = "Flight to Rome", Date = new DateOnly(2026, 8, 3), Reference = "ABC123" }],
+        };
+        (await _ana.PutAsJsonAsync($"api/events/{trip.Id}/plan", plan)).EnsureSuccessStatusCode();
+        await AddAsync(_ana, trip.Id, "rui", canEdit: false);
+        (await _ana.PutAsJsonAsync($"api/events/{trip.Id}/sharing", new SetTripVisibilityRequest(true))).EnsureSuccessStatusCode();
+
+        async Task<string?> CodeSeenBy(HttpClient client) =>
+            Assert.Single((await client.GetFromJsonAsync<VacationPlanDto>($"api/events/{trip.Id}/plan"))!.Bookings).Reference;
+
+        Assert.Equal("ABC123", await CodeSeenBy(_ana));
+        Assert.Equal("ABC123", await CodeSeenBy(_rui)); // added to the trip: a friend
+        Assert.Null(await CodeSeenBy(_eva));            // only sees it because it is public
+    }
+
+    [Fact]
     public async Task Shared_trips_do_not_appear_in_the_friends_calendar()
     {
         var trip = await CreateTripAsync(_ana);

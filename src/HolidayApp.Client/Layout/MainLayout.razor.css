@@ -29,7 +29,9 @@
 .nav ::deep a.nav-icon { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; }
 .nav ::deep a.nav-icon svg { width: 20px; height: 20px; }
 
-/* Sign out: same look as the profile icon */
+/* Sign out: same look as the profile icon (the form around it takes no space of its own) */
+.nav-logout-form { display: contents; }
+
 .nav-logout {
     display: grid;
     place-items: center;

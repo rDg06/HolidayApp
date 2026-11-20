@@ -60,16 +60,20 @@ public static class AccountEndpoints
                 : Results.Ok(new AccountDto(account.Name, account.Email, account.Username));
         });
 
-        // POST /api/me/password — changes the password (asks for the current one)
-        group.MapPost("/password", async (ChangePasswordRequest request, ClaimsPrincipal user, IAccountService accounts, CancellationToken ct) =>
+        // POST /api/me/password — changes the password (asks for the current one). Sessions on
+        // other devices end; this one is renewed with the new password and stays open.
+        group.MapPost("/password", async (ChangePasswordRequest request, HttpContext context, IAccountService accounts, CancellationToken ct) =>
         {
-            if (AccountId(user) is not { } id)
+            if (AccountId(context.User) is not { } id)
                 return Results.NotFound();
 
             var errors = await accounts.ChangePasswordAsync(id, request.Current, request.Replacement, ct);
-            return errors.Count == 0
-                ? Results.NoContent()
-                : Results.ValidationProblem(new Dictionary<string, string[]> { ["Password"] = [.. errors] });
+            if (errors.Count > 0)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["Password"] = [.. errors] });
+
+            if (await accounts.FindAsync(id, ct) is { } account)
+                await Accounts.SignInAsync(context, account);
+            return Results.NoContent();
         });
 
         // DELETE /api/me — deletes the account and all its data, and ends the session
